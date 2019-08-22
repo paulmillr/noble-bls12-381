@@ -2,7 +2,7 @@
 
 [bls12-381](https://electriccoin.co/blog/new-snark-curve/), a pairing-friendly elliptic curve construction.
 
-This is a [Barreto-Lynn-Scott curve](https://eprint.iacr.org/2002/088) with an embedding degree of 12 & 128-bit security level.
+This is a [Barreto-Lynn-Scott curve](https://eprint.iacr.org/2002/088) with an embedding degree of 12. It's optimal for zk-SNARKs at the 128-bit security level.
 
 It allows simple construction of threshold signatures, which allows a user to
 sign 100 messages with one signature and verify them swiftly in batch.
