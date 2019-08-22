@@ -67,7 +67,7 @@ import * as bls from "bls12-381";
 
 const DOMAIN = 2;
 const PRIVATE_KEYS = [81, 455, 19];
-const HASH_MESSAGES = ["deadbeaf", "111111", "aaaaaabbbbbb"];
+const HASH_MESSAGES = ["deadbeef", "111111", "aaaaaabbbbbb"];
 
 (async () => {
   const publicKeys = PRIVATE_KEYS.map(bls.getPublicKey);
