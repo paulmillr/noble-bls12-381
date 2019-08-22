@@ -1,7 +1,7 @@
 import * as fc from "fast-check";
 import * as bls from "./src/index";
 
-const NUM_RUMS = 100; // reduce to 1 to shorten test time
+const NUM_RUMS = 1; // reduce to 1 to shorten test time
 
 describe("bls12-381", () => {
   it("should verify just signed message", async () => {
