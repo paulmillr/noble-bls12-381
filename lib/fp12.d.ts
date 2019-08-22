@@ -1,0 +1,31 @@
+import { Fp } from "./fp";
+import { Group } from "./group";
+export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+declare type Fp12Like = Fp12 | BigintTwelve;
+export declare type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
+export declare class Fp12 implements Group<BigintTwelve> {
+    private coefficients;
+    private static readonly MODULE_COEFFICIENTS;
+    private static readonly ENTRY_COEFFICIENTS;
+    readonly value: [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+    readonly zero: Fp12;
+    readonly one: Fp12;
+    constructor();
+    constructor(c0: Fp, c1: Fp, c2: Fp, c3: Fp, c4: Fp, c5: Fp, c6: Fp, c7: Fp, c8: Fp, c9: Fp, c10: Fp, c11: Fp);
+    constructor(c0: bigint, c1: bigint, c2: bigint, c3: bigint, c4: bigint, c5: bigint, c6: bigint, c7: bigint, c8: bigint, c9: bigint, c10: bigint, c11: bigint);
+    normalize(v: Fp12Like | bigint): bigint | Fp12;
+    isEmpty(): boolean;
+    equals(rhs: Fp12Like): boolean;
+    negative(): Fp12;
+    add(rhs: Fp12Like): Fp12;
+    subtract(rhs: Fp12Like): Fp12;
+    multiply(otherValue: Fp12Like): Fp12;
+    square(): Fp12;
+    pow(n: bigint): Fp12;
+    private degree;
+    private primeNumberInvariant;
+    private optimizedRoundedDiv;
+    invert(): Fp12;
+    div(otherValue: Fp12 | bigint): Fp12;
+}
+export {};

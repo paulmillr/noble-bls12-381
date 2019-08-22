@@ -1,0 +1,12 @@
+import { Hash, Bytes } from "./utils";
+export { P, PRIME_ORDER } from "./utils";
+declare type PrivateKey = Bytes | bigint | number;
+declare type Domain = PrivateKey;
+declare type PublicKey = Bytes;
+declare type Signature = Bytes;
+export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
+export declare function sign(message: Hash, privateKey: PrivateKey, domain: Domain): Promise<Uint8Array>;
+export declare function verify(message: Hash, publicKey: PublicKey, signature: Signature, domain: Domain): Promise<boolean>;
+export declare function aggregatePublicKeys(publicKeys: PublicKey[]): Uint8Array;
+export declare function aggregateSignatures(signatures: Signature[]): Uint8Array;
+export declare function verifyMultiple(messages: Hash[], publicKeys: PublicKey[], signature: Signature, domain: Domain): Promise<boolean>;
