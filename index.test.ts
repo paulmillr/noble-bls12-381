@@ -2,6 +2,7 @@ import * as fc from "fast-check";
 import * as bls from "./src/index";
 
 const NUM_RUNS = 1; // reduce to 1 to shorten test time
+const POW_53_1 = BigInt(Number.MAX_SAFE_INTEGER);
 
 describe("bls12-381", () => {
   it("should create different signatures for different domains", async () => {
@@ -9,8 +10,8 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.bigInt(1n, bls.PRIME_ORDER),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
+        fc.bigInt(1n, POW_53_1),
         async (message, privateKey, domain, otherDomain) => {
           const [publicKey, signature1, signature2] = await Promise.all([
             bls.getPublicKey(privateKey),
@@ -56,7 +57,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.array(fc.hexa(), 2, 200),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 2, 200),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (messages, privateKeys, domain) => {
           const signatures = await Promise.all(
             privateKeys.map((privateKey, i) =>
@@ -81,7 +82,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.bigInt(1n, bls.PRIME_ORDER),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (message, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
           const signature = await bls.sign(message, privateKey, domain);
@@ -101,7 +102,7 @@ describe("bls12-381", () => {
         fc.hexa(),
         fc.hexa(),
         fc.bigInt(1n, bls.PRIME_ORDER),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (message, wrongMessage, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
           const signature = await bls.sign(message, privateKey, domain);
@@ -120,7 +121,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (messages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
           messages = messages.slice(0, privateKeys.length);
@@ -152,7 +153,7 @@ describe("bls12-381", () => {
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (messages, wrongMessages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
           messages = messages.slice(0, privateKeys.length);
@@ -187,7 +188,7 @@ describe("bls12-381", () => {
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (messages, privateKeys, wrongPrivateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
           wrongPrivateKeys = privateKeys.map((a, i) =>
@@ -224,7 +225,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (message, privateKeys, domain) => {
           const publicKey = await Promise.all(
             privateKeys.map(bls.getPublicKey)
@@ -255,7 +256,7 @@ describe("bls12-381", () => {
         fc.hexa(),
         fc.hexa(),
         fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.bigInt(1n, POW_53_1),
         async (message, wrongMessage, privateKeys, domain) => {
           const publicKey = await Promise.all(
             privateKeys.map(bls.getPublicKey)
