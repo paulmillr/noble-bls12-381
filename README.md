@@ -211,6 +211,18 @@ BLS12-381 is a pairing-friendly elliptic curve construction from the [BLS family
 
 BLS12-381 is chosen so that `z` has small Hamming weight (to improve pairing performance) and also so that `GF(q)` has a large 2<sup>32</sup> primitive root of unity for performing radix-2 fast Fourier transforms for efficient multi-point evaluation and interpolation. It is also chosen so that it exists in a particularly efficient and rigid subfamily of BLS12 curves.
 
+## Speed
+
+The library is pretty slow right now, but it's still good enough for many everyday cases.
+
+```
+getPublicKey#test x 1,080 ops/sec ±0.88% (85 runs sampled)
+sign#test x 16.32 ops/sec ±1.08% (75 runs sampled)
+aggregateSignatures#test x 161 ops/sec ±0.92% (79 runs sampled)
+verify#test x 0.48 ops/sec ±0.74% (7 runs sampled)
+Pairing#test x 1.05 ops/sec ±1.43% (7 runs sampled)
+```
+
 ## Security
 
 Noble is production-ready & secure. Our goal is to have it audited by a good security expert.
