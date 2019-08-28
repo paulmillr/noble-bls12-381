@@ -22,6 +22,10 @@ import {
   P_ORDER_X_12_DIVIDED
 } from "./utils";
 
+export { Fp } from "./fp";
+export { Fp2 } from "./fp2";
+export { Fp12 } from "./fp12";
+export { Point } from "./point";
 export { P, PRIME_ORDER } from "./utils";
 
 type PrivateKey = Bytes | bigint | number;
@@ -39,7 +43,7 @@ type Signature = Bytes;
 // identity. This results in the following fixed generators:
 
 // Generator for curve over Fp
-const G1 = new Point(
+export const G1 = new Point(
   // x
   new Fp(
     3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n
@@ -53,7 +57,7 @@ const G1 = new Point(
 );
 
 // Generator for twisted curve over Fp2
-const G2 = new Point(
+export const G2 = new Point(
   // x
   new Fp2(
     352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
@@ -160,10 +164,14 @@ function millerLoop(
   return withFinalExponent ? f.pow(P_ORDER_X_12_DIVIDED) : f;
 }
 
-function pairing(
+function finalExponentiate<T>(p: Group<T>) {
+  return p.pow(P_ORDER_X_12_DIVIDED);
+}
+
+export function pairing(
   Q: Point<BigintTuple>,
   P: Point<bigint>,
-  withFinalExponent: boolean = false
+  withFinalExponent: boolean = true
 ) {
   if (!Q.isOnCurve(B2)) {
     throw new Error("Fisrt point isn't on elliptic curve");
@@ -174,9 +182,6 @@ function pairing(
   return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
 }
 
-function finalExponentiate<T>(p: Group<T>) {
-  return p.pow(P_ORDER_X_12_DIVIDED);
-}
 
 export function getPublicKey(privateKey: PrivateKey) {
   privateKey = toBigInt(privateKey);

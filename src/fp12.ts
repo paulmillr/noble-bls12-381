@@ -104,7 +104,7 @@ export class Fp12 implements Group<BigintTwelve> {
   }
 
   @normalized
-  multiply(otherValue: Fp12Like) {
+  multiply(otherValue: Fp12Like | bigint) {
     if (typeof otherValue === "bigint") {
       return new Fp12(
         ...(this.coefficients.map(a => a.multiply(otherValue)) as FpTwelve)

@@ -216,7 +216,7 @@ function uncompressG2([z1, z2]: [bigint, bigint]) {
   }
   const point = new Point(x, y, y.one, Fp2);
   if (!point.isOnCurve(B2)) {
-    throw new Error("The given point is not on the twisted curve over FQ**2");
+    throw new Error("The given point is not on the twisted curve over Fp2");
   }
   return point;
 }
