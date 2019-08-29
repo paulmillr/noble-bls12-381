@@ -2,10 +2,10 @@
 
 [bls12-381](https://electriccoin.co/blog/new-snark-curve/), a pairing-friendly elliptic curve construction.
 
-This is a [Barreto-Lynn-Scott curve](https://eprint.iacr.org/2002/088) with an embedding degree of 12. It's optimal for zk-SNARKs at the 128-bit security level.
+This is a Barreto-Lynn-Scott curve with an embedding degree of 12. It's optimal for zk-SNARKs at the 128-bit security level.
 
-It allows simple construction of threshold signatures, which allows a user to
-sign 100 messages with one signature and verify them swiftly in batch.
+It allows simple construction of [threshold signatures](https://medium.com/@snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716), which allows a user to
+sign lots of messages with one signature and verify them swiftly in a batch.
 
 ### This library belongs to *noble* crypto
 
@@ -174,27 +174,21 @@ bls.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabf
 // Prime order
 bls.PRIME_ORDER // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
 
-// Base point for Hash
+// Hash base point (x, y)
 bls.G1 // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
 // x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
 // y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
 
-// Base point for Signature
+// Signature base point ((x_1, x_2), (y_1, y_2))
 bls.G2
 // x = 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758, 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160
 // y = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582, 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
 
-// Class for subgroup number representation
-bls.Fp
-
-// Class for subgroup two dimensional number representation
-bls.Fp2
-
-// Class for subgroup twelve dimensional number representation
-bls.Fp12
-
-// Class for elliptic curve point representation
-bls.Point
+// Classes
+bls.Fp // Subgroup
+bls.Fp2 // 2-dimensional number
+bls.Fp12 // 12-dimensional number
+bls.Point // Elliptic curve point
 ```
 
 ## Curve Description
