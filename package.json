@@ -1,6 +1,6 @@
 {
   "name": "noble-bls12-381",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Noble BLS12-381 pairing-friendly curve. High-security, easily auditable, 0-dep aggregated signatures & pubkey.",
   "main": "lib/index.js",
   "files": [
@@ -23,6 +23,7 @@
     "bls12-381",
     "bls12",
     "bls",
+    "bls signature",
     "threshold signatures",
     "aggregate",
     "aggregated",
