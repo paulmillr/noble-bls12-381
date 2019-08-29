@@ -10,6 +10,11 @@
     "test": "jest"
   },
   "author": "Paul Miller (https://paulmillr.com)",
+  "homepage": "https://github.com/paulmillr/noble-noble-bls12-381",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulmillr/noble-bls12-381.git"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^24.0.13",
