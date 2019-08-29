@@ -19,7 +19,7 @@ export declare class Fp12 implements Group<BigintTwelve> {
     negative(): Fp12;
     add(rhs: Fp12Like): Fp12;
     subtract(rhs: Fp12Like): Fp12;
-    multiply(otherValue: Fp12Like): Fp12;
+    multiply(otherValue: Fp12Like | bigint): Fp12;
     square(): Fp12;
     pow(n: bigint): Fp12;
     private degree;
