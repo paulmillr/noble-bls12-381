@@ -72,16 +72,7 @@ export const G2 = new Point(
   Fp2
 );
 
-const G12 = G2.twist();
-
 // Check consistency of the "line function"
-const ONE = G1;
-const TWO = G1.double();
-const THREE = G1.multiply(3);
-const NE_ONE = G1.multiply(PRIME_ORDER - 1n);
-const NE_TWO = G1.multiply(PRIME_ORDER - 2n);
-const NE_THREE = G1.multiply(PRIME_ORDER - 3n);
-
 // Create a function representing the line between P1 and P2, and evaluate it at T
 // and evaluate it at T. Returns a numerator and a denominator
 // to avoid unneeded divisions

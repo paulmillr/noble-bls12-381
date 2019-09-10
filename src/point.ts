@@ -1,5 +1,6 @@
+import { Fp } from "./fp";
 import { Group } from "./group";
-import { BigintTuple } from "./fp2";
+import { Fp2, BigintTuple } from "./fp2";
 import { Fp12, BigintTwelve } from "./fp12";
 
 type Constructor<T> = { new (...args: any[]): Group<T> };
@@ -28,17 +29,15 @@ export class Point<T> {
     return this.x.isEmpty() && this.y.isEmpty() && this.z.isEmpty();
   }
 
+  // Fast subgroup checks via Bowe19
   isOnCurve(b: Group<T>) {
     if (this.isEmpty()) {
       return true;
     }
-    // Check that a point is on the curve defined by y**2 * z - x**3 == b * z**3
-    const lefSide = this.y
-      .square()
-      .multiply(this.z)
-      .subtract(this.x.pow(3n));
-    const rightSide = b.multiply(this.z.pow(3n));
-    return lefSide.equals(rightSide);
+    const squaredY = this.y.square();
+    const cubedX = this.x.pow(3n);
+    const z6 = this.z.pow(6n);
+    return squaredY.equals(b.multiply(z6).add(cubedX));
   }
 
   equals(other: Point<T>) {
@@ -54,34 +53,36 @@ export class Point<T> {
   }
 
   to2D() {
-    return [this.x.div(this.z), this.y.div(this.z)];
+    const zInv = this.z.pow(3n).invert();
+    return [this.x.multiply(this.z).multiply(zInv), this.y.multiply(zInv)];
   }
 
+  // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
   double() {
     if (this.isEmpty()) {
       return this;
     }
-    // W = 3 * x * x
-    const W = this.x.square().multiply(3n);
-    // S = y * z
-    const S = this.y.multiply(this.z);
-    // B = x * y * S
-    const B = this.x.multiply(this.y).multiply(S);
-    // H = W * W - 8 * B
-    const H = W.square().subtract(B.multiply(8n));
-    // x = 2 * H * S:
-    const newX = H.multiply(S).multiply(2n);
-    const tmp = this.y
+    const squaredX = this.x.square();
+    const squaredY = this.y.square();
+    const C = squaredX.square();
+    const D = this.x
+      .add(squaredY)
       .square()
-      .multiply(S.square())
-      .multiply(8n);
-    // y = W * (4 * B - H) - 8 * y**2 * s**2
-    const newY = W.multiply(B.multiply(4n).subtract(H)).subtract(tmp);
-    // z = 8 * S**3
-    const newZ = S.pow(3n).multiply(8n);
-    return new Point(newX, newY, newZ, this.C);
+      .subtract(squaredX)
+      .subtract(C);
+    const E = squaredX.multiply(3n);
+    const F = E.square();
+    const newX = F.subtract(D.multiply(2n));
+    const newY = D.subtract(newX)
+      .multiply(E)
+      .subtract(C.multiply(8n));
+    const newZ = this.y.multiply(this.z).multiply(2n);
+    return newZ.isEmpty()
+      ? new Point(this.x.zero, this.y.one, this.z.zero, this.C)
+      : new Point(newX, newY, newZ, this.C);
   }
 
+  // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
   add(other: Point<T>) {
     if (other.z.isEmpty()) {
       return this;
@@ -89,34 +90,31 @@ export class Point<T> {
     if (this.z.isEmpty()) {
       return other;
     }
-    const u1 = other.y.multiply(this.z);
-    const u2 = this.y.multiply(other.z);
-    const v1 = other.x.multiply(this.z);
-    const v2 = this.x.multiply(other.z);
-    if (v1.equals(v2) && u1.equals(u2)) {
+    const thisZ2 = this.z.square();
+    const otherZ2 = other.z.square();
+    const u1 = this.x.multiply(otherZ2);
+    const u2 = other.x.multiply(thisZ2);
+    const s1 = this.y.multiply(other.z).multiply(otherZ2);
+    const s2 = other.y.multiply(this.z).multiply(thisZ2);
+    if (u1.equals(u2) && s1.equals(s2)) {
       return this.double();
     }
-    if (v1.equals(v2)) {
-      return new Point(this.x.one, this.y.one, this.z.zero, this.C);
-    }
-    const u = u1.subtract(u2);
-    const v = v1.subtract(v2);
-    const V_CUBE = v.pow(3n);
-    const SQUERED_V_MUL_V2 = v.square().multiply(v2);
-    const W = this.z.multiply(other.z);
-    // u**2 * W - v**3 - 2 * v**2 * v2
-    const A = u
-      .square()
-      .multiply(W)
-      .subtract(v.pow(3n))
-      .subtract(SQUERED_V_MUL_V2.multiply(2n));
-    const newX = v.multiply(A);
-    // y = u * (v**2 * v2 - A) - v**3 * u2
-    const newY = u
-      .multiply(SQUERED_V_MUL_V2.subtract(A))
-      .subtract(V_CUBE.multiply(u2));
-    const newZ = V_CUBE.multiply(W);
-    return new Point(newX, newY, newZ, this.C);
+    const H = u2.subtract(u1);
+    const I = H.multiply(2n).square();
+    const J = H.multiply(I);
+    const R = s2.subtract(s1).multiply(2n);
+    const V = u1.multiply(I);
+
+    const x = R.square()
+      .subtract(J)
+      .subtract(V.multiply(2n));
+    const y = R.multiply(V.subtract(x)).subtract(s1.multiply(J).multiply(2n));
+    const z = this.z
+      .multiply(other.z)
+      .multiply(H)
+      .multiply(2n);
+
+    return new Point(x, y, z, this.C);
   }
 
   subtract(other: Point<T>) {
@@ -157,5 +155,41 @@ export class Point<T> {
       newZ,
       Fp12
     );
+  }
+
+  // Isogeny map evaluation specified by map_coeffs
+  // map_coeffs should be specified as (xnum, xden, ynum, yden)
+  // This function evaluates the isogeny over Jacobian projective coordinates.
+  // For details, see Section 4.3 of
+  // Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
+  // ePrint # 2019/403, https://ia.cr/2019/403.
+  evalIsogeny(coefficients: Array<Array<Group<T>>>) {
+    const mapValues = new Array(4);
+    // precompute the required powers of Z^2
+    const maxOrd = Math.max(...coefficients.map(a => a.length));
+    const zPowers = new Array(maxOrd);
+    zPowers[0] = this.z.pow(0n);
+    zPowers[1] = this.z.pow(2n);
+    for (let i = 2; i < maxOrd; i++) {
+      zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
+    }
+    for (let i = 0; i < coefficients.length; i++) {
+      const coefficient = Array.from(coefficients[i]);
+      const coeffsZ = coefficient.map((c, i) => c.multiply(zPowers[i]));
+      let tmp = coeffsZ[0];
+      for (let j = 1; j < coeffsZ.length; j++) {
+        tmp = tmp.multiply(this.x).add(coeffsZ[j]);
+      }
+      mapValues[i] = tmp;
+    }
+    mapValues[1] = mapValues[1].multiply(zPowers[1]);
+    mapValues[2] = mapValues[2].multiply(this.y);
+    mapValues[3] = mapValues[3].multiply(this.z.pow(3n));
+
+    const z = mapValues[1].multiply(mapValues[3]);
+    const x = mapValues[0].multiply(mapValues[3]).multiply(z);
+    const y = mapValues[2].multiply(mapValues[1]).multiply(z.square());
+
+    return new Point(x, y, z, this.C);
   }
 }
