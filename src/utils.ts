@@ -49,7 +49,8 @@ if (typeof window == "object" && "crypto" in window) {
     return new Uint8Array(buffer);
   };
 } else if (typeof process === "object" && "node" in process.versions) {
-  const { createHash } = require("crypto");
+  const req = require;
+  const { createHash } = req("crypto");
   sha256 = async (message: Uint8Array) => {
     const hash = createHash("sha256");
     hash.update(message);
