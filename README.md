@@ -7,6 +7,9 @@ This is a Barreto-Lynn-Scott curve with an embedding degree of 12. It's optimal 
 It allows simple construction of [threshold signatures](https://medium.com/@snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716), which allows a user to
 sign lots of messages with one signature and verify them swiftly in a batch.
 
+See the [great article by @benjaminion](https://hackmd.io/@benjaminion/bls12-381) that describes
+bls12-381 in detail.
+
 ### This library belongs to *noble* crypto
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
