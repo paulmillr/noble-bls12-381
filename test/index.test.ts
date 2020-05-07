@@ -280,6 +280,12 @@ describe("bls12-381", () => {
       { numRuns: NUM_RUNS }
     );
   });
+  it("should create right public key for private key 0", async () => {
+    const publicKey = await bls.getPublicKey(0n);
+    expect(Buffer.from(publicKey).toString("hex")).toBe(
+      "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    );
+  });
   it("should create right public key for vector 1", async () => {
     const publicKey = await bls.getPublicKey(15n);
     expect(Buffer.from(publicKey).toString("hex")).toBe(
@@ -375,6 +381,12 @@ describe("bls12-381", () => {
     ]);
     expect(Buffer.from(aggregatedPublicKey).toString("hex")).toBe(
       "aa1554bee817c20ac1ae3abd55da26bef2b51299201f1328c73ddab130d943a27ef9330b502c54012079d9bd641f8bfd"
+    );
+  });
+  it("should create right signature for private key 0", async () => {
+    const signature = await bls.sign("00", 0n, 1);
+    expect(Buffer.from(signature).toString("hex")).toBe(
+      "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     );
   });
   it("should create right signature for vector 1", async () => {

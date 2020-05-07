@@ -152,7 +152,7 @@ export async function getXCoordinate(hash: Hash, domain: Bytes) {
 const POW_SUM = POW_2_383 + POW_2_382;
 
 function compressG1(point: Point<bigint>) {
-  if (point.isEmpty()) {
+  if (point.equals(Z1)) {
     return POW_SUM;
   }
   const [x, y] = point.to2D() as [Fp, Fp];
@@ -181,11 +181,11 @@ function uncompressG1(compressedValue: bigint) {
 }
 
 function compressG2(point: Point<[bigint, bigint]>) {
+  if (point.equals(Z2)) {
+    return [POW_2_383 + POW_2_382, 0n];
+  }
   if (!point.isOnCurve(B2)) {
     throw new Error("The given point is not on the twisted curve over FQ**2");
-  }
-  if (point.isEmpty()) {
-    return [POW_2_383 + POW_2_382, 0n];
   }
   const [[x0, x1], [y0, y1]] = point.to2D().map(a => a.value);
   const producer = y1 > 0 ? y1 : y0;
