@@ -152,7 +152,7 @@ export async function getXCoordinate(hash: Hash, domain: Bytes) {
 const POW_SUM = POW_2_383 + POW_2_382;
 
 function compressG1(point: Point<bigint>) {
-  if (point.isEmpty()) {
+  if (point.equals(Z1)) {
     return POW_SUM;
   }
   const [x, y] = point.to2D() as [Fp, Fp];

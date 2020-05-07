@@ -280,6 +280,12 @@ describe("bls12-381", () => {
       { numRuns: NUM_RUNS }
     );
   });
+  it("should create right public key for point at infinity", async () => {
+    const publicKey = await bls.getPublicKey(0n);
+    expect(Buffer.from(publicKey).toString("hex")).toBe(
+      "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    );
+  });
   it("should create right public key for vector 1", async () => {
     const publicKey = await bls.getPublicKey(15n);
     expect(Buffer.from(publicKey).toString("hex")).toBe(
