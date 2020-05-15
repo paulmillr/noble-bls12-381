@@ -2,9 +2,9 @@ import { Group } from "./group";
 export declare class Fp implements Group<bigint> {
     static ORDER: bigint;
     private _value;
-    readonly value: bigint;
-    readonly zero: Fp;
-    readonly one: Fp;
+    get value(): bigint;
+    get zero(): Fp;
+    get one(): Fp;
     constructor(value?: bigint);
     private mod;
     normalize(v: Fp | bigint): Fp;

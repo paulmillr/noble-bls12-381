@@ -1,6 +1,7 @@
 import { Point } from "./point";
 import { Group } from "./group";
 import { BigintTuple } from "./fp2";
+import { BigintTwelve } from "./fp12";
 import { Hash, Bytes } from "./utils";
 export { Fp } from "./fp";
 export { Fp2 } from "./fp2";
@@ -12,8 +13,8 @@ declare type Domain = PrivateKey;
 declare type PublicKey = Bytes;
 declare type Signature = Bytes;
 export declare const G1: Point<bigint>;
-export declare const G2: Point<[bigint, bigint]>;
-export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Group<[bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]>;
+export declare const G2: Point<BigintTuple>;
+export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Group<BigintTwelve>;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Hash, privateKey: PrivateKey, domain: Domain): Promise<Uint8Array>;
 export declare function verify(message: Hash, publicKey: PublicKey, signature: Signature, domain: Domain): Promise<boolean>;
