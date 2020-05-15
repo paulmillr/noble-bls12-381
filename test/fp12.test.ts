@@ -1,6 +1,5 @@
 import * as fc from "fast-check";
-import { Fp } from "../src/fp";
-import { Fp12, BigintTwelve } from "../src/fp12";
+import { Fp, Fp12, BigintTwelve } from "../src/fields";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 

@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "test": "jest",
-    "compile": "tsc -d"
+    "build": "tsc -d"
   },
   "author": "Paul Miller (https://paulmillr.com)",
   "homepage": "https://github.com/paulmillr/noble-bls12-381",

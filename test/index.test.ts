@@ -1,7 +1,7 @@
 import * as fc from "fast-check";
 import * as bls from "../src";
 
-const NUM_RUNS = 10; // reduce to 1 to shorten test time
+const NUM_RUNS = 1; // reduce to 1 to shorten test time
 
 describe("bls12-381", () => {
   it("should create different signatures for different domains", async () => {

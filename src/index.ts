@@ -1,8 +1,4 @@
-import { Fp } from "./fp";
-import { Point } from "./point";
-import { Group } from "./group";
-import { BigintTuple, Fp2 } from "./fp2";
-import { BigintTwelve, Fp12 } from "./fp12";
+import { Fp, Fp2, Fp12, Point, Group, BigintTuple, BigintTwelve } from "./fields";
 import {
   B,
   B2,
@@ -13,20 +9,18 @@ import {
   toBigInt,
   hashToG2,
   toBytesBE,
-  PRIME_ORDER,
+  CURVE,
   DOMAIN_LENGTH,
   publicKeyToG1,
   signatureToG2,
   publicKeyFromG1,
   signatureFromG2,
-  P_ORDER_X_12_DIVIDED
+  P_ORDER_X_12_DIVIDED,
+  P
 } from "./utils";
 
-export { Fp } from "./fp";
-export { Fp2 } from "./fp2";
-export { Fp12 } from "./fp12";
-export { Point } from "./point";
-export { P, PRIME_ORDER } from "./utils";
+const PRIME_ORDER = CURVE.n;
+export { Fp, Fp2, Fp12, Point, P, PRIME_ORDER };
 
 type PrivateKey = Bytes | bigint | number;
 type Domain = PrivateKey;
@@ -43,45 +37,12 @@ type Signature = Bytes;
 // identity. This results in the following fixed generators:
 
 // Generator for curve over Fp
-export const G1 = new Point(
-  // x
-  new Fp(
-    3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n
-  ),
-  // y
-  new Fp(
-    1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569n
-  ),
-  new Fp(1n),
-  Fp
-);
+export const G1 = new Point(new Fp(CURVE.Gx), new Fp(CURVE.Gy), new Fp(1n), Fp);
 
 // Generator for twisted curve over Fp2
 export const G2 = new Point(
-  // x
-  new Fp2(
-    352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
-    3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n
-  ),
-  // y
-  new Fp2(
-    1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
-    927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n
-  ),
-  new Fp2(1n, 0n),
-  Fp2
+  new Fp2(CURVE.G2x[0], CURVE.G2x[1]), new Fp2(CURVE.G2y[0], CURVE.G2y[1]), new Fp2(1n, 0n), Fp2
 );
-
-const G12 = G2.twist();
-
-// Check consistency of the "line function"
-const ONE = G1;
-const TWO = G1.double();
-const THREE = G1.multiply(3);
-const NE_ONE = G1.multiply(PRIME_ORDER - 1n);
-const NE_TWO = G1.multiply(PRIME_ORDER - 2n);
-const NE_THREE = G1.multiply(PRIME_ORDER - 3n);
-
 // Create a function representing the line between P1 and P2, and evaluate it at T
 // and evaluate it at T. Returns a numerator and a denominator
 // to avoid unneeded divisions

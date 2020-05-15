@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
+    "strict": true,
+    "target": "es2020",
     "module": "commonjs",
-		"strict": true,
-    "target": "esnext",
     "noImplicitAny": true,
     "removeComments": true,
     "preserveConstEnums": true,

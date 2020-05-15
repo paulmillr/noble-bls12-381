@@ -1,7 +1,7 @@
 import * as fc from "fast-check";
-import { Point } from "../src/point";
+import { Point } from "../src/fields";
 import { B, B2 } from "../src/utils";
-import { Fp, Fp2, G1, G2 } from "../src";
+import { Fp, Fp2 } from "../src";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 

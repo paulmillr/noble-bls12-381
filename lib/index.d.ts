@@ -1,13 +1,7 @@
-import { Point } from "./point";
-import { Group } from "./group";
-import { BigintTuple } from "./fp2";
-import { BigintTwelve } from "./fp12";
-import { Hash, Bytes } from "./utils";
-export { Fp } from "./fp";
-export { Fp2 } from "./fp2";
-export { Fp12 } from "./fp12";
-export { Point } from "./point";
-export { P, PRIME_ORDER } from "./utils";
+import { Fp, Fp2, Fp12, Point, Group, BigintTuple, BigintTwelve } from "./fields";
+import { Hash, Bytes, P } from "./utils";
+declare const PRIME_ORDER: bigint;
+export { Fp, Fp2, Fp12, Point, P, PRIME_ORDER };
 declare type PrivateKey = Bytes | bigint | number;
 declare type Domain = PrivateKey;
 declare type PublicKey = Bytes;
