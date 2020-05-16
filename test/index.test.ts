@@ -194,9 +194,6 @@ describe("bls12-381", () => {
             wrongPrivateKeys[i] !== undefined ? wrongPrivateKeys[i] : a
           );
           messages = messages.slice(0, privateKeys.length);
-          const publicKey = await Promise.all(
-            privateKeys.map(bls.getPublicKey)
-          );
           const wrongPublicKeys = await Promise.all(
             wrongPrivateKeys.map(bls.getPublicKey)
           );
@@ -230,7 +227,7 @@ describe("bls12-381", () => {
             privateKeys.map(bls.getPublicKey)
           );
           const signatures = await Promise.all(
-            privateKeys.map((privateKey, i) =>
+            privateKeys.map((privateKey) =>
               bls.sign(message, privateKey, domain)
             )
           );
@@ -261,7 +258,7 @@ describe("bls12-381", () => {
             privateKeys.map(bls.getPublicKey)
           );
           const signatures = await Promise.all(
-            privateKeys.map((privateKey, i) =>
+            privateKeys.map((privateKey) =>
               bls.sign(message, privateKey, domain)
             )
           );
@@ -562,7 +559,6 @@ describe("bls12-381", () => {
 		expect(p1.multiply(p2)).toEqual(p1.one);
   });
   it("should create negative G2 pairing", () => {
-		const p1 = bls.pairing(bls.G2, bls.G1);
 		const p2 = bls.pairing(bls.G2, bls.G1.negative());
 		const p3 = bls.pairing(bls.G2.negative(), bls.G1);
 		expect(p2).toEqual(p3);

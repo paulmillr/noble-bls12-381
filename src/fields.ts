@@ -3,50 +3,86 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
-type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any
-  ? A
-  : never;
-type ReturnType<T extends Function> = T extends (...args: any[]) => infer R
-  ? R
-  : any;
+function mod(a: bigint, b: bigint) {
+  const res = a % b;
+  return res >= 0n ? res : b + res;
+}
+
+// Eucledian GCD
+// https://brilliant.org/wiki/extended-euclidean-algorithm/
+function egcd(a: bigint, b: bigint) {
+  let [x, y, u, v] = [0n, 1n, 1n, 0n];
+  while (a !== 0n) {
+    let q = b / a;
+    let r = b % a;
+    let m = x - u * q;
+    let n = y - v * q;
+    [b, a] = [a, r];
+    [x, y] = [u, v];
+    [u, v] = [m, n];
+  }
+  let gcd = b;
+  return [gcd, x, y];
+}
+
+function invert(number: bigint, modulo: bigint) {
+  if (number === 0n || modulo <= 0n) {
+    throw new Error('invert: expected positive integers');
+  }
+  let [gcd, x] = egcd(mod(number, modulo), modulo);
+  if (gcd !== 1n) {
+    throw new Error('invert: does not exist');
+  }
+  return mod(x, modulo);
+}
+
+function powMod(a: bigint, power: bigint, m: bigint) {
+  let res = 1n;
+  while (power > 0n) {
+    if (power & 1n) {
+      res = mod(res * a, m);
+    }
+    power >>= 1n;
+    a = mod(a * a, m);
+  }
+  return res;
+}
+
+type ReturnType<T extends Function> = T extends (...args: any[]) => infer R ? R : any;
 type IncludedTypes<Base, Type> = {
-  [Key in keyof Base]: Base[Key] extends Type ? Key : never
+  [Key in keyof Base]: Base[Key] extends Type ? Key : never;
 };
 type AllowedNames<Base, Type> = keyof IncludedTypes<Base, Type>;
 
-export interface Group<T> {
-  readonly one: Group<T>;
-  readonly zero: Group<T>;
+export interface Field<T> {
+  readonly one: Field<T>;
+  readonly zero: Field<T>;
   readonly value: T;
-  normalize(v: Group<T> | T | bigint): bigint | Group<T>;
+  normalize(v: Field<T> | T | bigint): bigint | Field<T>;
   isEmpty(): boolean;
-  equals(otherValue: Group<T> | T): boolean;
-  add(otherValue: Group<T> | T): Group<T>;
-  multiply(otherValue: Group<T> | T | bigint): Group<T>;
-  div(otherValue: Group<T> | T | bigint): Group<T>;
-  square(): Group<T>;
-  subtract(otherValue: Group<T> | T): Group<T>;
-  negative(): Group<T>;
-  invert(): Group<T>;
-  pow(n: bigint): Group<T>;
+  equals(otherValue: Field<T> | T): boolean;
+  add(otherValue: Field<T> | T): Field<T>;
+  multiply(otherValue: Field<T> | T | bigint): Field<T>;
+  div(otherValue: Field<T> | T | bigint): Field<T>;
+  square(): Field<T>;
+  subtract(otherValue: Field<T> | T): Field<T>;
+  negative(): Field<T>;
+  invert(): Field<T>;
+  pow(n: bigint): Field<T>;
 }
 
-export function normalized<
-  T,
-  G extends Group<T>,
-  M extends AllowedNames<G, Function>
->(
+export function normalized<T, G extends Field<T>, M extends AllowedNames<G, Function>>(
   target: G,
   propertyKey: M,
   descriptor: PropertyDescriptor
 ): PropertyDescriptor {
   type GroupMethod = G[M] & Function;
   const propertyValue: G[M] | GroupMethod = target[propertyKey];
-  if (typeof propertyValue !== "function") {
+  if (typeof propertyValue !== 'function') {
     return descriptor;
   }
   const previousImplementation: GroupMethod = propertyValue;
-  descriptor.value = function(arg: G | T | bigint): ReturnType<GroupMethod> {
+  descriptor.value = function (arg: G | T | bigint): ReturnType<GroupMethod> {
     const modifiedArgument = target.normalize(arg);
     return previousImplementation.call(this, modifiedArgument);
   };
@@ -55,7 +91,7 @@ export function normalized<
 
 export type BigintTuple = [bigint, bigint];
 
-export class Fp implements Group<bigint> {
+export class Fp implements Field<bigint> {
   static ORDER = 1n;
   private _value: bigint = 0n;
 
@@ -96,24 +132,7 @@ export class Fp implements Group<bigint> {
   }
 
   invert() {
-    const v = this._value;
-    let lm = 1n;
-    let hm = 0n;
-    let low = v;
-    let high = Fp.ORDER;
-    let ratio = 0n;
-    let nm = v;
-    let enew = 0n;
-    while (low > 1n) {
-      ratio = high / low;
-      nm = hm - lm * ratio;
-      enew = high - low * ratio;
-      hm = lm;
-      lm = nm;
-      high = low;
-      low = enew;
-    }
-    return new Fp(nm);
+    return new Fp(invert(this._value, Fp.ORDER));
   }
 
   @normalized add(other: Fp | bigint) {
@@ -125,16 +144,7 @@ export class Fp implements Group<bigint> {
   }
 
   pow(n: bigint) {
-    let result = 1n;
-    let value = this._value;
-    while (n > 0) {
-      if ((n & 1n) === 1n) {
-        result = this.mod(result * value, Fp.ORDER);
-      }
-      n >>= 1n;
-      value = this.mod(value * value, Fp.ORDER);
-    }
-    return new Fp(result);
+    return new Fp(powMod(this._value, n, Fp.ORDER));
   }
 
   @normalized subtract(other: Fp | bigint) {
@@ -150,7 +160,7 @@ export class Fp implements Group<bigint> {
   }
 }
 
-export class Fp2 implements Group<BigintTuple> {
+export class Fp2 implements Field<BigintTuple> {
   private static _order = 1n;
   private static DIV_ORDER = 1n;
   private static EIGHTH_ROOTS_OF_UNITY = Array(8)
@@ -194,7 +204,7 @@ export class Fp2 implements Group<BigintTuple> {
   }
 
   normalize(v: Fp2 | BigintTuple | bigint): bigint | Fp2 {
-    if (typeof v === "bigint") {
+    if (typeof v === 'bigint') {
       return v;
     }
     return v instanceof Fp2 ? v : new Fp2(...v);
@@ -206,10 +216,7 @@ export class Fp2 implements Group<BigintTuple> {
 
   @normalized
   equals(rhs: Fp2) {
-    return (
-      this.coeficient1.equals(rhs.coeficient1) &&
-      this.coeficient2.equals(rhs.coeficient2)
-    );
+    return this.coeficient1.equals(rhs.coeficient1) && this.coeficient2.equals(rhs.coeficient2);
   }
 
   negative() {
@@ -218,10 +225,7 @@ export class Fp2 implements Group<BigintTuple> {
 
   @normalized
   add(rhs: Fp2) {
-    return new Fp2(
-      this.coeficient1.add(rhs.coeficient1),
-      this.coeficient2.add(rhs.coeficient2)
-    );
+    return new Fp2(this.coeficient1.add(rhs.coeficient1), this.coeficient2.add(rhs.coeficient2));
   }
 
   @normalized
@@ -238,11 +242,8 @@ export class Fp2 implements Group<BigintTuple> {
   // subtract v1, we can compute v1 = -a1 * b1.)
   @normalized
   multiply(otherValue: Fp2 | bigint) {
-    if (typeof otherValue === "bigint") {
-      return new Fp2(
-        this.coeficient1.multiply(otherValue),
-        this.coeficient2.multiply(otherValue)
-      );
+    if (typeof otherValue === 'bigint') {
+      return new Fp2(this.coeficient1.multiply(otherValue), this.coeficient2.multiply(otherValue));
     }
     // v0  = a0 * b0
     const v0 = this.coeficient1.multiply(otherValue.coeficient1);
@@ -288,21 +289,18 @@ export class Fp2 implements Group<BigintTuple> {
     return new Fp2(a.multiply(b), c.multiply(this.coeficient2));
   }
 
-  modularSquereRoot() {
-    const candidateSquareroot = this.pow(Fp2.DIV_ORDER);
-    const check = candidateSquareroot.square().div(this);
-    const rootIndex = Fp2.EIGHTH_ROOTS_OF_UNITY.findIndex(a => a.equals(check));
+  modSqrt() {
+    const candidateSqrt = this.pow(Fp2.DIV_ORDER);
+    const check = candidateSqrt.square().div(this);
+    const rootIndex = Fp2.EIGHTH_ROOTS_OF_UNITY.findIndex((a) => a.equals(check));
     if (rootIndex === -1 || (rootIndex & 1) === 1) {
       return null;
     }
-    const x1 = candidateSquareroot.div(
-      Fp2.EIGHTH_ROOTS_OF_UNITY[rootIndex >> 1]
-    );
+    const x1 = candidateSqrt.div(Fp2.EIGHTH_ROOTS_OF_UNITY[rootIndex >> 1]);
     const x2 = x1.negative();
     const isImageGreater = x1.coeficient2.value > x2.coeficient2.value;
     const isReconstructedGreater =
-      x1.coeficient2.equals(x2.coeficient2) &&
-      x1.coeficient1.value > x2.coeficient1.value;
+      x1.coeficient2.equals(x2.coeficient2) && x1.coeficient1.value > x2.coeficient1.value;
     return isImageGreater || isReconstructedGreater ? x1 : x2;
   }
 
@@ -336,23 +334,14 @@ export class Fp2 implements Group<BigintTuple> {
     // This gives that (a - bu)/(a^2 + b^2) is the inverse
     // of (a + bu). Importantly, this can be computing using
     // only a single inversion in Fp.
-    const t = this.coeficient1
-      .square()
-      .add(this.coeficient2.square())
-      .invert();
-    return new Fp2(
-      this.coeficient1.multiply(t),
-      this.coeficient2.multiply(t.negative())
-    );
+    const t = this.coeficient1.square().add(this.coeficient2.square()).invert();
+    return new Fp2(this.coeficient1.multiply(t), this.coeficient2.multiply(t.negative()));
   }
 
   @normalized
   div(otherValue: Fp2 | bigint) {
-    if (typeof otherValue === "bigint") {
-      return new Fp2(
-        this.coeficient1.div(otherValue),
-        this.coeficient2.div(otherValue)
-      );
+    if (typeof otherValue === 'bigint') {
+      return new Fp2(this.coeficient1.div(otherValue), this.coeficient2.div(otherValue));
     }
     return this.multiply(otherValue.invert());
   }
@@ -377,19 +366,19 @@ const FP12_DEFAULT: BigintTwelve = [
 ];
 
 /// This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
-export class Fp12 implements Group<BigintTwelve> {
-  private coefficients: FpTwelve = FP12_DEFAULT.map(a => new Fp(a)) as FpTwelve;
+export class Fp12 implements Field<BigintTwelve> {
+  private coefficients: FpTwelve = FP12_DEFAULT.map((a) => new Fp(a)) as FpTwelve;
   // prettier-ignore
   private static readonly MODULE_COEFFICIENTS: BigintTwelve = [
     2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n
   ];
   private static readonly ENTRY_COEFFICIENTS: Array<[number, bigint]> = [
     [0, 2n],
-    [6, -2n]
+    [6, -2n],
   ];
 
   public get value() {
-    return this.coefficients.map(c => c.value) as BigintTwelve;
+    return this.coefficients.map((c) => c.value) as BigintTwelve;
   }
 
   public get zero() {
@@ -413,59 +402,50 @@ export class Fp12 implements Group<BigintTwelve> {
     c8: bigint, c9: bigint, c10: bigint, c11: bigint
   );
   constructor(...args: [] | BigintTwelve | FpTwelve) {
-    args =
-      args.length === 0 ? FP12_DEFAULT : (args.slice(0, 12) as BigintTwelve);
+    args = args.length === 0 ? FP12_DEFAULT : (args.slice(0, 12) as BigintTwelve);
     // @ts-ignore stupid TS
     // prettier-ignore
     this.coefficients = args[0] instanceof Fp ? args : (args.map(a => new Fp(a)) as FpTwelve);
   }
 
   public normalize(v: Fp12Like | bigint) {
-    if (typeof v === "bigint") {
+    if (typeof v === 'bigint') {
       return v;
     }
     return v instanceof Fp12 ? v : new Fp12(...v);
   }
 
   isEmpty() {
-    return this.coefficients.every(a => a.isEmpty());
+    return this.coefficients.every((a) => a.isEmpty());
   }
 
   @normalized
   equals(rhs: Fp12Like) {
-    return this.coefficients.every((a, i) =>
-      a.equals((rhs as Fp12).coefficients[i])
-    );
+    return this.coefficients.every((a, i) => a.equals((rhs as Fp12).coefficients[i]));
   }
 
   negative() {
-    return new Fp12(...(this.coefficients.map(a => a.negative()) as FpTwelve));
+    return new Fp12(...(this.coefficients.map((a) => a.negative()) as FpTwelve));
   }
 
   @normalized
   add(rhs: Fp12Like) {
     return new Fp12(
-      ...(this.coefficients.map((a, i) =>
-        a.add((rhs as Fp12).coefficients[i])
-      ) as FpTwelve)
+      ...(this.coefficients.map((a, i) => a.add((rhs as Fp12).coefficients[i])) as FpTwelve)
     );
   }
 
   @normalized
   subtract(rhs: Fp12Like) {
     return new Fp12(
-      ...(this.coefficients.map((a, i) =>
-        a.subtract((rhs as Fp12).coefficients[i])
-      ) as FpTwelve)
+      ...(this.coefficients.map((a, i) => a.subtract((rhs as Fp12).coefficients[i])) as FpTwelve)
     );
   }
 
   @normalized
   multiply(otherValue: Fp12Like | bigint) {
-    if (typeof otherValue === "bigint") {
-      return new Fp12(
-        ...(this.coefficients.map(a => a.multiply(otherValue)) as FpTwelve)
-      );
+    if (typeof otherValue === 'bigint') {
+      return new Fp12(...(this.coefficients.map((a) => a.multiply(otherValue)) as FpTwelve));
     }
     const LENGTH = this.coefficients.length;
 
@@ -535,16 +515,14 @@ export class Fp12 implements Group<BigintTwelve> {
         tmp[c + i] = tmp[c + i] - zeros[c];
       }
     }
-    return new Fp12(
-      ...(zeros.slice(0, this.degree(zeros) + 1) as BigintTwelve)
-    );
+    return new Fp12(...(zeros.slice(0, this.degree(zeros) + 1) as BigintTwelve));
   }
 
   invert(): Fp12 {
     const LENGTH = this.coefficients.length;
-    let lm = [...this.one.coefficients.map(a => a.value), 0n];
-    let hm = [...this.zero.coefficients.map(a => a.value), 0n];
-    let low = [...this.coefficients.map(a => a.value), 0n];
+    let lm = [...this.one.coefficients.map((a) => a.value), 0n];
+    let hm = [...this.zero.coefficients.map((a) => a.value), 0n];
+    let low = [...this.coefficients.map((a) => a.value), 0n];
     let high = [...Fp12.MODULE_COEFFICIENTS, 1n];
     while (this.degree(low) !== 0) {
       const { coefficients } = this.optimizedRoundedDiv(high, low);
@@ -560,8 +538,8 @@ export class Fp12 implements Group<BigintTwelve> {
           nw[i + j] -= low[i] * roundedDiv[j].value;
         }
       }
-      nm = nm.map(a => new Fp(a).value);
-      nw = nw.map(a => new Fp(a).value);
+      nm = nm.map((a) => new Fp(a).value);
+      nw = nw.map((a) => new Fp(a).value);
       hm = lm;
       lm = nm;
       high = low;
@@ -573,18 +551,15 @@ export class Fp12 implements Group<BigintTwelve> {
 
   @normalized
   div(otherValue: Fp12 | bigint) {
-    if (typeof otherValue === "bigint") {
-      return new Fp12(
-        ...(this.coefficients.map(a => a.div(otherValue)) as FpTwelve)
-      );
+    if (typeof otherValue === 'bigint') {
+      return new Fp12(...(this.coefficients.map((a) => a.div(otherValue)) as FpTwelve));
     }
     return this.multiply(otherValue.invert());
   }
 }
 
-
-type Constructor<T> = { new (...args: any[]): Group<T> };
-type GroupCoordinats<T> = { x: Group<T>; y: Group<T>; z: Group<T> };
+type Constructor<T> = { new (...args: any[]): Field<T> };
+type GroupCoordinats<T> = { x: Field<T>; y: Field<T>; z: Field<T> };
 
 export class Point<T> {
   // "Twist" a point in E(Fp2) into a point in E(Fp12)
@@ -599,9 +574,9 @@ export class Point<T> {
   }
 
   constructor(
-    public x: Group<T>,
-    public y: Group<T>,
-    public z: Group<T>,
+    public x: Field<T>,
+    public y: Field<T>,
+    public z: Field<T>,
     private C: Constructor<T>
   ) {}
 
@@ -609,15 +584,12 @@ export class Point<T> {
     return this.x.isEmpty() && this.y.isEmpty() && this.z.isEmpty();
   }
 
-  isOnCurve(b: Group<T>) {
+  isOnCurve(b: Field<T>) {
     if (this.isEmpty()) {
       return true;
     }
     // Check that a point is on the curve defined by y**2 * z - x**3 == b * z**3
-    const lefSide = this.y
-      .square()
-      .multiply(this.z)
-      .subtract(this.x.pow(3n));
+    const lefSide = this.y.square().multiply(this.z).subtract(this.x.pow(3n));
     const rightSide = b.multiply(this.z.pow(3n));
     return lefSide.equals(rightSide);
   }
@@ -652,10 +624,7 @@ export class Point<T> {
     const H = W.square().subtract(B.multiply(8n));
     // x = 2 * H * S:
     const newX = H.multiply(S).multiply(2n);
-    const tmp = this.y
-      .square()
-      .multiply(S.square())
-      .multiply(8n);
+    const tmp = this.y.square().multiply(S.square()).multiply(8n);
     // y = W * (4 * B - H) - 8 * y**2 * s**2
     const newY = W.multiply(B.multiply(4n).subtract(H)).subtract(tmp);
     // z = 8 * S**3
@@ -686,16 +655,10 @@ export class Point<T> {
     const SQUERED_V_MUL_V2 = v.square().multiply(v2);
     const W = this.z.multiply(other.z);
     // u**2 * W - v**3 - 2 * v**2 * v2
-    const A = u
-      .square()
-      .multiply(W)
-      .subtract(v.pow(3n))
-      .subtract(SQUERED_V_MUL_V2.multiply(2n));
+    const A = u.square().multiply(W).subtract(v.pow(3n)).subtract(SQUERED_V_MUL_V2.multiply(2n));
     const newX = v.multiply(A);
     // y = u * (v**2 * v2 - A) - v**3 * u2
-    const newY = u
-      .multiply(SQUERED_V_MUL_V2.subtract(A))
-      .subtract(V_CUBE.multiply(u2));
+    const newY = u.multiply(SQUERED_V_MUL_V2.subtract(A)).subtract(V_CUBE.multiply(u2));
     const newZ = V_CUBE.multiply(W);
     return new Point(newX, newY, newZ, this.C);
   }
@@ -732,11 +695,6 @@ export class Point<T> {
     const newX = new Fp12(cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n);
     const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
     const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
-    return new Point(
-      newX.div(Point.W_SQUARE),
-      newY.div(Point.W_CUBE),
-      newZ,
-      Fp12
-    );
+    return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
   }
 }

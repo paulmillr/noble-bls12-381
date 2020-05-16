@@ -1,4 +1,4 @@
-import { Fp, Fp2, Fp12, Point } from "./fields";
+import { Fp, Fp2, Fp12, Point, Field, BigintTwelve } from "./fields";
 export type Bytes = Uint8Array | string;
 export type Hash = Bytes;
 
@@ -20,10 +20,12 @@ export const CURVE = {
 // 2.1 The BLS12-381 elliptic curve
 // q =  z**4 − z**2 + 1
 // p = z + (z**4 − z**2 + 1) * (z − 1)**2 / 3
-export const P = CURVE.P;
-export const DOMAIN_LENGTH = 8;
-const P_ORDER_X_12 = P ** 12n - 1n;
-export const P_ORDER_X_12_DIVIDED = P_ORDER_X_12 / CURVE.n;
+const P = CURVE.P;
+const P_ORDER_X_12_DIVIDED = (P ** 12n - 1n) / CURVE.n;
+
+export function finalExponentiate(p: Field<BigintTwelve>) {
+  return p.pow(P_ORDER_X_12_DIVIDED);
+}
 
 Fp.ORDER = P;
 Fp2.ORDER = P ** 2n - 1n;
@@ -49,23 +51,23 @@ const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 
-let sha256: (a: Uint8Array) => Promise<Uint8Array>;
-
-if (typeof window == "object" && "crypto" in window) {
-  sha256 = async (message: Uint8Array) => {
-    const buffer = await window.crypto.subtle.digest("SHA-256", message.buffer);
+const sha256 = async (message: Uint8Array): Promise<Uint8Array> => {
+  // @ts-ignore
+  if (typeof window == 'object' && 'crypto' in window) {
+    // @ts-ignore
+    const buffer = await window.crypto.subtle.digest('SHA-256', message.buffer);
+    // @ts-ignore
     return new Uint8Array(buffer);
-  };
-} else if (typeof process === "object" && "node" in process.versions) {
-  const req = require;
-  const { createHash } = req("crypto");
-  sha256 = async (message: Uint8Array) => {
-    const hash = createHash("sha256");
+    // @ts-ignore
+  } else if (typeof process === 'object' && 'node' in process.versions) {
+    // @ts-ignore
+    const { createHash } = require('crypto');
+    const hash = createHash('sha256');
     hash.update(message);
     return Uint8Array.from(hash.digest());
-  };
-} else {
-  throw new Error("The environment doesn't have sha256 function");
+  } else {
+    throw new Error("The environment doesn't have sha256 function");
+  }
 }
 
 function fromHexBE(hex: string) {
@@ -136,17 +138,21 @@ function concatBytes(...bytes: Bytes[]) {
   );
 }
 
-function powMod(x: bigint, power: bigint, order: bigint) {
-  let fx = new Fp(x);
-  let res = new Fp(1n);
-  while (power > 0) {
+function mod(a: bigint, b: bigint) {
+  const res = a % b;
+  return res >= 0n ? res : b + res;
+}
+
+function powMod(a: bigint, power: bigint, m: bigint) {
+  let res = 1n;
+  while (power > 0n) {
     if (power & 1n) {
-      res = res.multiply(fx);
+      res = mod(res * a, m);
     }
     power >>= 1n;
-    fx = fx.square();
+    a = mod(a * a, m);
   }
-  return res.value;
+  return res;
 }
 
 export async function getXCoordinate(hash: Hash, domain: Bytes) {
@@ -212,7 +218,7 @@ function uncompressG2([z1, z2]: [bigint, bigint]) {
   let y = x
     .pow(3n)
     .add(B2)
-    .modularSquereRoot();
+    .modSqrt();
   if (y === null) {
     throw new Error("Failed to find a modular squareroot");
   }
@@ -231,13 +237,11 @@ function uncompressG2([z1, z2]: [bigint, bigint]) {
 }
 
 export function publicKeyFromG1(point: Point<bigint>) {
-  const z = compressG1(point);
-  return toBytesBE(z, PUBLIC_KEY_LENGTH);
+  return toBytesBE(compressG1(point), PUBLIC_KEY_LENGTH);
 }
 
 export function publicKeyToG1(publicKey: Bytes) {
-  const z = fromBytesBE(publicKey);
-  return uncompressG1(z);
+  return uncompressG1(fromBytesBE(publicKey));
 }
 
 export function signatureFromG2(point: Point<[bigint, bigint]>) {
@@ -262,7 +266,7 @@ export async function hashToG2(hash: Hash, domain: Bytes) {
     newResult = xCoordinate
       .pow(3n)
       .add(new Fp2(4n, 4n))
-      .modularSquereRoot();
+      .modSqrt();
     const addition = newResult ? xCoordinate.zero : xCoordinate.one;
     xCoordinate = xCoordinate.add(addition);
   } while (newResult === null);

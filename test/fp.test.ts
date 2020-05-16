@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { Fp, Fp2 } from "../src";
+import { Fp } from "../src";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -227,7 +227,7 @@ describe("bls12-381 Fp", () => {
       fc.property(
         fc.bigInt(1n, Fp.ORDER),
         fc.bigInt(1n, Fp.ORDER),
-        (num1, num2) => {
+        (num1) => {
           const a = new Fp(num1);
           const b = new Fp(num1);
           expect(a.zero.subtract(a)).toEqual(a.negative());

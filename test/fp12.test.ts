@@ -228,7 +228,7 @@ describe("bls12-381 Fp12", () => {
       fc.property(
         fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12),
-        (num1, num2) => {
+        (num1) => {
           const a = new Fp12(...num1 as BigintTwelve);
           const b = new Fp12(...num1 as BigintTwelve);
           expect(a.zero.subtract(a)).toEqual(a.negative());

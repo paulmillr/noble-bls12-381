@@ -1,4 +1,4 @@
-import { Fp, Fp2, Fp12, Point, Group, BigintTuple, BigintTwelve } from "./fields";
+import { Fp, Fp2, Fp12, Point, Field, BigintTuple, BigintTwelve } from "./fields";
 import {
   B,
   B2,
@@ -10,17 +10,16 @@ import {
   hashToG2,
   toBytesBE,
   CURVE,
-  DOMAIN_LENGTH,
   publicKeyToG1,
   signatureToG2,
   publicKeyFromG1,
   signatureFromG2,
-  P_ORDER_X_12_DIVIDED,
-  P
+  finalExponentiate,
 } from "./utils";
 
-const PRIME_ORDER = CURVE.n;
-export { Fp, Fp2, Fp12, Point, P, PRIME_ORDER };
+export { Fp, Fp2, Fp12, Point };
+export const P = CURVE.P;
+export const PRIME_ORDER = CURVE.n;
 
 type PrivateKey = Bytes | bigint | number;
 type Domain = PrivateKey;
@@ -98,7 +97,7 @@ function millerLoop(
   withFinalExponent: boolean = false
 ) {
   // prettier-ignore
-  const one: Group<BigintTwelve> = new Fp12(
+  const one: Field<BigintTwelve> = new Fp12(
     1n, 0n, 0n, 0n,
     0n, 0n, 0n, 0n,
     0n, 0n, 0n, 0n
@@ -122,11 +121,7 @@ function millerLoop(
     }
   }
   const f = fNumerator.div(fDenominator);
-  return withFinalExponent ? f.pow(P_ORDER_X_12_DIVIDED) : f;
-}
-
-function finalExponentiate<T>(p: Group<T>) {
-  return p.pow(P_ORDER_X_12_DIVIDED);
+  return withFinalExponent ? finalExponentiate(f) : f;
 }
 
 export function pairing(
@@ -155,7 +150,7 @@ export async function sign(
   domain: Domain
 ) {
   domain =
-    domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+    domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
   privateKey = toBigInt(privateKey);
   const messageValue = await hashToG2(message, domain);
   const signature = messageValue.multiply(privateKey);
@@ -169,7 +164,7 @@ export async function verify(
   domain: Domain
 ) {
   domain =
-    domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+    domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
   const publicKeyPoint = publicKeyToG1(publicKey).negative();
   const signaturePoint = signatureToG2(signature);
   try {
@@ -216,7 +211,7 @@ export async function verifyMultiple(
   domain: Domain
 ) {
   domain =
-    domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+    domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
   if (messages.length === 0) {
     throw new Error("Provide messsages which should be verified");
   }
