@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { Fp, Fp2 } from "../src";
+import { Fp, Fp2 } from "..";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 

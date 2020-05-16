@@ -3,50 +3,21 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
-function mod(a: bigint, b: bigint) {
-  const res = a % b;
-  return res >= 0n ? res : b + res;
-}
-
-// Eucledian GCD
-// https://brilliant.org/wiki/extended-euclidean-algorithm/
-function egcd(a: bigint, b: bigint) {
-  let [x, y, u, v] = [0n, 1n, 1n, 0n];
-  while (a !== 0n) {
-    let q = b / a;
-    let r = b % a;
-    let m = x - u * q;
-    let n = y - v * q;
-    [b, a] = [a, r];
-    [x, y] = [u, v];
-    [u, v] = [m, n];
-  }
-  let gcd = b;
-  return [gcd, x, y];
-}
-
-function invert(number: bigint, modulo: bigint) {
-  if (number === 0n || modulo <= 0n) {
-    throw new Error('invert: expected positive integers');
-  }
-  let [gcd, x] = egcd(mod(number, modulo), modulo);
-  if (gcd !== 1n) {
-    throw new Error('invert: does not exist');
-  }
-  return mod(x, modulo);
-}
-
-function powMod(a: bigint, power: bigint, m: bigint) {
-  let res = 1n;
-  while (power > 0n) {
-    if (power & 1n) {
-      res = mod(res * a, m);
-    }
-    power >>= 1n;
-    a = mod(a * a, m);
-  }
-  return res;
-}
+type Bytes = Uint8Array | string;
+type Hash = Bytes;
+type PrivateKey = Bytes | bigint | number;
+type Domain = PrivateKey;
+type PublicKey = Bytes;
+type Signature = Bytes;
+type BigintTuple = [bigint, bigint];
+// prettier-ignore
+export type BigintTwelve = [
+  bigint, bigint, bigint, bigint,
+  bigint, bigint, bigint, bigint,
+  bigint, bigint, bigint, bigint
+];
+type Fp12Like = Fp12 | BigintTwelve;
+type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
 
 type ReturnType<T extends Function> = T extends (...args: any[]) => infer R ? R : any;
 type IncludedTypes<Base, Type> = {
@@ -54,7 +25,7 @@ type IncludedTypes<Base, Type> = {
 };
 type AllowedNames<Base, Type> = keyof IncludedTypes<Base, Type>;
 
-export interface Field<T> {
+interface Field<T> {
   readonly one: Field<T>;
   readonly zero: Field<T>;
   readonly value: T;
@@ -71,7 +42,7 @@ export interface Field<T> {
   pow(n: bigint): Field<T>;
 }
 
-export function normalized<T, G extends Field<T>, M extends AllowedNames<G, Function>>(
+function normalized<T, G extends Field<T>, M extends AllowedNames<G, Function>>(
   target: G,
   propertyKey: M,
   descriptor: PropertyDescriptor
@@ -88,8 +59,6 @@ export function normalized<T, G extends Field<T>, M extends AllowedNames<G, Func
   };
   return descriptor;
 }
-
-export type BigintTuple = [bigint, bigint];
 
 export class Fp implements Field<bigint> {
   static ORDER = 1n;
@@ -346,17 +315,6 @@ export class Fp2 implements Field<BigintTuple> {
     return this.multiply(otherValue.invert());
   }
 }
-
-// prettier-ignore
-export type BigintTwelve = [
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint
-];
-
-type Fp12Like = Fp12 | BigintTwelve;
-
-export type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
 
 // prettier-ignore
 const FP12_DEFAULT: BigintTwelve = [
@@ -696,5 +654,483 @@ export class Point<T> {
     const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
     const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
     return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
+  }
+}
+
+export const CURVE = {
+  P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
+  n: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
+  DOMAIN_LENGTH: 8,
+
+  Gx: 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,
+  Gy: 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569n,
+
+  G2x: [
+    352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
+    3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n,
+  ],
+  G2y: [
+    1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
+    927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
+  ],
+
+  G2_COFACTOR: 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109n,
+};
+
+// https://eprint.iacr.org/2019/403.pdf
+// 2.1 The BLS12-381 elliptic curve
+// q =  z**4 − z**2 + 1
+// p = z + (z**4 − z**2 + 1) * (z − 1)**2 / 3
+const P_ORDER_X_12_DIVIDED = (CURVE.P ** 12n - 1n) / CURVE.n;
+
+function finalExponentiate(p: Field<BigintTwelve>) {
+  return p.pow(P_ORDER_X_12_DIVIDED);
+}
+
+Fp.ORDER = CURVE.P;
+Fp2.ORDER = CURVE.P ** 2n - 1n;
+Fp2.COFACTOR = CURVE.G2_COFACTOR;
+
+// Curve is y**2 = x**3 + 4
+export const B = new Fp(4n);
+// Twisted curve over Fp2
+export const B2 = new Fp2(4n, 4n);
+// Extension curve over Fp12; same b value as over Fp
+export const B12 = new Fp12(4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+
+const Z1 = new Point(new Fp(1n), new Fp(1n), new Fp(0n), Fp);
+const Z2 = new Point(new Fp2(1n, 0n), new Fp2(1n, 0n), new Fp2(0n, 0n), Fp2);
+
+const POW_2_381 = 2n ** 381n;
+const POW_2_382 = POW_2_381 * 2n;
+const POW_2_383 = POW_2_382 * 2n;
+const PUBLIC_KEY_LENGTH = 48;
+
+const sha256 = async (message: Uint8Array): Promise<Uint8Array> => {
+  // @ts-ignore
+  if (typeof window == 'object' && 'crypto' in window) {
+    // @ts-ignore
+    const buffer = await window.crypto.subtle.digest('SHA-256', message.buffer);
+    // @ts-ignore
+    return new Uint8Array(buffer);
+    // @ts-ignore
+  } else if (typeof process === 'object' && 'node' in process.versions) {
+    // @ts-ignore
+    const { createHash } = require('crypto');
+    const hash = createHash('sha256');
+    hash.update(message);
+    return Uint8Array.from(hash.digest());
+  } else {
+    throw new Error("The environment doesn't have sha256 function");
+  }
+};
+
+function fromHexBE(hex: string) {
+  return BigInt(`0x${hex}`);
+}
+
+function fromBytesBE(bytes: Bytes) {
+  if (typeof bytes === 'string') {
+    return fromHexBE(bytes);
+  }
+  let value = 0n;
+  for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
+    value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
+  }
+  return value;
+}
+
+function padStart(bytes: Uint8Array, count: number, element: number) {
+  if (bytes.length >= count) {
+    return bytes;
+  }
+  const diff = count - bytes.length;
+  const elements = Array(diff)
+    .fill(element)
+    .map((i: number) => i);
+  return concatTypedArrays(new Uint8Array(elements), bytes);
+}
+
+function toBytesBE(num: bigint | number | string, padding: number = 0) {
+  let hex = typeof num === 'string' ? num : num.toString(16);
+  hex = hex.length & 1 ? `0${hex}` : hex;
+  const len = hex.length / 2;
+  const u8 = new Uint8Array(len);
+  for (let j = 0, i = 0; i < hex.length && i < len * 2; i += 2, j++) {
+    u8[j] = parseInt(hex[i] + hex[i + 1], 16);
+  }
+  return padStart(u8, padding, 0);
+}
+
+function toBigInt(num: string | Uint8Array | bigint | number) {
+  if (typeof num === 'string') {
+    return fromHexBE(num);
+  }
+  if (typeof num === 'number') {
+    return BigInt(num);
+  }
+  if (num instanceof Uint8Array) {
+    return fromBytesBE(num);
+  }
+  return num;
+}
+
+function hexToArray(hex: string) {
+  hex = hex.length & 1 ? `0${hex}` : hex;
+  const len = hex.length;
+  const result = new Uint8Array(len / 2);
+  for (let i = 0, j = 0; i < len - 1; i += 2, j++) {
+    result[j] = parseInt(hex[i] + hex[i + 1], 16);
+  }
+  return result;
+}
+
+function concatTypedArrays(...bytes: Bytes[]) {
+  return new Uint8Array(
+    bytes.reduce((res: number[], bytesView: Bytes) => {
+      bytesView = bytesView instanceof Uint8Array ? bytesView : hexToArray(bytesView);
+      return [...res, ...bytesView];
+    }, [])
+  );
+}
+
+function mod(a: bigint, b: bigint) {
+  const res = a % b;
+  return res >= 0n ? res : b + res;
+}
+
+function powMod(a: bigint, power: bigint, m: bigint) {
+  let res = 1n;
+  while (power > 0n) {
+    if (power & 1n) {
+      res = mod(res * a, m);
+    }
+    power >>= 1n;
+    a = mod(a * a, m);
+  }
+  return res;
+}
+
+// Eucledian GCD
+// https://brilliant.org/wiki/extended-euclidean-algorithm/
+function egcd(a: bigint, b: bigint) {
+  let [x, y, u, v] = [0n, 1n, 1n, 0n];
+  while (a !== 0n) {
+    let q = b / a;
+    let r = b % a;
+    let m = x - u * q;
+    let n = y - v * q;
+    [b, a] = [a, r];
+    [x, y] = [u, v];
+    [u, v] = [m, n];
+  }
+  let gcd = b;
+  return [gcd, x, y];
+}
+
+function invert(number: bigint, modulo: bigint) {
+  if (number === 0n || modulo <= 0n) {
+    throw new Error('invert: expected positive integers');
+  }
+  let [gcd, x] = egcd(mod(number, modulo), modulo);
+  if (gcd !== 1n) {
+    throw new Error('invert: does not exist');
+  }
+  return mod(x, modulo);
+}
+
+async function getXCoordinate(hash: Hash, domain: Bytes) {
+  const xReconstructed = toBigInt(await sha256(concatTypedArrays(hash, domain, '01')));
+  const xImage = toBigInt(await sha256(concatTypedArrays(hash, domain, '02')));
+  return new Fp2(xReconstructed, xImage);
+}
+
+const POW_SUM = POW_2_383 + POW_2_382;
+
+function compressG1(point: Point<bigint>) {
+  if (point.equals(Z1)) {
+    return POW_SUM;
+  }
+  const [x, y] = point.to2D() as [Fp, Fp];
+  const flag = (y.value * 2n) / P;
+  return x.value + flag * POW_2_381 + POW_2_383;
+}
+
+const PART_OF_P = (CURVE.P + 1n) / 4n;
+
+function decompressG1(compressedValue: bigint) {
+  const bflag = (compressedValue % POW_2_383) / POW_2_382;
+  if (bflag === 1n) {
+    return Z1;
+  }
+  const x = compressedValue % POW_2_381;
+  const fullY = (x ** 3n + B.value) % P;
+  let y = powMod(fullY, PART_OF_P, P);
+  if (powMod(y, 2n, P) !== fullY) {
+    throw new Error('The given point is not on G1: y**2 = x**3 + b');
+  }
+  const aflag = (compressedValue % POW_2_382) / POW_2_381;
+  if ((y * 2n) / P !== aflag) {
+    y = P - y;
+  }
+  return new Point(new Fp(x), new Fp(y), new Fp(1n), Fp);
+}
+
+function compressG2(point: Point<[bigint, bigint]>) {
+  if (point.equals(Z2)) {
+    return [POW_2_383 + POW_2_382, 0n];
+  }
+  if (!point.isOnCurve(B2)) {
+    throw new Error('The given point is not on the twisted curve over FQ**2');
+  }
+  const [[x0, x1], [y0, y1]] = point.to2D().map((a) => a.value);
+  const producer = y1 > 0 ? y1 : y0;
+  const aflag1 = (producer * 2n) / P;
+  const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
+  const z2 = x0;
+  return [z1, z2];
+}
+
+function decompressG2([z1, z2]: [bigint, bigint]) {
+  const bflag1 = (z1 % POW_2_383) / POW_2_382;
+  if (bflag1 === 1n) {
+    return Z2;
+  }
+  const x = new Fp2(z2, z1 % POW_2_381);
+  let y = x.pow(3n).add(B2).modSqrt();
+  if (y === null) {
+    throw new Error('Failed to find a modular squareroot');
+  }
+  const [y0, y1] = y.value;
+  const aflag1 = (z1 % POW_2_382) / POW_2_381;
+  const isGreaterCoefficient = y1 > 0 && (y1 * 2n) / P !== aflag1;
+  const isZeroCoefficient = y1 === 0n && (y0 * 2n) / P !== aflag1;
+  if (isGreaterCoefficient || isZeroCoefficient) {
+    y = y.multiply(-1n);
+  }
+  const point = new Point(x, y, y.one, Fp2);
+  if (!point.isOnCurve(B2)) {
+    throw new Error('The given point is not on the twisted curve over Fp2');
+  }
+  return point;
+}
+
+function publicKeyFromG1(point: Point<bigint>) {
+  return toBytesBE(compressG1(point), PUBLIC_KEY_LENGTH);
+}
+
+function publicKeyToG1(publicKey: Bytes) {
+  return decompressG1(fromBytesBE(publicKey));
+}
+
+function signatureFromG2(point: Point<[bigint, bigint]>) {
+  const [z1, z2] = compressG2(point);
+  return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
+}
+
+export function signatureToG2(signature: Bytes) {
+  const halfSignature = signature.length / 2;
+  const z1 = fromBytesBE(signature.slice(0, halfSignature));
+  const z2 = fromBytesBE(signature.slice(halfSignature));
+  return decompressG2([z1, z2]);
+}
+
+export async function hashToG2(hash: Hash, domain: Bytes) {
+  let xCoordinate = await getXCoordinate(hash, domain);
+  let newResult: Fp2 | null = null;
+  do {
+    newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).modSqrt();
+    const addition = newResult ? xCoordinate.zero : xCoordinate.one;
+    xCoordinate = xCoordinate.add(addition);
+  } while (newResult === null);
+  const yCoordinate: Fp2 = newResult;
+  const result = new Point(xCoordinate, yCoordinate, new Fp2(1n, 0n), Fp2);
+  return result.multiply(Fp2.COFACTOR);
+}
+
+// index
+const P = CURVE.P;
+
+// ## Fixed Generators
+// Although any generator produced by hashing to $\mathbb{G}_1$ or $\mathbb{G}_2$ is
+// safe to use in a cryptographic protocol, we specify some simple, fixed generators.
+//
+// In order to derive these generators, we select the lexicographically smallest
+// valid $x$-coordinate and the lexicographically smallest corresponding $y$-coordinate,
+// and then scale the resulting point by the cofactor, such that the result is not the
+// identity. This results in the following fixed generators:
+
+// Generator for curve over Fp
+export const G1 = new Point(new Fp(CURVE.Gx), new Fp(CURVE.Gy), new Fp(1n), Fp);
+
+// Generator for twisted curve over Fp2
+export const G2 = new Point(
+  new Fp2(CURVE.G2x[0], CURVE.G2x[1]),
+  new Fp2(CURVE.G2y[0], CURVE.G2y[1]),
+  new Fp2(1n, 0n),
+  Fp2
+);
+// Create a function representing the line between P1 and P2, and evaluate it at T
+// and evaluate it at T. Returns a numerator and a denominator
+// to avoid unneeded divisions
+function createLineBetween<T>(p1: Point<T>, p2: Point<T>, n: Point<T>) {
+  let mNumerator = p2.y.multiply(p1.z).subtract(p1.y.multiply(p2.z));
+  let mDenominator = p2.x.multiply(p1.z).subtract(p1.x.multiply(p2.z));
+  if (!mNumerator.equals(mNumerator.zero) && mDenominator.equals(mDenominator.zero)) {
+    return [n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)), p1.z.multiply(n.z)];
+  } else if (mNumerator.equals(mNumerator.zero)) {
+    mNumerator = p1.x.square().multiply(3n);
+    mDenominator = p1.y.multiply(p1.z).multiply(2n);
+  }
+  const numeratorLine = mNumerator.multiply(n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)));
+  const denominatorLine = mDenominator.multiply(n.y.multiply(p1.z).subtract(p1.y.multiply(n.z)));
+  const z = mDenominator.multiply(n.z).multiply(p1.z);
+  return [numeratorLine.subtract(denominatorLine), z];
+}
+
+function castPointToFp12(pt: Point<bigint>): Point<BigintTwelve> {
+  if (pt.isEmpty()) {
+    return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
+  }
+  return new Point(
+    new Fp12((pt.x as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    new Fp12((pt.y as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    new Fp12((pt.z as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    Fp12
+  );
+}
+
+// prettier-ignore
+const PSEUDO_BINARY_ENCODING = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1
+];
+
+// Main miller loop
+function millerLoop(
+  Q: Point<BigintTwelve>,
+  P: Point<BigintTwelve>,
+  withFinalExponent: boolean = false
+) {
+  // prettier-ignore
+  const one: Field<BigintTwelve> = new Fp12(
+    1n, 0n, 0n, 0n,
+    0n, 0n, 0n, 0n,
+    0n, 0n, 0n, 0n
+  );
+  if (Q.isEmpty() || P.isEmpty()) {
+    return one;
+  }
+  let R = Q;
+  let fNumerator = one;
+  let fDenominator = one;
+  for (let i = PSEUDO_BINARY_ENCODING.length - 2; i >= 0n; i--) {
+    const [n, d] = createLineBetween(R, R, P);
+    fNumerator = fNumerator.square().multiply(n);
+    fDenominator = fDenominator.square().multiply(d);
+    R = R.double();
+    if (PSEUDO_BINARY_ENCODING[i] === 1) {
+      const [n, d] = createLineBetween(R, Q, P);
+      fNumerator = fNumerator.multiply(n);
+      fDenominator = fDenominator.multiply(d);
+      R = R.add(Q);
+    }
+  }
+  const f = fNumerator.div(fDenominator);
+  return withFinalExponent ? finalExponentiate(f) : f;
+}
+
+export function pairing(
+  Q: Point<BigintTuple>,
+  P: Point<bigint>,
+  withFinalExponent: boolean = true
+) {
+  if (!Q.isOnCurve(B2)) {
+    throw new Error("Fisrt point isn't on elliptic curve");
+  }
+  if (!P.isOnCurve(B)) {
+    throw new Error("Second point isn't on elliptic curve");
+  }
+  return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
+}
+
+export function getPublicKey(privateKey: PrivateKey) {
+  privateKey = toBigInt(privateKey);
+  return publicKeyFromG1(G1.multiply(privateKey));
+}
+
+export async function sign(message: Hash, privateKey: PrivateKey, domain: Domain) {
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  privateKey = toBigInt(privateKey);
+  const messageValue = await hashToG2(message, domain);
+  const signature = messageValue.multiply(privateKey);
+  return signatureFromG2(signature);
+}
+
+export async function verify(
+  message: Hash,
+  publicKey: PublicKey,
+  signature: Signature,
+  domain: Domain
+) {
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  const publicKeyPoint = publicKeyToG1(publicKey).negative();
+  const signaturePoint = signatureToG2(signature);
+  try {
+    const signaturePairing = pairing(signaturePoint, G1);
+    const hashPairing = pairing(await hashToG2(message, domain), publicKeyPoint);
+    const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
+    return finalExponent.equals(finalExponent.one);
+  } catch {
+    return false;
+  }
+}
+
+export function aggregatePublicKeys(publicKeys: PublicKey[]) {
+  if (publicKeys.length === 0) throw new Error('Expected non-empty array');
+  const aggregatedPublicKey = publicKeys.reduce(
+    (sum, publicKey) => sum.add(publicKeyToG1(publicKey)),
+    Z1
+  );
+  return publicKeyFromG1(aggregatedPublicKey);
+}
+
+export function aggregateSignatures(signatures: Signature[]) {
+  if (signatures.length === 0) throw new Error('Expected non-empty array');
+  const aggregatedSignature = signatures.reduce(
+    (sum, signature) => sum.add(signatureToG2(signature)),
+    Z2
+  );
+  return signatureFromG2(aggregatedSignature);
+}
+
+export async function verifyBatch(
+  messages: Hash[],
+  publicKeys: PublicKey[],
+  signature: Signature,
+  domain: Domain
+) {
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  if (messages.length === 0) throw new Error('Expected non-empty messages array');
+  if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
+  try {
+    let producer = new Fp12().one;
+    for (const message of new Set(messages)) {
+      const groupPublicKey = messages.reduce(
+        (groupPublicKey, m, i) =>
+          m !== message ? groupPublicKey : groupPublicKey.add(publicKeyToG1(publicKeys[i])),
+        Z1
+      );
+      producer = producer.multiply(
+        pairing(await hashToG2(message, domain), groupPublicKey) as Fp12
+      );
+    }
+    producer = producer.multiply(pairing(signatureToG2(signature), G1.negative()) as Fp12);
+    const finalExponent = finalExponentiate(producer);
+    return finalExponent.equals(finalExponent.one);
+  } catch {
+    return false;
   }
 }

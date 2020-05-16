@@ -20,8 +20,10 @@
   "devDependencies": {
     "@types/jest": "^25",
     "@types/node": "^14",
+    "benchmark": "^2.1.4",
     "fast-check": "^1.24",
     "jest": "^25",
+    "micro-bmark": "^0.1.2",
     "ts-jest": "^25",
     "typescript": "^3.8.3"
   },

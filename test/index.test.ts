@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import * as bls from "../src";
+import * as bls from "..";
 
 const NUM_RUNS = 1; // reduce to 1 to shorten test time
 
@@ -8,7 +8,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.bigInt(1n, bls.PRIME_ORDER),
+        fc.bigInt(1n, bls.CURVE.n),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKey, domain, otherDomain) => {
@@ -33,7 +33,7 @@ describe("bls12-381", () => {
   it("should create same aggregated public key if order of arguments will be changed", async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 2, 200),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 2, 200),
         async privateKeys => {
           const pubkeys = await Promise.all(
             privateKeys.map(privateKey => bls.getPublicKey(privateKey))
@@ -55,7 +55,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 2, 200),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 2, 200),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 2, 200),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, domain) => {
           const signatures = await Promise.all(
@@ -80,7 +80,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.bigInt(1n, bls.PRIME_ORDER),
+        fc.bigInt(1n, bls.CURVE.n),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
@@ -100,7 +100,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.hexa(),
-        fc.bigInt(1n, bls.PRIME_ORDER),
+        fc.bigInt(1n, bls.CURVE.n),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, wrongMessage, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
@@ -119,7 +119,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -134,7 +134,7 @@ describe("bls12-381", () => {
           );
           const aggregatedSignature = await bls.aggregateSignatures(signatures);
           expect(
-            await bls.verifyMultiple(
+            await bls.verifyBatch(
               messages,
               publicKey,
               aggregatedSignature,
@@ -151,7 +151,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, wrongMessages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -169,7 +169,7 @@ describe("bls12-381", () => {
           );
           const aggregatedSignature = await bls.aggregateSignatures(signatures);
           expect(
-            await bls.verifyMultiple(
+            await bls.verifyBatch(
               wrongMessages,
               publicKey,
               aggregatedSignature,
@@ -185,8 +185,8 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, wrongPrivateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -204,7 +204,7 @@ describe("bls12-381", () => {
           );
           const aggregatedSignature = await bls.aggregateSignatures(signatures);
           expect(
-            await bls.verifyMultiple(
+            await bls.verifyBatch(
               messages,
               wrongPublicKeys,
               aggregatedSignature,
@@ -220,7 +220,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKeys, domain) => {
           const publicKey = await Promise.all(
@@ -251,7 +251,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.hexa(),
-        fc.array(fc.bigInt(1n, bls.PRIME_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, wrongMessage, privateKeys, domain) => {
           const publicKey = await Promise.all(
@@ -565,7 +565,7 @@ describe("bls12-381", () => {
   });
   it("should create right pairing output order", () => {
 		const p1 = bls.pairing(bls.G2, bls.G1);
-		const p2 = p1.pow(bls.PRIME_ORDER);
+		const p2 = p1.pow(bls.CURVE.n);
 		expect(p2).toEqual(p1.one);
   });
   it("should create right pairing with bilinearity on G1", () => {
