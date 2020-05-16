@@ -3,6 +3,30 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
+export const CURVE = {
+  // a characteristic
+  P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
+  // an order
+  r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
+  // a cofactor
+  h: 0x396c8c005555e1568c00aaab0000aaabn,
+  Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
+  Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e18b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+
+  // G2
+  // G^2 - 1
+  P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn ** 2n - 1n,
+  h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
+  G2x: [
+    0x24aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
+    0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en,
+  ],
+  G2y: [
+    0xce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
+    0x606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
+  ],
+};
+
 type Bytes = Uint8Array | string;
 type Hash = Bytes;
 type PrivateKey = Bytes | bigint | number;
@@ -25,6 +49,7 @@ type IncludedTypes<Base, Type> = {
 };
 type AllowedNames<Base, Type> = keyof IncludedTypes<Base, Type>;
 
+// Finite field
 interface Field<T> {
   readonly one: Field<T>;
   readonly zero: Field<T>;
@@ -60,8 +85,9 @@ function normalized<T, G extends Field<T>, M extends AllowedNames<G, Function>>(
   return descriptor;
 }
 
+// Finite field over P.
 export class Fp implements Field<bigint> {
-  static ORDER = 1n;
+  static ORDER = CURVE.P;
   private _value: bigint = 0n;
 
   public get value() {
@@ -129,28 +155,15 @@ export class Fp implements Field<bigint> {
   }
 }
 
+// Finite extension field over irreducible degree-1 polynominal.
+// Fq(u)/(u2 − β) where β = −1
 export class Fp2 implements Field<BigintTuple> {
-  private static _order = 1n;
-  private static DIV_ORDER = 1n;
+  private static ORDER = CURVE.P2;
+  private static DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
   private static EIGHTH_ROOTS_OF_UNITY = Array(8)
-    .fill(null)
-    .map(() => new Fp2());
-  public static COFACTOR = 1n;
-
-  static set ORDER(order) {
-    this._order = order;
-    this.DIV_ORDER = (order + 8n) / 16n;
-    const one = new Fp2(1n, 1n);
-    const orderEightPart = order / 8n;
-    const roots = Array(8)
-      .fill(null)
-      .map((_, i) => one.pow(BigInt(i) * orderEightPart));
-    this.EIGHTH_ROOTS_OF_UNITY = roots;
-  }
-
-  static get ORDER() {
-    return this._order;
-  }
+  .fill(null)
+  .map((_, i) => new Fp2(1n, 1n).pow(BigInt(i) * Fp2.ORDER / 8n));
+  public static COFACTOR = CURVE.h2;
 
   private coeficient1 = new Fp(0n);
   private coeficient2 = new Fp(0n);
@@ -240,25 +253,25 @@ export class Fp2 implements Field<BigintTuple> {
     );
   }
 
+  // Complex squaring:
+  //
+  // v0  = c0 * c1
+  // c0' = (c0 + c1) * (c0 + β*c1) - v0 - β * v0
+  // c1' = 2 * v0
+  //
+  // In BLS12-381's Fp2, our β is -1 so we
+  // can modify this formula:
+  //
+  // c0' = (c0 + c1) * (c0 - c1)
+  // c1' = 2 * c0 * c1
   square() {
-    // Complex squaring:
-    //
-    // v0  = c0 * c1
-    // c0' = (c0 + c1) * (c0 + beta*c1) - v0 - beta * v0
-    // c1' = 2 * v0
-    //
-    // In BLS12-381's Fp2, our beta is -1 so we
-    // can modify this formula:
-    //
-    // c0' = (c0 + c1) * (c0 - c1)
-    // c1' = 2 * c0 * c1
     const a = this.coeficient1.add(this.coeficient2);
     const b = this.coeficient1.subtract(this.coeficient2);
     const c = this.coeficient1.add(this.coeficient1);
     return new Fp2(a.multiply(b), c.multiply(this.coeficient2));
   }
 
-  modSqrt() {
+  sqrt() {
     const candidateSqrt = this.pow(Fp2.DIV_ORDER);
     const check = candidateSqrt.square().div(this);
     const rootIndex = Fp2.EIGHTH_ROOTS_OF_UNITY.findIndex((a) => a.equals(check));
@@ -289,20 +302,20 @@ export class Fp2 implements Field<BigintTuple> {
     return result;
   }
 
+  // We wish to find the multiplicative inverse of a nonzero
+  // element a + bu in Fp2. We leverage an identity
+  //
+  // (a + bu)(a - bu) = a^2 + b^2
+  //
+  // which holds because u^2 = -1. This can be rewritten as
+  //
+  // (a + bu)(a - bu)/(a^2 + b^2) = 1
+  //
+  // because a^2 + b^2 = 0 has no nonzero solutions for (a, b).
+  // This gives that (a - bu)/(a^2 + b^2) is the inverse
+  // of (a + bu). Importantly, this can be computing using
+  // only a single inversion in Fp.
   invert() {
-    // We wish to find the multiplicative inverse of a nonzero
-    // element a + bu in Fp2. We leverage an identity
-    //
-    // (a + bu)(a - bu) = a^2 + b^2
-    //
-    // which holds because u^2 = -1. This can be rewritten as
-    //
-    // (a + bu)(a - bu)/(a^2 + b^2) = 1
-    //
-    // because a^2 + b^2 = 0 has no nonzero solutions for (a, b).
-    // This gives that (a - bu)/(a^2 + b^2) is the inverse
-    // of (a + bu). Importantly, this can be computing using
-    // only a single inversion in Fp.
     const t = this.coeficient1.square().add(this.coeficient2.square()).invert();
     return new Fp2(this.coeficient1.multiply(t), this.coeficient2.multiply(t.negative()));
   }
@@ -323,6 +336,7 @@ const FP12_DEFAULT: BigintTwelve = [
   0n, 1n, 0n, 1n
 ];
 
+// Finite extension field.
 /// This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
 export class Fp12 implements Field<BigintTwelve> {
   private coefficients: FpTwelve = FP12_DEFAULT.map((a) => new Fp(a)) as FpTwelve;
@@ -657,39 +671,13 @@ export class Point<T> {
   }
 }
 
-export const CURVE = {
-  P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
-  n: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
-  DOMAIN_LENGTH: 8,
-
-  Gx: 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,
-  Gy: 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569n,
-
-  G2x: [
-    352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
-    3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n,
-  ],
-  G2y: [
-    1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
-    927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
-  ],
-
-  G2_COFACTOR: 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109n,
-};
-
 // https://eprint.iacr.org/2019/403.pdf
 // 2.1 The BLS12-381 elliptic curve
 // q =  z**4 − z**2 + 1
 // p = z + (z**4 − z**2 + 1) * (z − 1)**2 / 3
-const P_ORDER_X_12_DIVIDED = (CURVE.P ** 12n - 1n) / CURVE.n;
-
 function finalExponentiate(p: Field<BigintTwelve>) {
-  return p.pow(P_ORDER_X_12_DIVIDED);
+  return p.pow((CURVE.P ** 12n - 1n) / CURVE.r);
 }
-
-Fp.ORDER = CURVE.P;
-Fp2.ORDER = CURVE.P ** 2n - 1n;
-Fp2.COFACTOR = CURVE.G2_COFACTOR;
 
 // Curve is y**2 = x**3 + 4
 export const B = new Fp(4n);
@@ -897,7 +885,7 @@ function decompressG2([z1, z2]: [bigint, bigint]) {
     return Z2;
   }
   const x = new Fp2(z2, z1 % POW_2_381);
-  let y = x.pow(3n).add(B2).modSqrt();
+  let y = x.pow(3n).add(B2).sqrt();
   if (y === null) {
     throw new Error('Failed to find a modular squareroot');
   }
@@ -939,7 +927,7 @@ export async function hashToG2(hash: Hash, domain: Bytes) {
   let xCoordinate = await getXCoordinate(hash, domain);
   let newResult: Fp2 | null = null;
   do {
-    newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).modSqrt();
+    newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).sqrt();
     const addition = newResult ? xCoordinate.zero : xCoordinate.one;
     xCoordinate = xCoordinate.add(addition);
   } while (newResult === null);
@@ -1061,8 +1049,10 @@ export function getPublicKey(privateKey: PrivateKey) {
   return publicKeyFromG1(G1.multiply(privateKey));
 }
 
+const DOMAIN_LENGTH = 8;
+
 export async function sign(message: Hash, privateKey: PrivateKey, domain: Domain) {
-  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
   privateKey = toBigInt(privateKey);
   const messageValue = await hashToG2(message, domain);
   const signature = messageValue.multiply(privateKey);
@@ -1075,7 +1065,7 @@ export async function verify(
   signature: Signature,
   domain: Domain
 ) {
-  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
   const publicKeyPoint = publicKeyToG1(publicKey).negative();
   const signaturePoint = signatureToG2(signature);
   try {
@@ -1112,7 +1102,7 @@ export async function verifyBatch(
   signature: Signature,
   domain: Domain
 ) {
-  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, CURVE.DOMAIN_LENGTH);
+  domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
   if (messages.length === 0) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   try {

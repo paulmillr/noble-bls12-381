@@ -14,7 +14,7 @@ bls12-381 in detail.
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
 
-- No dependencies
+- No dependencies, one small file
 - Easily auditable TypeScript/JS code
 - Uses es2020 bigint. Supported in Chrome, Firefox, node 10+
 - All releases are signed and trusted
