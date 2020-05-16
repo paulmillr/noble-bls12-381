@@ -8,8 +8,7 @@
     "preserveConstEnums": true,
     "experimentalDecorators": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "outDir": "lib"
+    "noUnusedParameters": true
   },
   "include": ["index.ts"]
 }

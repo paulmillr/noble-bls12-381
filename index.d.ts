@@ -1,3 +1,12 @@
+declare type Bytes = Uint8Array | string;
+declare type Hash = Bytes;
+declare type PrivateKey = Bytes | bigint | number;
+declare type Domain = PrivateKey;
+declare type PublicKey = Bytes;
+declare type Signature = Bytes;
+declare type BigintTuple = [bigint, bigint];
+export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+declare type Fp12Like = Fp12 | BigintTwelve;
 interface Field<T> {
     readonly one: Field<T>;
     readonly zero: Field<T>;
@@ -14,7 +23,6 @@ interface Field<T> {
     invert(): Field<T>;
     pow(n: bigint): Field<T>;
 }
-declare type BigintTuple = [bigint, bigint];
 export declare class Fp implements Field<bigint> {
     static ORDER: bigint;
     private _value;
@@ -62,8 +70,6 @@ export declare class Fp2 implements Field<BigintTuple> {
     invert(): Fp2;
     div(otherValue: Fp2 | bigint): Fp2;
 }
-export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-declare type Fp12Like = Fp12 | BigintTwelve;
 export declare class Fp12 implements Field<BigintTwelve> {
     private coefficients;
     private static readonly MODULE_COEFFICIENTS;
@@ -112,8 +118,6 @@ export declare class Point<T> {
     multiply(n: number | bigint): Point<T>;
     twist(): Point<BigintTwelve>;
 }
-declare type Bytes = Uint8Array | string;
-declare type Hash = Bytes;
 export declare const CURVE: {
     P: bigint;
     n: bigint;
@@ -129,10 +133,6 @@ export declare const B2: Fp2;
 export declare const B12: Fp12;
 export declare function signatureToG2(signature: Bytes): Point<BigintTuple>;
 export declare function hashToG2(hash: Hash, domain: Bytes): Promise<Point<BigintTuple>>;
-declare type PrivateKey = Bytes | bigint | number;
-declare type Domain = PrivateKey;
-declare type PublicKey = Bytes;
-declare type Signature = Bytes;
 export declare const G1: Point<bigint>;
 export declare const G2: Point<BigintTuple>;
 export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Field<BigintTwelve>;

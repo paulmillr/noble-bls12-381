@@ -514,9 +514,15 @@ exports.CURVE = {
     DOMAIN_LENGTH: 8,
     Gx: 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,
     Gy: 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569n,
-    G2x: [352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n, 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n],
-    G2y: [1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n, 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n],
-    G2_COFACTOR: 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109n
+    G2x: [
+        352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
+        3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n,
+    ],
+    G2y: [
+        1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
+        927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
+    ],
+    G2_COFACTOR: 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109n,
 };
 const P_ORDER_X_12_DIVIDED = (exports.CURVE.P ** 12n - 1n) / exports.CURVE.n;
 function finalExponentiate(p) {
@@ -553,7 +559,7 @@ function fromHexBE(hex) {
     return BigInt(`0x${hex}`);
 }
 function fromBytesBE(bytes) {
-    if (typeof bytes === "string") {
+    if (typeof bytes === 'string') {
         return fromHexBE(bytes);
     }
     let value = 0n;
@@ -567,11 +573,13 @@ function padStart(bytes, count, element) {
         return bytes;
     }
     const diff = count - bytes.length;
-    const elements = Array(diff).fill(element).map((i) => i);
+    const elements = Array(diff)
+        .fill(element)
+        .map((i) => i);
     return concatTypedArrays(new Uint8Array(elements), bytes);
 }
 function toBytesBE(num, padding = 0) {
-    let hex = typeof num === "string" ? num : num.toString(16);
+    let hex = typeof num === 'string' ? num : num.toString(16);
     hex = hex.length & 1 ? `0${hex}` : hex;
     const len = hex.length / 2;
     const u8 = new Uint8Array(len);
@@ -581,10 +589,10 @@ function toBytesBE(num, padding = 0) {
     return padStart(u8, padding, 0);
 }
 function toBigInt(num) {
-    if (typeof num === "string") {
+    if (typeof num === 'string') {
         return fromHexBE(num);
     }
-    if (typeof num === "number") {
+    if (typeof num === 'number') {
         return BigInt(num);
     }
     if (num instanceof Uint8Array) {
@@ -603,8 +611,7 @@ function hexToArray(hex) {
 }
 function concatTypedArrays(...bytes) {
     return new Uint8Array(bytes.reduce((res, bytesView) => {
-        bytesView =
-            bytesView instanceof Uint8Array ? bytesView : hexToArray(bytesView);
+        bytesView = bytesView instanceof Uint8Array ? bytesView : hexToArray(bytesView);
         return [...res, ...bytesView];
     }, []));
 }
@@ -648,8 +655,8 @@ function invert(number, modulo) {
     return mod(x, modulo);
 }
 async function getXCoordinate(hash, domain) {
-    const xReconstructed = toBigInt(await sha256(concatTypedArrays(hash, domain, "01")));
-    const xImage = toBigInt(await sha256(concatTypedArrays(hash, domain, "02")));
+    const xReconstructed = toBigInt(await sha256(concatTypedArrays(hash, domain, '01')));
+    const xImage = toBigInt(await sha256(concatTypedArrays(hash, domain, '02')));
     return new Fp2(xReconstructed, xImage);
 }
 const POW_SUM = POW_2_383 + POW_2_382;
@@ -671,7 +678,7 @@ function decompressG1(compressedValue) {
     const fullY = (x ** 3n + exports.B.value) % P;
     let y = powMod(fullY, PART_OF_P, P);
     if (powMod(y, 2n, P) !== fullY) {
-        throw new Error("The given point is not on G1: y**2 = x**3 + b");
+        throw new Error('The given point is not on G1: y**2 = x**3 + b');
     }
     const aflag = (compressedValue % POW_2_382) / POW_2_381;
     if ((y * 2n) / P !== aflag) {
@@ -684,9 +691,9 @@ function compressG2(point) {
         return [POW_2_383 + POW_2_382, 0n];
     }
     if (!point.isOnCurve(exports.B2)) {
-        throw new Error("The given point is not on the twisted curve over FQ**2");
+        throw new Error('The given point is not on the twisted curve over FQ**2');
     }
-    const [[x0, x1], [y0, y1]] = point.to2D().map(a => a.value);
+    const [[x0, x1], [y0, y1]] = point.to2D().map((a) => a.value);
     const producer = y1 > 0 ? y1 : y0;
     const aflag1 = (producer * 2n) / P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
@@ -699,12 +706,9 @@ function decompressG2([z1, z2]) {
         return Z2;
     }
     const x = new Fp2(z2, z1 % POW_2_381);
-    let y = x
-        .pow(3n)
-        .add(exports.B2)
-        .modSqrt();
+    let y = x.pow(3n).add(exports.B2).modSqrt();
     if (y === null) {
-        throw new Error("Failed to find a modular squareroot");
+        throw new Error('Failed to find a modular squareroot');
     }
     const [y0, y1] = y.value;
     const aflag1 = (z1 % POW_2_382) / POW_2_381;
@@ -715,7 +719,7 @@ function decompressG2([z1, z2]) {
     }
     const point = new Point(x, y, y.one, Fp2);
     if (!point.isOnCurve(exports.B2)) {
-        throw new Error("The given point is not on the twisted curve over Fp2");
+        throw new Error('The given point is not on the twisted curve over Fp2');
     }
     return point;
 }
@@ -740,10 +744,7 @@ async function hashToG2(hash, domain) {
     let xCoordinate = await getXCoordinate(hash, domain);
     let newResult = null;
     do {
-        newResult = xCoordinate
-            .pow(3n)
-            .add(new Fp2(4n, 4n))
-            .modSqrt();
+        newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).modSqrt();
         const addition = newResult ? xCoordinate.zero : xCoordinate.one;
         xCoordinate = xCoordinate.add(addition);
     } while (newResult === null);
@@ -758,12 +759,8 @@ exports.G2 = new Point(new Fp2(exports.CURVE.G2x[0], exports.CURVE.G2x[1]), new 
 function createLineBetween(p1, p2, n) {
     let mNumerator = p2.y.multiply(p1.z).subtract(p1.y.multiply(p2.z));
     let mDenominator = p2.x.multiply(p1.z).subtract(p1.x.multiply(p2.z));
-    if (!mNumerator.equals(mNumerator.zero) &&
-        mDenominator.equals(mDenominator.zero)) {
-        return [
-            n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)),
-            p1.z.multiply(n.z)
-        ];
+    if (!mNumerator.equals(mNumerator.zero) && mDenominator.equals(mDenominator.zero)) {
+        return [n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)), p1.z.multiply(n.z)];
     }
     else if (mNumerator.equals(mNumerator.zero)) {
         mNumerator = p1.x.square().multiply(3n);
@@ -825,8 +822,7 @@ function getPublicKey(privateKey) {
 }
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey, domain) {
-    domain =
-        domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
     privateKey = toBigInt(privateKey);
     const messageValue = await hashToG2(message, domain);
     const signature = messageValue.multiply(privateKey);
@@ -834,8 +830,7 @@ async function sign(message, privateKey, domain) {
 }
 exports.sign = sign;
 async function verify(message, publicKey, signature, domain) {
-    domain =
-        domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
     const publicKeyPoint = publicKeyToG1(publicKey).negative();
     const signaturePoint = signatureToG2(signature);
     try {
@@ -851,31 +846,28 @@ async function verify(message, publicKey, signature, domain) {
 exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
     if (publicKeys.length === 0)
-        throw new Error("Expected non-empty array");
+        throw new Error('Expected non-empty array');
     const aggregatedPublicKey = publicKeys.reduce((sum, publicKey) => sum.add(publicKeyToG1(publicKey)), Z1);
     return publicKeyFromG1(aggregatedPublicKey);
 }
 exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
     if (signatures.length === 0)
-        throw new Error("Expected non-empty array");
+        throw new Error('Expected non-empty array');
     const aggregatedSignature = signatures.reduce((sum, signature) => sum.add(signatureToG2(signature)), Z2);
     return signatureFromG2(aggregatedSignature);
 }
 exports.aggregateSignatures = aggregateSignatures;
 async function verifyBatch(messages, publicKeys, signature, domain) {
-    domain =
-        domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
     if (messages.length === 0)
-        throw new Error("Expected non-empty messages array");
+        throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)
-        throw new Error("Pubkey count should equal msg count");
+        throw new Error('Pubkey count should equal msg count');
     try {
         let producer = new Fp12().one;
         for (const message of new Set(messages)) {
-            const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message
-                ? groupPublicKey
-                : groupPublicKey.add(publicKeyToG1(publicKeys[i])), Z1);
+            const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message ? groupPublicKey : groupPublicKey.add(publicKeyToG1(publicKeys[i])), Z1);
             producer = producer.multiply(pairing(await hashToG2(message, domain), groupPublicKey));
         }
         producer = producer.multiply(pairing(signatureToG2(signature), exports.G1.negative()));
