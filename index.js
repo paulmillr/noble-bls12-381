@@ -6,7 +6,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.hashToG2 = exports.signatureToG2 = exports.B12 = exports.B2 = exports.B = exports.CURVE = exports.Point = exports.Fp12 = exports.Fp2 = exports.Fp = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.hashToG2 = exports.signatureToG2 = exports.B12 = exports.B2 = exports.B = exports.Point = exports.Fp12 = exports.Fp2 = exports.Fp = exports.CURVE = void 0;
+exports.CURVE = {
+    P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
+    r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
+    h: 0x396c8c005555e1568c00aaab0000aaabn,
+    Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
+    Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e18b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+    P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn ** 2n - 1n,
+    h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
+    G2x: [
+        0x24aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
+        0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en,
+    ],
+    G2y: [
+        0xce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
+        0x606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
+    ],
+};
 function normalized(target, propertyKey, descriptor) {
     const propertyValue = target[propertyKey];
     if (typeof propertyValue !== 'function') {
@@ -72,7 +89,7 @@ let Fp = (() => {
             return this.multiply(other.invert());
         }
     }
-    Fp.ORDER = 1n;
+    Fp.ORDER = exports.CURVE.P;
     __decorate([
         normalized
     ], Fp.prototype, "equals", null);
@@ -98,19 +115,6 @@ let Fp2 = (() => {
             this.coeficient2 = new Fp(0n);
             this.coeficient1 = coef1 instanceof Fp ? coef1 : new Fp(coef1);
             this.coeficient2 = coef2 instanceof Fp ? coef2 : new Fp(coef2);
-        }
-        static set ORDER(order) {
-            this._order = order;
-            this.DIV_ORDER = (order + 8n) / 16n;
-            const one = new Fp2(1n, 1n);
-            const orderEightPart = order / 8n;
-            const roots = Array(8)
-                .fill(null)
-                .map((_, i) => one.pow(BigInt(i) * orderEightPart));
-            this.EIGHTH_ROOTS_OF_UNITY = roots;
-        }
-        static get ORDER() {
-            return this._order;
         }
         get value() {
             return [this.coeficient1.value, this.coeficient2.value];
@@ -165,7 +169,7 @@ let Fp2 = (() => {
             const c = this.coeficient1.add(this.coeficient1);
             return new Fp2(a.multiply(b), c.multiply(this.coeficient2));
         }
-        modSqrt() {
+        sqrt() {
             const candidateSqrt = this.pow(Fp2.DIV_ORDER);
             const check = candidateSqrt.square().div(this);
             const rootIndex = Fp2.EIGHTH_ROOTS_OF_UNITY.findIndex((a) => a.equals(check));
@@ -204,12 +208,12 @@ let Fp2 = (() => {
             return this.multiply(otherValue.invert());
         }
     }
-    Fp2._order = 1n;
-    Fp2.DIV_ORDER = 1n;
+    Fp2.ORDER = exports.CURVE.P2;
+    Fp2.DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
     Fp2.EIGHTH_ROOTS_OF_UNITY = Array(8)
         .fill(null)
-        .map(() => new Fp2());
-    Fp2.COFACTOR = 1n;
+        .map((_, i) => new Fp2(1n, 1n).pow(BigInt(i) * Fp2.ORDER / 8n));
+    Fp2.COFACTOR = exports.CURVE.h2;
     __decorate([
         normalized
     ], Fp2.prototype, "equals", null);
@@ -508,29 +512,9 @@ class Point {
     }
 }
 exports.Point = Point;
-exports.CURVE = {
-    P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
-    n: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
-    DOMAIN_LENGTH: 8,
-    Gx: 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,
-    Gy: 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569n,
-    G2x: [
-        352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160n,
-        3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758n,
-    ],
-    G2y: [
-        1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905n,
-        927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582n,
-    ],
-    G2_COFACTOR: 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109n,
-};
-const P_ORDER_X_12_DIVIDED = (exports.CURVE.P ** 12n - 1n) / exports.CURVE.n;
 function finalExponentiate(p) {
-    return p.pow(P_ORDER_X_12_DIVIDED);
+    return p.pow((exports.CURVE.P ** 12n - 1n) / exports.CURVE.r);
 }
-Fp.ORDER = exports.CURVE.P;
-Fp2.ORDER = exports.CURVE.P ** 2n - 1n;
-Fp2.COFACTOR = exports.CURVE.G2_COFACTOR;
 exports.B = new Fp(4n);
 exports.B2 = new Fp2(4n, 4n);
 exports.B12 = new Fp12(4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
@@ -706,7 +690,7 @@ function decompressG2([z1, z2]) {
         return Z2;
     }
     const x = new Fp2(z2, z1 % POW_2_381);
-    let y = x.pow(3n).add(exports.B2).modSqrt();
+    let y = x.pow(3n).add(exports.B2).sqrt();
     if (y === null) {
         throw new Error('Failed to find a modular squareroot');
     }
@@ -744,7 +728,7 @@ async function hashToG2(hash, domain) {
     let xCoordinate = await getXCoordinate(hash, domain);
     let newResult = null;
     do {
-        newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).modSqrt();
+        newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).sqrt();
         const addition = newResult ? xCoordinate.zero : xCoordinate.one;
         xCoordinate = xCoordinate.add(addition);
     } while (newResult === null);
@@ -807,12 +791,10 @@ function millerLoop(Q, P, withFinalExponent = false) {
     return withFinalExponent ? finalExponentiate(f) : f;
 }
 function pairing(Q, P, withFinalExponent = true) {
-    if (!Q.isOnCurve(exports.B2)) {
-        throw new Error("Fisrt point isn't on elliptic curve");
-    }
-    if (!P.isOnCurve(exports.B)) {
-        throw new Error("Second point isn't on elliptic curve");
-    }
+    if (!Q.isOnCurve(exports.B2))
+        throw new Error("Point 1 is not on curve");
+    if (!P.isOnCurve(exports.B))
+        throw new Error("Point 2 is not on curve");
     return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
 }
 exports.pairing = pairing;
@@ -821,8 +803,9 @@ function getPublicKey(privateKey) {
     return publicKeyFromG1(exports.G1.multiply(privateKey));
 }
 exports.getPublicKey = getPublicKey;
+const DOMAIN_LENGTH = 8;
 async function sign(message, privateKey, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
     privateKey = toBigInt(privateKey);
     const messageValue = await hashToG2(message, domain);
     const signature = messageValue.multiply(privateKey);
@@ -830,7 +813,7 @@ async function sign(message, privateKey, domain) {
 }
 exports.sign = sign;
 async function verify(message, publicKey, signature, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
     const publicKeyPoint = publicKeyToG1(publicKey).negative();
     const signaturePoint = signatureToG2(signature);
     try {
@@ -859,7 +842,7 @@ function aggregateSignatures(signatures) {
 }
 exports.aggregateSignatures = aggregateSignatures;
 async function verifyBatch(messages, publicKeys, signature, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, exports.CURVE.DOMAIN_LENGTH);
+    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
     if (messages.length === 0)
         throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)

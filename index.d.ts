@@ -1,3 +1,14 @@
+export declare const CURVE: {
+    P: bigint;
+    r: bigint;
+    h: bigint;
+    Gx: bigint;
+    Gy: bigint;
+    P2: bigint;
+    h2: bigint;
+    G2x: bigint[];
+    G2y: bigint[];
+};
 declare type Bytes = Uint8Array | string;
 declare type Hash = Bytes;
 declare type PrivateKey = Bytes | bigint | number;
@@ -44,12 +55,10 @@ export declare class Fp implements Field<bigint> {
     div(other: Fp | bigint): Fp;
 }
 export declare class Fp2 implements Field<BigintTuple> {
-    private static _order;
-    private static DIV_ORDER;
+    static ORDER: bigint;
+    static DIV_ORDER: bigint;
     private static EIGHTH_ROOTS_OF_UNITY;
     static COFACTOR: bigint;
-    static set ORDER(order: bigint);
-    static get ORDER(): bigint;
     private coeficient1;
     private coeficient2;
     get value(): BigintTuple;
@@ -65,7 +74,7 @@ export declare class Fp2 implements Field<BigintTuple> {
     multiply(otherValue: Fp2 | bigint): Fp2;
     mulByNonresidue(): Fp2;
     square(): Fp2;
-    modSqrt(): Fp2 | null;
+    sqrt(): Fp2 | null;
     pow(n: bigint): Fp2;
     invert(): Fp2;
     div(otherValue: Fp2 | bigint): Fp2;
@@ -118,16 +127,6 @@ export declare class Point<T> {
     multiply(n: number | bigint): Point<T>;
     twist(): Point<BigintTwelve>;
 }
-export declare const CURVE: {
-    P: bigint;
-    n: bigint;
-    DOMAIN_LENGTH: number;
-    Gx: bigint;
-    Gy: bigint;
-    G2x: bigint[];
-    G2y: bigint[];
-    G2_COFACTOR: bigint;
-};
 export declare const B: Fp;
 export declare const B2: Fp2;
 export declare const B12: Fp12;

@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "test": "jest",
-    "build": "tsc -d"
+    "build": "tsc -d",
+    "bench": "node test/benchmark.js"
   },
   "author": "Paul Miller (https://paulmillr.com)",
   "homepage": "https://github.com/paulmillr/noble-bls12-381",

@@ -158,11 +158,11 @@ export class Fp implements Field<bigint> {
 // Finite extension field over irreducible degree-1 polynominal.
 // Fq(u)/(u2 − β) where β = −1
 export class Fp2 implements Field<BigintTuple> {
-  private static ORDER = CURVE.P2;
-  private static DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
+  static ORDER = CURVE.P2;
+  static DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
   private static EIGHTH_ROOTS_OF_UNITY = Array(8)
-  .fill(null)
-  .map((_, i) => new Fp2(1n, 1n).pow(BigInt(i) * Fp2.ORDER / 8n));
+    .fill(null)
+    .map((_, i) => new Fp2(1n, 1n).pow(BigInt(i) * Fp2.ORDER / 8n));
   public static COFACTOR = CURVE.h2;
 
   private coeficient1 = new Fp(0n);
@@ -556,10 +556,15 @@ export class Point<T> {
     return this.x.isEmpty() && this.y.isEmpty() && this.z.isEmpty();
   }
 
+  // Fast subgroup checks via Bowe19
   isOnCurve(b: Field<T>) {
     if (this.isEmpty()) {
       return true;
     }
+    // const squaredY = this.y.square();
+    // const cubedX = this.x.pow(3n);
+    // const z6 = this.z.pow(6n);
+    // return squaredY.equals(b.multiply(z6).add(cubedX));
     // Check that a point is on the curve defined by y**2 * z - x**3 == b * z**3
     const lefSide = this.y.square().multiply(this.z).subtract(this.x.pow(3n));
     const rightSide = b.multiply(this.z.pow(3n));
@@ -580,12 +585,27 @@ export class Point<T> {
 
   to2D() {
     return [this.x.div(this.z), this.y.div(this.z)];
+    // const zInv = this.z.pow(3n).invert();
+    // return [this.x.multiply(this.z).multiply(zInv), this.y.multiply(zInv)];
   }
 
   double() {
     if (this.isEmpty()) {
       return this;
     }
+    // const X1 = this.x;
+    // const Y1 = this.y;
+    // const Z1 = this.z;
+    // const A = X1.square();
+    // const B = Y1.square();
+    // const C = B.square();
+    // const D = X1.add(B).square().subtract(A).subtract(C).multiply(2n);
+    // const E = A.multiply(3n);
+    // const F = E.square();
+    // const X3 = F.subtract(D.multiply(2n));
+    // const Y3 = E.multiply((D.subtract(X3)).subtract(C.multiply(8n)));
+    // const Z3 = Y1.multiply(Z1).multiply(2n);
+    // return new Point(X3, Y3, Z3, this.C);
     // W = 3 * x * x
     const W = this.x.square().multiply(3n);
     // S = y * z
@@ -1035,12 +1055,8 @@ export function pairing(
   P: Point<bigint>,
   withFinalExponent: boolean = true
 ) {
-  if (!Q.isOnCurve(B2)) {
-    throw new Error("Fisrt point isn't on elliptic curve");
-  }
-  if (!P.isOnCurve(B)) {
-    throw new Error("Second point isn't on elliptic curve");
-  }
+  if (!Q.isOnCurve(B2)) throw new Error("Point 1 is not on curve");
+  if (!P.isOnCurve(B)) throw new Error("Point 2 is not on curve");
   return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
 }
 
