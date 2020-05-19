@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2020",
+    "module": "commonjs",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}

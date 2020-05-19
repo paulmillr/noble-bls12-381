@@ -17,7 +17,6 @@ declare type PublicKey = Bytes;
 declare type Signature = Bytes;
 declare type BigintTuple = [bigint, bigint];
 export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-declare type Fp12Like = Fp12 | BigintTwelve;
 interface Field<T> {
     readonly one: Field<T>;
     readonly zero: Field<T>;
@@ -79,6 +78,7 @@ export declare class Fp2 implements Field<BigintTuple> {
     invert(): Fp2;
     div(otherValue: Fp2 | bigint): Fp2;
 }
+declare type Fp12Like = Fp12 | BigintTwelve;
 export declare class Fp12 implements Field<BigintTwelve> {
     private coefficients;
     private static readonly MODULE_COEFFICIENTS;
@@ -126,6 +126,7 @@ export declare class Point<T> {
     subtract(other: Point<T>): Point<T>;
     multiply(n: number | bigint): Point<T>;
     twist(): Point<BigintTwelve>;
+    evalIsogeny(coefficients: Array<Array<Field<T>>>): Point<T>;
 }
 export declare const B: Fp;
 export declare const B2: Fp2;

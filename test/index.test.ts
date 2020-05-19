@@ -3,12 +3,14 @@ import * as bls from "..";
 
 const NUM_RUNS = 1; // reduce to 1 to shorten test time
 
+const CURVE_ORDER = bls.CURVE.r;
+
 describe("bls12-381", () => {
   it("should create different signatures for different domains", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.bigInt(1n, bls.CURVE.n),
+        fc.bigInt(1n, CURVE_ORDER),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKey, domain, otherDomain) => {
@@ -33,7 +35,7 @@ describe("bls12-381", () => {
   it("should create same aggregated public key if order of arguments will be changed", async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 2, 200),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 2, 200),
         async privateKeys => {
           const pubkeys = await Promise.all(
             privateKeys.map(privateKey => bls.getPublicKey(privateKey))
@@ -55,7 +57,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 2, 200),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 2, 200),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 2, 200),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, domain) => {
           const signatures = await Promise.all(
@@ -80,7 +82,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.bigInt(1n, bls.CURVE.n),
+        fc.bigInt(1n, CURVE_ORDER),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
@@ -100,7 +102,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.hexa(),
-        fc.bigInt(1n, bls.CURVE.n),
+        fc.bigInt(1n, CURVE_ORDER),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, wrongMessage, privateKey, domain) => {
           const publicKey = await bls.getPublicKey(privateKey);
@@ -119,7 +121,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -151,7 +153,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, wrongMessages, privateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -185,8 +187,8 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (messages, privateKeys, wrongPrivateKeys, domain) => {
           privateKeys = privateKeys.slice(0, messages.length);
@@ -220,7 +222,7 @@ describe("bls12-381", () => {
     await fc.assert(
       fc.asyncProperty(
         fc.hexa(),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, privateKeys, domain) => {
           const publicKey = await Promise.all(
@@ -251,7 +253,7 @@ describe("bls12-381", () => {
       fc.asyncProperty(
         fc.hexa(),
         fc.hexa(),
-        fc.array(fc.bigInt(1n, bls.CURVE.n), 1, 100),
+        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
         fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
         async (message, wrongMessage, privateKeys, domain) => {
           const publicKey = await Promise.all(
@@ -565,7 +567,7 @@ describe("bls12-381", () => {
   });
   it("should create right pairing output order", () => {
 		const p1 = bls.pairing(bls.G2, bls.G1);
-		const p2 = p1.pow(bls.CURVE.n);
+		const p2 = p1.pow(CURVE_ORDER);
 		expect(p2).toEqual(p1.one);
   });
   it("should create right pairing with bilinearity on G1", () => {

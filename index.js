@@ -12,7 +12,7 @@ exports.CURVE = {
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
     h: 0x396c8c005555e1568c00aaab0000aaabn,
     Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
-    Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e18b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+    Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
     P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn ** 2n - 1n,
     h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
     G2x: [
@@ -509,6 +509,32 @@ class Point {
         const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
         const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
         return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
+    }
+    evalIsogeny(coefficients) {
+        const mapValues = new Array(4);
+        const maxOrd = Math.max(...coefficients.map(a => a.length));
+        const zPowers = new Array(maxOrd);
+        zPowers[0] = this.z.pow(0n);
+        zPowers[1] = this.z.pow(2n);
+        for (let i = 2; i < maxOrd; i++) {
+            zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
+        }
+        for (let i = 0; i < coefficients.length; i++) {
+            const coefficient = Array.from(coefficients[i]);
+            const coeffsZ = coefficient.map((c, i) => c.multiply(zPowers[i]));
+            let tmp = coeffsZ[0];
+            for (let j = 1; j < coeffsZ.length; j++) {
+                tmp = tmp.multiply(this.x).add(coeffsZ[j]);
+            }
+            mapValues[i] = tmp;
+        }
+        mapValues[1] = mapValues[1].multiply(zPowers[1]);
+        mapValues[2] = mapValues[2].multiply(this.y);
+        mapValues[3] = mapValues[3].multiply(this.z.pow(3n));
+        const z = mapValues[1].multiply(mapValues[3]);
+        const x = mapValues[0].multiply(mapValues[3]).multiply(z);
+        const y = mapValues[2].multiply(mapValues[1]).multiply(z.square());
+        return new Point(x, y, z, this.C);
     }
 }
 exports.Point = Point;

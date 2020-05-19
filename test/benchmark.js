@@ -12,7 +12,7 @@ run(async () => {
 
 
   await mark('getPublicKey', 1000, () => bls.getPublicKey(0xdeadbeefn));
-  await mark('sign', 10, async () => await bls.sign('2498796dfae14fd241a4', 0xdeadbeefn, 1));
+  await mark('sign', 10, async () => await bls.sign('01', 12344123n, 1));
   await mark('verify', 5, async () => {
     bls.verify(
       '2498796dfae14fd241a4',

@@ -11,7 +11,7 @@ export const CURVE = {
   // a cofactor
   h: 0x396c8c005555e1568c00aaab0000aaabn,
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
-  Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e18b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+  Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
 
   // G2
   // G^2 - 1
@@ -40,8 +40,6 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint
 ];
-type Fp12Like = Fp12 | BigintTwelve;
-type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
 
 type ReturnType<T extends Function> = T extends (...args: any[]) => infer R ? R : any;
 type IncludedTypes<Base, Type> = {
@@ -335,9 +333,10 @@ const FP12_DEFAULT: BigintTwelve = [
   0n, 1n, 0n, 1n,
   0n, 1n, 0n, 1n
 ];
-
-// Finite extension field.
-/// This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
+type Fp12Like = Fp12 | BigintTwelve;
+type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
+//Finite extension field.
+// This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
 export class Fp12 implements Field<BigintTwelve> {
   private coefficients: FpTwelve = FP12_DEFAULT.map((a) => new Fp(a)) as FpTwelve;
   // prettier-ignore
@@ -564,7 +563,9 @@ export class Point<T> {
     // const squaredY = this.y.square();
     // const cubedX = this.x.pow(3n);
     // const z6 = this.z.pow(6n);
-    // return squaredY.equals(b.multiply(z6).add(cubedX));
+    // const infty = this.x.isEmpty() && !this.y.isEmpty() && this.z.isEmpty();
+    // const match = squaredY.equals(b.multiply(z6).add(cubedX));
+    // return infty || match;
     // Check that a point is on the curve defined by y**2 * z - x**3 == b * z**3
     const lefSide = this.y.square().multiply(this.z).subtract(this.x.pow(3n));
     const rightSide = b.multiply(this.z.pow(3n));
@@ -688,6 +689,43 @@ export class Point<T> {
     const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
     const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
     return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
+  }
+
+
+  // Isogeny map evaluation specified by map_coeffs
+  // map_coeffs should be specified as (xnum, xden, ynum, yden)
+  // This function evaluates the isogeny over Jacobian projective coordinates.
+  // For details, see Section 4.3 of
+  // Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
+  // ePrint # 2019/403, https://ia.cr/2019/403.
+  evalIsogeny(coefficients: Array<Array<Field<T>>>) {
+    const mapValues = new Array(4);
+    // precompute the required powers of Z^2
+    const maxOrd = Math.max(...coefficients.map(a => a.length));
+    const zPowers = new Array(maxOrd);
+    zPowers[0] = this.z.pow(0n);
+    zPowers[1] = this.z.pow(2n);
+    for (let i = 2; i < maxOrd; i++) {
+      zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
+    }
+    for (let i = 0; i < coefficients.length; i++) {
+      const coefficient = Array.from(coefficients[i]);
+      const coeffsZ = coefficient.map((c, i) => c.multiply(zPowers[i]));
+      let tmp = coeffsZ[0];
+      for (let j = 1; j < coeffsZ.length; j++) {
+        tmp = tmp.multiply(this.x).add(coeffsZ[j]);
+      }
+      mapValues[i] = tmp;
+    }
+    mapValues[1] = mapValues[1].multiply(zPowers[1]);
+    mapValues[2] = mapValues[2].multiply(this.y);
+    mapValues[3] = mapValues[3].multiply(this.z.pow(3n));
+
+    const z = mapValues[1].multiply(mapValues[3]);
+    const x = mapValues[0].multiply(mapValues[3]).multiply(z);
+    const y = mapValues[2].multiply(mapValues[1]).multiply(z.square());
+
+    return new Point(x, y, z, this.C);
   }
 }
 
@@ -884,7 +922,7 @@ function decompressG1(compressedValue: bigint) {
   return new Point(new Fp(x), new Fp(y), new Fp(1n), Fp);
 }
 
-function compressG2(point: Point<[bigint, bigint]>) {
+function compressG2(point: Point<BigintTuple>) {
   if (point.equals(Z2)) {
     return [POW_2_383 + POW_2_382, 0n];
   }
@@ -899,7 +937,7 @@ function compressG2(point: Point<[bigint, bigint]>) {
   return [z1, z2];
 }
 
-function decompressG2([z1, z2]: [bigint, bigint]) {
+function decompressG2([z1, z2]: BigintTuple) {
   const bflag1 = (z1 % POW_2_383) / POW_2_382;
   if (bflag1 === 1n) {
     return Z2;
@@ -931,7 +969,7 @@ function publicKeyToG1(publicKey: Bytes) {
   return decompressG1(fromBytesBE(publicKey));
 }
 
-function signatureFromG2(point: Point<[bigint, bigint]>) {
+function signatureFromG2(point: Point<BigintTuple>) {
   const [z1, z2] = compressG2(point);
   return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
 }
