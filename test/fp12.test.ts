@@ -231,8 +231,8 @@ describe("bls12-381 Fp12", () => {
         (num1) => {
           const a = new Fp12(...num1 as BigintTwelve);
           const b = new Fp12(...num1 as BigintTwelve);
-          expect(a.zero.subtract(a)).toEqual(a.negative());
-          expect(a.subtract(b)).toEqual(a.add(b.negative()));
+          expect(a.zero.subtract(a)).toEqual(a.negate());
+          expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
         }
       ),
@@ -245,8 +245,8 @@ describe("bls12-381 Fp12", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12), num => {
         const a = new Fp12(...num as BigintTwelve);
-        expect(a.negative()).toEqual(a.zero.subtract(a));
-        expect(a.negative()).toEqual(a.multiply(-1n));
+        expect(a.negate()).toEqual(a.zero.subtract(a));
+        expect(a.negate()).toEqual(a.multiply(-1n));
       }),
       {
         numRuns: NUM_RUNS

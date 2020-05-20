@@ -3,6 +3,8 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
+const {getTime} = require('micro-bmark');
+
 export const CURVE = {
   // a characteristic
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
@@ -27,6 +29,7 @@ export const CURVE = {
   ],
 };
 const P = CURVE.P;
+const DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_TESTGEN';
 
 type Bytes = Uint8Array | string;
 type Hash = Bytes;
@@ -41,6 +44,17 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint
 ];
+type Numerators = [
+  Field<BigintTuple>,
+  Field<BigintTuple>,
+  Field<BigintTuple>,
+  Field<BigintTuple>
+]
+type XDenominators = [
+  Field<BigintTuple>,
+  Field<BigintTuple>,
+  Field<BigintTuple>
+]
 
 type ReturnType<T extends Function> = T extends (...args: any[]) => infer R ? R : any;
 type IncludedTypes<Base, Type> = {
@@ -50,10 +64,7 @@ type AllowedNames<Base, Type> = keyof IncludedTypes<Base, Type>;
 
 // Finite field
 interface Field<T> {
-  readonly one: Field<T>;
-  readonly zero: Field<T>;
   readonly value: T;
-  normalize(v: Field<T> | T | bigint): bigint | Field<T>;
   isEmpty(): boolean;
   equals(otherValue: Field<T> | T): boolean;
   add(otherValue: Field<T> | T): Field<T>;
@@ -61,52 +72,28 @@ interface Field<T> {
   div(otherValue: Field<T> | T | bigint): Field<T>;
   square(): Field<T>;
   subtract(otherValue: Field<T> | T): Field<T>;
-  negative(): Field<T>;
+  negate(): Field<T>;
   invert(): Field<T>;
   pow(n: bigint): Field<T>;
 }
 
-function normalized<T, G extends Field<T>, M extends AllowedNames<G, Function>>(
-  target: G,
-  propertyKey: M,
-  descriptor: PropertyDescriptor
-): PropertyDescriptor {
-  type GroupMethod = G[M] & Function;
-  const propertyValue: G[M] | GroupMethod = target[propertyKey];
-  if (typeof propertyValue !== 'function') {
-    return descriptor;
-  }
-  const previousImplementation: GroupMethod = propertyValue;
-  descriptor.value = function (arg: G | T | bigint): ReturnType<GroupMethod> {
-    const modifiedArgument = target.normalize(arg);
-    return previousImplementation.call(this, modifiedArgument);
-  };
-  return descriptor;
+function fpToString(num: bigint) {
+  const str = num.toString(16).padStart(96, '0');
+  return str.slice(0, 4) + '...' + str.slice(-4);
 }
 
 // Finite field over P.
 export class Fp implements Field<bigint> {
-  static ORDER = CURVE.P;
-  private _value: bigint = 0n;
+  static readonly ORDER = CURVE.P;
+  static readonly ZERO = new Fp(0n);
+  static readonly ONE = new Fp(1n);
 
+  private _value: bigint;
   public get value() {
     return this._value;
   }
-
-  public get zero() {
-    return new Fp(0n);
-  }
-  public get one() {
-    return new Fp(1n);
-  }
-
-  constructor(value: bigint = 0n) {
-    this._value = this.mod(value, Fp.ORDER);
-  }
-
-  private mod(a: bigint, b: bigint) {
-    const result = a % b;
-    return result >= 0n ? result : b + result;
+  constructor(value: bigint) {
+    this._value = mod(value, Fp.ORDER);
   }
 
   normalize(v: Fp | bigint): Fp {
@@ -117,11 +104,11 @@ export class Fp implements Field<bigint> {
     return this._value === 0n;
   }
 
-  @normalized equals(other: Fp) {
+  equals(other: Fp) {
     return this._value === other._value;
   }
 
-  negative() {
+  negate() {
     return new Fp(-this._value);
   }
 
@@ -129,8 +116,8 @@ export class Fp implements Field<bigint> {
     return new Fp(invert(this._value, Fp.ORDER));
   }
 
-  @normalized add(other: Fp | bigint) {
-    return new Fp((other as Fp)._value + this._value);
+  add(other: Fp) {
+    return new Fp(this._value + other.value);
   }
 
   square() {
@@ -141,104 +128,118 @@ export class Fp implements Field<bigint> {
     return new Fp(powMod(this._value, n, Fp.ORDER));
   }
 
-  @normalized subtract(other: Fp | bigint) {
-    return new Fp(this._value - (other as Fp)._value);
+  subtract(other: Fp) {
+    return new Fp(this._value - other._value);
   }
 
-  @normalized multiply(other: Fp | bigint) {
-    return new Fp((other as Fp)._value * this._value);
+  multiply(other: Fp) {
+    return new Fp(this._value * other._value);
   }
 
-  @normalized div(other: Fp | bigint) {
-    return this.multiply((other as Fp).invert());
+  div(other: Fp) {
+    return this.multiply(other.invert());
+  }
+
+  toString() {
+    return fpToString(this.value);
   }
 }
 
+const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 // Finite extension field over irreducible degree-1 polynominal.
 // Fq(u)/(u2 − β) where β = −1
 export class Fp2 implements Field<BigintTuple> {
   static ORDER = CURVE.P2;
   static DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
-  private static EIGHTH_ROOTS_OF_UNITY = Array(8)
-    .fill(null)
-    .map((_, i) => new Fp2(1n, 1n).pow(BigInt(i) * Fp2.ORDER / 8n));
+  static ROOT = new Fp(-1n);
+  static readonly ZERO = new Fp2(0n, 0n);
+  static readonly ONE = new Fp2(1n, 0n);
+  private static EIGHTH_ROOTS_OF_UNITY = [
+    new Fp2(1n, 0n),
+    new Fp2(0n, 1n),
+    new Fp2(rv1, rv1),
+    new Fp2(rv1, Fp2.ORDER - rv1)
+  ];
   public static COFACTOR = CURVE.h2;
 
-  private coeficient1 = new Fp(0n);
-  private coeficient2 = new Fp(0n);
+  public real: Fp;
+  public imag: Fp;
 
   public get value(): BigintTuple {
-    return [this.coeficient1.value, this.coeficient2.value];
+    return [this.real.value, this.imag.value];
   }
 
-  public get zero() {
-    return new Fp2(0n, 0n);
+  constructor(real: Fp | bigint, imag: Fp | bigint) {
+    this.real = real instanceof Fp ? real : new Fp(real);
+    this.imag = imag instanceof Fp ? imag : new Fp(imag);
   }
 
-  public get one() {
-    return new Fp2(1n, 0n);
-  }
-
-  constructor(coef1: Fp | bigint = 0n, coef2: Fp | bigint = 0n) {
-    this.coeficient1 = coef1 instanceof Fp ? coef1 : new Fp(coef1);
-    this.coeficient2 = coef2 instanceof Fp ? coef2 : new Fp(coef2);
-  }
-
-  normalize(v: Fp2 | BigintTuple | bigint): bigint | Fp2 {
-    if (typeof v === 'bigint') {
-      return v;
-    }
-    return v instanceof Fp2 ? v : new Fp2(...v);
+  toString() {
+    const c1 = this.real.toString();
+    const c2 = this.imag.toString();
+    return `(${c1} + ${c2}×i)`
   }
 
   isEmpty() {
-    return this.coeficient1.isEmpty() && this.coeficient2.isEmpty();
+    return this.real.isEmpty() && this.imag.isEmpty();
   }
 
-  @normalized
   equals(rhs: Fp2) {
-    return this.coeficient1.equals(rhs.coeficient1) && this.coeficient2.equals(rhs.coeficient2);
+    return this.real.equals(rhs.real) && this.imag.equals(rhs.imag);
   }
 
-  negative() {
-    return new Fp2(this.coeficient1.negative(), this.coeficient2.negative());
+  negate() {
+    return new Fp2(this.real.negate(), this.imag.negate());
   }
 
-  @normalized
   add(rhs: Fp2) {
-    return new Fp2(this.coeficient1.add(rhs.coeficient1), this.coeficient2.add(rhs.coeficient2));
+    return new Fp2(this.real.add(rhs.real), this.imag.add(rhs.imag));
   }
 
-  @normalized
   subtract(rhs: Fp2) {
     return new Fp2(
-      this.coeficient1.subtract(rhs.coeficient1),
-      this.coeficient2.subtract(rhs.coeficient2)
+      this.real.subtract(rhs.real),
+      this.imag.subtract(rhs.imag)
     );
   }
 
-  // Karatsuba multiplication:
-  // In BLS12-381's Fp2, our beta is -1 so we
-  // can modify this formula. (Also, since we always
-  // subtract v1, we can compute v1 = -a1 * b1.)
-  @normalized
-  multiply(otherValue: Fp2 | bigint) {
-    if (typeof otherValue === 'bigint') {
-      return new Fp2(this.coeficient1.multiply(otherValue), this.coeficient2.multiply(otherValue));
+  multiply(rhs: Fp2 | bigint) {
+    if (typeof rhs === 'bigint') {
+      return new Fp2(this.real.multiply(new Fp(rhs)), this.imag.multiply(new Fp(rhs)));
     }
-    // v0  = a0 * b0
-    const v0 = this.coeficient1.multiply(otherValue.coeficient1);
-    // v1  = (-a1) * b1
-    const v1 = this.coeficient2.negative().multiply(otherValue.coeficient2);
-    // c0 = v0 + v1
-    const c0 = v0.add(v1);
-    // c1 = (a0 + a1) * (b0 + b1) - v0 + v1
-    const c1 = this.coeficient1
-      .add(this.coeficient2)
-      .multiply(otherValue.coeficient1.add(otherValue.coeficient2))
-      .subtract(v0)
-      .add(v1);
-    return new Fp2(c0, c1);
+    // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
+    if (this.constructor !== rhs.constructor) throw new TypeError('Types do not match');
+    const a1 = [this.real, this.imag];
+    const b1 = [rhs.real, rhs.imag];
+    const c1 = [Fp.ZERO, Fp.ZERO];
+    const embedding = 2;
+    // console.log('start', this.toString());
+
+    for (let i = 0; i < embedding; i++) {
+      const x = a1[i];
+      for (let j = 0; j < embedding; j++) {
+        const y = b1[j];
+        // console.log('xy', x.toString(), y.toString());
+
+        if (!x.isEmpty() && !y.isEmpty()) {
+          const degree = i + j;
+          const md = degree % embedding;
+          // console.log('xy', md, i, j, x.toString(), y.toString());
+          let xy = x.multiply(y);
+          const root = Fp2.ROOT;
+          if (degree >= embedding) xy = xy.multiply(root);
+          c1[md] = c1[md].add(xy);
+        }
+      }
+    }
+    const [real, imag] = c1;
+    // const a = this.real;
+    // const b = this.imag;
+    // const c = other.real;
+    // const d = other.imag;
+    // const real = a.multiply(c).subtract(b.multiply(d).multiply())
+    // const imag = a.multiply(d).add(b.multiply(c));
+    return new Fp2(real, imag);
   }
 
   // Multiply a + bu by u + 1, getting
@@ -247,8 +248,8 @@ export class Fp2 implements Field<BigintTuple> {
   // (a - b) + (a + b)u
   mulByNonresidue() {
     return new Fp2(
-      this.coeficient1.subtract(this.coeficient2),
-      this.coeficient1.add(this.coeficient2)
+      this.real.subtract(this.imag),
+      this.real.add(this.imag)
     );
   }
 
@@ -264,10 +265,10 @@ export class Fp2 implements Field<BigintTuple> {
   // c0' = (c0 + c1) * (c0 - c1)
   // c1' = 2 * c0 * c1
   square() {
-    const a = this.coeficient1.add(this.coeficient2);
-    const b = this.coeficient1.subtract(this.coeficient2);
-    const c = this.coeficient1.add(this.coeficient1);
-    return new Fp2(a.multiply(b), c.multiply(this.coeficient2));
+    const a = this.real.add(this.imag);
+    const b = this.real.subtract(this.imag);
+    const c = this.real.add(this.real);
+    return new Fp2(a.multiply(b), c.multiply(this.imag));
   }
 
   sqrt() {
@@ -278,17 +279,16 @@ export class Fp2 implements Field<BigintTuple> {
       return null;
     }
     const x1 = candidateSqrt.div(Fp2.EIGHTH_ROOTS_OF_UNITY[rootIndex >> 1]);
-    const x2 = x1.negative();
-    const isImageGreater = x1.coeficient2.value > x2.coeficient2.value;
+    const x2 = x1.negate();
+    const isImageGreater = x1.imag.value > x2.imag.value;
     const isReconstructedGreater =
-      x1.coeficient2.equals(x2.coeficient2) && x1.coeficient1.value > x2.coeficient1.value;
+      x1.imag.equals(x2.imag) && x1.real.value > x2.real.value;
     return isImageGreater || isReconstructedGreater ? x1 : x2;
   }
 
-  pow(n: bigint) {
-    if (n === 1n) {
-      return this;
-    }
+  pow(n: bigint): Fp2 {
+    if (n === 0n) return Fp2.ONE;
+    if (n === 1n) return this;
     let result = new Fp2(1n, 0n);
     let value: Fp2 = this;
     while (n > 0n) {
@@ -315,14 +315,13 @@ export class Fp2 implements Field<BigintTuple> {
   // of (a + bu). Importantly, this can be computing using
   // only a single inversion in Fp.
   invert() {
-    const t = this.coeficient1.square().add(this.coeficient2.square()).invert();
-    return new Fp2(this.coeficient1.multiply(t), this.coeficient2.multiply(t.negative()));
+    const t = this.real.square().add(this.imag.square()).invert();
+    return new Fp2(this.real.multiply(t), this.imag.multiply(t.negate()));
   }
 
-  @normalized
-  div(otherValue: Fp2 | bigint) {
+  div(otherValue: Fp2) {
     if (typeof otherValue === 'bigint') {
-      return new Fp2(this.coeficient1.div(otherValue), this.coeficient2.div(otherValue));
+      return new Fp2(this.real.div(otherValue), this.imag.div(otherValue));
     }
     return this.multiply(otherValue.invert());
   }
@@ -339,6 +338,11 @@ type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
 //Finite extension field.
 // This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
 export class Fp12 implements Field<BigintTwelve> {
+  static readonly ZERO = new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+  // static ZERO() {
+  //   return new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+  // }
+  static readonly ONE = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   private coefficients: FpTwelve = FP12_DEFAULT.map((a) => new Fp(a)) as FpTwelve;
   // prettier-ignore
   private static readonly MODULE_COEFFICIENTS: BigintTwelve = [
@@ -351,13 +355,6 @@ export class Fp12 implements Field<BigintTwelve> {
 
   public get value() {
     return this.coefficients.map((c) => c.value) as BigintTwelve;
-  }
-
-  public get zero() {
-    return new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-  }
-  public get one() {
-    return new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   }
 
   constructor();
@@ -391,39 +388,35 @@ export class Fp12 implements Field<BigintTwelve> {
     return this.coefficients.every((a) => a.isEmpty());
   }
 
-  @normalized
   equals(rhs: Fp12Like) {
     return this.coefficients.every((a, i) => a.equals((rhs as Fp12).coefficients[i]));
   }
 
-  negative() {
-    return new Fp12(...(this.coefficients.map((a) => a.negative()) as FpTwelve));
+  negate() {
+    return new Fp12(...(this.coefficients.map((a) => a.negate()) as FpTwelve));
   }
 
-  @normalized
   add(rhs: Fp12Like) {
     return new Fp12(
       ...(this.coefficients.map((a, i) => a.add((rhs as Fp12).coefficients[i])) as FpTwelve)
     );
   }
 
-  @normalized
   subtract(rhs: Fp12Like) {
     return new Fp12(
       ...(this.coefficients.map((a, i) => a.subtract((rhs as Fp12).coefficients[i])) as FpTwelve)
     );
   }
 
-  @normalized
   multiply(otherValue: Fp12Like | bigint) {
     if (typeof otherValue === 'bigint') {
-      return new Fp12(...(this.coefficients.map((a) => a.multiply(otherValue)) as FpTwelve));
+      return new Fp12(...(this.coefficients.map((a) => a.multiply(new Fp(otherValue))) as FpTwelve));
     }
     const LENGTH = this.coefficients.length;
 
     const filler = Array(LENGTH * 2 - 1)
       .fill(null)
-      .map(() => new Fp());
+      .map(() => new Fp(0n));
     for (let i = 0; i < LENGTH; i++) {
       for (let j = 0; j < LENGTH; j++) {
         filler[i + j] = filler[i + j].add(
@@ -437,7 +430,7 @@ export class Fp12 implements Field<BigintTwelve> {
         break;
       }
       for (const [i, value] of Fp12.ENTRY_COEFFICIENTS) {
-        filler[exp + i] = filler[exp + i].subtract(top.multiply(value));
+        filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fp(value)));
       }
     }
     return new Fp12(...(filler as FpTwelve));
@@ -447,7 +440,7 @@ export class Fp12 implements Field<BigintTwelve> {
     return this.multiply(this);
   }
 
-  pow(n: bigint) {
+  pow(n: bigint): Fp12 {
     if (n === 1n) {
       return this;
     }
@@ -492,15 +485,15 @@ export class Fp12 implements Field<BigintTwelve> {
 
   invert(): Fp12 {
     const LENGTH = this.coefficients.length;
-    let lm = [...this.one.coefficients.map((a) => a.value), 0n];
-    let hm = [...this.zero.coefficients.map((a) => a.value), 0n];
+    let lm = [...Fp12.ONE.coefficients.map((a) => a.value), 0n];
+    let hm = [...Fp12.ZERO.coefficients.map((a) => a.value), 0n];
     let low = [...this.coefficients.map((a) => a.value), 0n];
     let high = [...Fp12.MODULE_COEFFICIENTS, 1n];
     while (this.degree(low) !== 0) {
       const { coefficients } = this.optimizedRoundedDiv(high, low);
       const zeros = Array(LENGTH + 1 - coefficients.length)
         .fill(null)
-        .map(() => new Fp());
+        .map(() => new Fp(0n));
       const roundedDiv = coefficients.concat(zeros);
       let nm = [...hm];
       let nw = [...high];
@@ -521,17 +514,18 @@ export class Fp12 implements Field<BigintTwelve> {
     return result.div(low[0]);
   }
 
-  @normalized
   div(otherValue: Fp12 | bigint) {
     if (typeof otherValue === 'bigint') {
-      return new Fp12(...(this.coefficients.map((a) => a.div(otherValue)) as FpTwelve));
+      return new Fp12(...(this.coefficients.map((a) => a.div(new Fp(otherValue))) as FpTwelve));
     }
     return this.multiply(otherValue.invert());
   }
 }
 
-type Constructor<T> = { new (...args: any[]): Field<T> };
+type Constructor<T> = { new (...args: any[]): Field<T> } & {ZERO: Field<T>; ONE: Field<T>;};
 type GroupCoordinats<T> = { x: Field<T>; y: Field<T>; z: Field<T> };
+// type Constructorzz<T> = Function & T & { prototype: T }
+// type Constructor<T extends {} = {}> = new (...args: any[]) => T;
 
 export class Point<T> {
   // "Twist" a point in E(Fp2) into a point in E(Fp12)
@@ -549,11 +543,11 @@ export class Point<T> {
     public x: Field<T>,
     public y: Field<T>,
     public z: Field<T>,
-    private C: Constructor<T>
+    public C: Constructor<T>
   ) {}
 
   isEmpty() {
-    return this.x.isEmpty() && this.y.isEmpty() && this.z.isEmpty();
+    return this.x.isEmpty() && this.y.isEmpty() && this.z.equals(this.C.ONE);
   }
 
   // Fast subgroup checks via Bowe19
@@ -561,16 +555,16 @@ export class Point<T> {
     if (this.isEmpty()) {
       return true;
     }
-    // const squaredY = this.y.square();
-    // const cubedX = this.x.pow(3n);
-    // const z6 = this.z.pow(6n);
-    // const infty = this.x.isEmpty() && !this.y.isEmpty() && this.z.isEmpty();
-    // const match = squaredY.equals(b.multiply(z6).add(cubedX));
-    // return infty || match;
+    const squaredY = this.y.square();
+    const cubedX = this.x.pow(3n);
+    const z6 = this.z.pow(6n);
+    const infty = this.x.isEmpty() && !this.y.isEmpty() && this.z.isEmpty();
+    const match = squaredY.equals(b.multiply(z6).add(cubedX));
+    return infty || match;
     // Check that a point is on the curve defined by y**2 * z - x**3 == b * z**3
-    const lefSide = this.y.square().multiply(this.z).subtract(this.x.pow(3n));
-    const rightSide = b.multiply(this.z.pow(3n));
-    return lefSide.equals(rightSide);
+    // const lefSide = this.y.square().multiply(this.z).subtract(this.x.pow(3n));
+    // const rightSide = b.multiply(this.z.pow(3n));
+    // return lefSide.equals(rightSide);
   }
 
   equals(other: Point<T>) {
@@ -582,79 +576,77 @@ export class Point<T> {
   }
 
   negative() {
-    return new Point(this.x, this.y.negative(), this.z, this.C);
+    return new Point(this.x, this.y.negate(), this.z, this.C);
   }
 
-  to2D() {
-    return [this.x.div(this.z), this.y.div(this.z)];
-    // const zInv = this.z.pow(3n).invert();
-    // return [this.x.multiply(this.z).multiply(zInv), this.y.multiply(zInv)];
+  toString() {
+    const [x, y] = this.toAffine();
+    return `Point<x=${x}, y=${y}>`
+  }
+
+  toAffine() {
+    // return [this.x.div(this.z), this.y.div(this.z)];
+    const zInv = this.z.pow(3n).invert();
+    return [this.x.multiply(this.z).multiply(zInv), this.y.multiply(zInv)];
   }
 
   double() {
-    if (this.isEmpty()) {
-      return this;
-    }
-    // const X1 = this.x;
-    // const Y1 = this.y;
-    // const Z1 = this.z;
-    // const A = X1.square();
-    // const B = Y1.square();
-    // const C = B.square();
-    // const D = X1.add(B).square().subtract(A).subtract(C).multiply(2n);
-    // const E = A.multiply(3n);
-    // const F = E.square();
-    // const X3 = F.subtract(D.multiply(2n));
-    // const Y3 = E.multiply((D.subtract(X3)).subtract(C.multiply(8n)));
-    // const Z3 = Y1.multiply(Z1).multiply(2n);
-    // return new Point(X3, Y3, Z3, this.C);
-    // W = 3 * x * x
-    const W = this.x.square().multiply(3n);
-    // S = y * z
-    const S = this.y.multiply(this.z);
-    // B = x * y * S
-    const B = this.x.multiply(this.y).multiply(S);
-    // H = W * W - 8 * B
-    const H = W.square().subtract(B.multiply(8n));
-    // x = 2 * H * S:
-    const newX = H.multiply(S).multiply(2n);
-    const tmp = this.y.square().multiply(S.square()).multiply(8n);
-    // y = W * (4 * B - H) - 8 * y**2 * s**2
-    const newY = W.multiply(B.multiply(4n).subtract(H)).subtract(tmp);
-    // z = 8 * S**3
-    const newZ = S.pow(3n).multiply(8n);
-    return new Point(newX, newY, newZ, this.C);
+    if (this.isEmpty()) return this;
+    const X1 = this.x;
+    const Y1 = this.y;
+    const Z1 = this.z;
+    const A = X1.square();
+    const B = Y1.square();
+    const C = B.square();
+    const D = X1.add(B).square().subtract(A).subtract(C).multiply(2n);
+    const E = A.multiply(3n);
+    const F = E.square();
+    const X3 = F.subtract(D.multiply(2n));
+    const Y3 = E.multiply((D.subtract(X3)).subtract(C.multiply(8n)));
+    const Z3 = Y1.multiply(Z1).multiply(2n);
+    if (Z3.isEmpty()) return new Point(this.C.ZERO, this.C.ONE, this.C.ZERO, this.C);
+    return new Point(X3, Y3, Z3, this.C);
   }
 
-  add(other: Point<T>) {
-    if (other.z.isEmpty()) {
-      return this;
+  // http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-1998-cmo-2
+  add(other: Point<T>): Point<T> {
+    if (!(other instanceof Point)) throw new TypeError('Point#add: expected Point');
+    const X1 = this.x;
+    const Y1 = this.y;
+    const Z1 = this.z;
+    const X2 = other.x;
+    const Y2 = other.y;
+    const Z2 = other.z;
+    if (Z2.isEmpty()) return this;
+    if (Z1.isEmpty()) return other;
+    const Z1Z1 = Z1.pow(2n);
+    const Z2Z2 = Z2.pow(2n);
+    const U1 = X1.multiply(Z2Z2);
+    const U2 = X2.multiply(Z1Z1);
+    const S1 = Y1.multiply(Z2).multiply(Z2Z2);
+    const S2 = Y2.multiply(Z1).multiply(Z1Z1);
+    const H = U2.subtract(U1);
+    const rr = S2.subtract(S1).multiply(2n);
+    // H = 0 meaning it's the same point.
+    if (H.isEmpty()) {
+      if (rr.isEmpty()) {
+        //console.log('dbl');
+        return this.double();
+      } else {
+        throw new Error()
+        return new Point(this.C.ZERO, this.C.ZERO, this.C.ONE, this.C);
+      }
     }
-    if (this.z.isEmpty()) {
-      return other;
-    }
-    const u1 = other.y.multiply(this.z);
-    const u2 = this.y.multiply(other.z);
-    const v1 = other.x.multiply(this.z);
-    const v2 = this.x.multiply(other.z);
-    if (v1.equals(v2) && u1.equals(u2)) {
-      return this.double();
-    }
-    if (v1.equals(v2)) {
-      return new Point(this.x.one, this.y.one, this.z.zero, this.C);
-    }
-    const u = u1.subtract(u2);
-    const v = v1.subtract(v2);
-    const V_CUBE = v.pow(3n);
-    const SQUERED_V_MUL_V2 = v.square().multiply(v2);
-    const W = this.z.multiply(other.z);
-    // u**2 * W - v**3 - 2 * v**2 * v2
-    const A = u.square().multiply(W).subtract(v.pow(3n)).subtract(SQUERED_V_MUL_V2.multiply(2n));
-    const newX = v.multiply(A);
-    // y = u * (v**2 * v2 - A) - v**3 * u2
-    const newY = u.multiply(SQUERED_V_MUL_V2.subtract(A)).subtract(V_CUBE.multiply(u2));
-    const newZ = V_CUBE.multiply(W);
-    return new Point(newX, newY, newZ, this.C);
+    const I = H.multiply(2n).pow(2n);
+    const J = H.multiply(I);
+    const V = U1.multiply(I);
+    const X3 = rr.pow(2n).subtract(J).subtract(V.multiply(2n));
+    const Y3 = rr.multiply(V.subtract(X3)).subtract(S1.multiply(J).multiply(2n));
+    const Z3 = Z1.multiply(Z2).multiply(H).multiply(2n);
+    // console.log(`xxx ${rr.pow(2n)} ${J.subtract(V.multiply(2n))}`);
+    // console.log(`rrjv, ${rr} ${J} ${V}`);
+    // console.log(`xyz, ${X3} ${Y3} ${Z3}`);
+    return new Point(X3, Y3, Z3, this.C);
   }
 
   subtract(other: Point<T>) {
@@ -663,7 +655,8 @@ export class Point<T> {
 
   multiply(n: number | bigint) {
     n = BigInt(n);
-    let result = new Point(this.x.one, this.y.one, this.z.zero, this.C);
+    this.C.prototype
+    let result = new Point(this.C.ONE, this.C.ONE, this.C.ZERO, this.C);
     let point = this as Point<T>;
     while (n > 0n) {
       if ((n & 1n) === 1n) {
@@ -691,7 +684,7 @@ export class Point<T> {
     const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
     return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
   }
-
+}
 
   // Isogeny map evaluation specified by map_coeffs
   // map_coeffs should be specified as (xnum, xden, ynum, yden)
@@ -699,36 +692,38 @@ export class Point<T> {
   // For details, see Section 4.3 of
   // Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
   // ePrint # 2019/403, https://ia.cr/2019/403.
-  evalIsogeny(coefficients: Array<Array<Field<T>>>) {
-    const mapValues = new Array(4);
+function evalIsogeny(p: Point<BigintTuple>, coefficients: [Numerators, XDenominators, Numerators, Numerators]) {
+    const {x, y, z} = p;
+    const vals = new Array(4);
+
     // precompute the required powers of Z^2
     const maxOrd = Math.max(...coefficients.map(a => a.length));
     const zPowers = new Array(maxOrd);
-    zPowers[0] = this.z.pow(0n);
-    zPowers[1] = this.z.pow(2n);
+    zPowers[0] = z.pow(0n);
+    zPowers[1] = z.pow(2n);
     for (let i = 2; i < maxOrd; i++) {
       zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
     }
     for (let i = 0; i < coefficients.length; i++) {
-      const coefficient = Array.from(coefficients[i]);
-      const coeffsZ = coefficient.map((c, i) => c.multiply(zPowers[i]));
+      const coeff = Array.from(coefficients[i]).reverse();
+      const coeffsZ = coeff.map((c, i) => c.multiply(zPowers[i]));
       let tmp = coeffsZ[0];
       for (let j = 1; j < coeffsZ.length; j++) {
-        tmp = tmp.multiply(this.x).add(coeffsZ[j]);
+        tmp = tmp.multiply(x).add(coeffsZ[j]);
       }
-      mapValues[i] = tmp;
+      vals[i] = tmp;
     }
-    mapValues[1] = mapValues[1].multiply(zPowers[1]);
-    mapValues[2] = mapValues[2].multiply(this.y);
-    mapValues[3] = mapValues[3].multiply(this.z.pow(3n));
 
-    const z = mapValues[1].multiply(mapValues[3]);
-    const x = mapValues[0].multiply(mapValues[3]).multiply(z);
-    const y = mapValues[2].multiply(mapValues[1]).multiply(z.square());
+    vals[1] = vals[1].multiply(zPowers[1]);
+    vals[2] = vals[2].multiply(y);
+    vals[3] = vals[3].multiply(z.pow(3n));
 
-    return new Point(x, y, z, this.C);
+    const z2 = vals[1].multiply(vals[3]);
+    const x2 = vals[0].multiply(vals[3]).multiply(z2);
+    const y2 = vals[2].multiply(vals[1]).multiply(z2.square());
+
+    return new Point(x2, y2, z2, p.C);
   }
-}
 
 // https://eprint.iacr.org/2019/403.pdf
 // 2.1 The BLS12-381 elliptic curve
@@ -753,7 +748,7 @@ const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32n;
-const P_ORDER_X_9 = (CURVE.P ** 2n - 9n) / 16n;
+const P_ORDER_X_9 = (P ** 2n - 9n) / 16n;
 
 const kQix = new Fp(
   0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn
@@ -785,30 +780,6 @@ async function sha256(message: Uint8Array): Promise<Uint8Array> {
     // @ts-ignore
     const { createHash } = require('crypto');
     const hash = createHash('sha256');
-    hash.update(message);
-    return Uint8Array.from(hash.digest());
-  } else {
-    throw new Error("The environment doesn't have sha256 function");
-  }
-}
-
-async function hmacSha256(key: Uint8Array, message: Uint8Array) {
-  if (typeof window == 'object' && 'crypto' in window) {
-    // @ts-ignore
-    const buffer = await window.crypto.subtle.importKey(
-      "raw",
-      key,
-      { name: "HMAC", hash: { name: "SHA-256" } },
-      false,
-      ["sign"]
-    );
-    // @ts-ignore
-    const signed = await window.crypto.subtle.sign("HMAC", buffer, message);
-    return new Uint8Array(signed);
-  } else if (typeof process === 'object' && 'node' in process.versions) {
-    // @ts-ignore
-    const { createHmac } = require('crypto');
-    const hash = createHmac("sha256", key);
     hash.update(message);
     return Uint8Array.from(hash.digest());
   } else {
@@ -959,47 +930,78 @@ function i2osp(value: number, length: number) {
   return new Uint8Array(res);
 }
 
-async function hkdfExpand(messagePrime: Uint8Array, info: Hash, length: number) {
-  const wordsPerElement =
-    (BigInt(length) + SHA256_DIGEST_SIZE - 1n) / SHA256_DIGEST_SIZE;
-  let last = new Uint8Array(0);
-  let result = new Uint8Array(0);
-  for (let i = 0; i < wordsPerElement; i++) {
-    last = await hmacSha256(
-      messagePrime,
-      concatTypedArrays(last, info, i2osp(i + 1, 1))
-    );
-    result = concatTypedArrays(result, last);
+function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const arr = new Uint8Array(a.length);
+  for (let i = 0; i < a.length; i++) {
+    arr[i] = a[i] ^ b[i];
   }
-  return result.slice(0, length);
+  return arr;
 }
 
-async function hashToBase(
-  message: Uint8Array,
-  current: number,
-  domain: Uint8Array,
-  length: number,
-  blen: number
-) {
-  const messagePrime = await hmacSha256(domain, message);
-  const result: Fp[] = new Array(length);
-  const info = concatTypedArrays(stringToBytes("H2C"), i2osp(current, 1));
-  for (let i = 0; i < length; i++) {
-    const tmp = await hkdfExpand(
-      messagePrime,
-      concatTypedArrays(info, i2osp(i + 1, 1)),
-      blen
-    );
-    result[i] = new Fp(os2ip(tmp));
+async function expand_message_xmd(msg: Uint8Array, DST: Uint8Array, len_in_bytes: number): Promise<Uint8Array> {
+  const H = sha256;
+  const b_in_bytes = Number(SHA256_DIGEST_SIZE);
+  const r_in_bytes = b_in_bytes * 2;
+
+  const ell = Math.ceil(len_in_bytes / b_in_bytes);
+  if (ell > 255) throw new Error('Invalid xmd length');
+  const DST_prime = concatTypedArrays(DST, i2osp(DST.length, 1));
+  const Z_pad = i2osp(0, r_in_bytes);
+  const l_i_b_str = i2osp(len_in_bytes, 2);
+  const b = new Array<Uint8Array>(ell);
+  const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
+  b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
+  for (let i = 1; i <= ell; i++) {
+    const args = [
+      strxor(b_0, b[i - 1]),
+      i2osp(i + 1, 1),
+      DST_prime
+    ];
+    b[i] = await H(concatTypedArrays(...args));
   }
-  return result;
+  const pseudo_random_bytes = concatTypedArrays(...b);
+  return pseudo_random_bytes.slice(0, len_in_bytes);
 }
 
-function hashToP2(message: Hash, current: number, domain: Bytes) {
-  message = typeof message === "string" ? hexToArray(message) : message;
-  domain = typeof domain === "string" ? hexToArray(domain) : domain;
-  return hashToBase(message, current, domain, 2, 64);
+const toHex = (n: Uint8Array | (string | number | bigint)[] | bigint) => {
+  if (typeof n === 'bigint') return n.toString(16);
+  if (n instanceof Uint8Array) n = Array.from(n);
+  return n.map((item: string | number | bigint) => {
+    return typeof item === 'string' ? item : item.toString(16)
+  }).join('');
 }
+
+export async function hash_to_field(msg: Uint8Array, count: number): Promise<bigint[][]> {
+  const m = 2; // degree, 1 for Fp, 2 for Fp2
+  const L = 64; // 64 for sha2, shake, sha3, blake
+  const len_in_bytes = count * m * L;
+  const DST = stringToBytes(DST_LABEL);
+  const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+  const u = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const e = new Array(m);
+    for (let j = 0; j < m; j++) {
+      const elm_offset = L * (j + i * m)
+      const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
+      e[j] = mod(os2ip(tv), CURVE.P);
+    }
+    u[i] = e;
+  }
+  return u;
+}
+
+export async function thash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>> {
+  const [tuple1, tuple2] = await hash_to_field(msg, 2);
+  const t1 = new Fp2(tuple1[0], tuple1[1]);
+  const t2 = new Fp2(tuple2[0], tuple2[1]);
+  return opt_swu2_map(t1, t2);
+}
+//   const u = await hash_to_field(msg, 2);
+//   const Q0 = map_to_curve(u[0]);
+//   const Q1 = map_to_curve(u[1]);
+//   const R = Q0.add(Q1);
+//   const P = clear_cofactor(R);
+//   return P
 
 function getSign(xi: bigint, thresh: bigint, sign: bigint) {
   if (xi > thresh) {
@@ -1017,92 +1019,99 @@ function sign0(x: Fp2) {
   let sign = 0n;
   sign = getSign(x2, thresh, sign);
   sign = getSign(x1, thresh, sign);
-  return sign || 1n;
+  return sign === 0n ? 1n : sign;
 }
 
-const Ell2pA = new Fp2(0n, 240n);
-const Ell2pB = new Fp2(1012n, 1012n);
-const ONE = new Fp2(1n, 1n);
+const Ell2p_a = new Fp2(0n, 240n);
+const Ell2p_b = new Fp2(1012n, 1012n);
+const xi_2 = new Fp2(-2n, -1n);
 // roots of unity, used for computing square roots in Fp2
-const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
+//const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 const rootsOfUnity = [
   new Fp2(1n, 0n),
   new Fp2(0n, 1n),
   new Fp2(rv1, rv1),
-  new Fp2(rv1, CURVE.P - rv1)
+  new Fp2(rv1, -rv1)
 ];
-const ev1 = 0x2c4a7244a026bd3e305cc456ad9e235ed85f8b53954258ec8186bb3d4eccef7c4ee7b8d4b9e063a6c88d0aa3e03ba01n;
-const ev2 = 0x85fa8cd9105715e641892a0f9a4bb2912b58b8d32f26594c60679cc7973076dc6638358daf3514d6426a813ae01f51an;
+const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n
+const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n
+const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n
+const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n
 const etas = [
-  new Fp2(ev1, 0n),
-  new Fp2(0n, ev1),
-  new Fp2(ev2, ev2),
-  new Fp2(ev2, CURVE.P - ev2)
+  new Fp2(ev1, ev2),
+  new Fp2(-ev2, ev1),
+  new Fp2(ev3, ev4),
+  new Fp2(-ev4, ev3)
 ];
 
-function osswu2help(t: Fp2) {
+function osswu2_help(t: Fp2) {
+  console.log('osswu2_help', t.toString());
   // first, compute X0(t), detecting and handling exceptional case
-  const denominator = ONE.square()
+  const denominator = xi_2.square()
     .multiply(t.pow(4n))
-    .add(ONE.multiply(t.square()));
-  const x0Numerator = Ell2pB.multiply(denominator.add(denominator.one));
-  const tmp = Ell2pA.negative().multiply(denominator);
-  const x0Denominator = tmp.equals(tmp.zero) ? Ell2pA.multiply(ONE) : tmp;
+    .add(xi_2.multiply(t.square()));
+  const x0_num = Ell2p_b.multiply(denominator.add(Fp2.ONE));
+  const tmp = Ell2p_a.negate().multiply(denominator);
+  const x0_den = tmp.equals(Fp2.ZERO) ? Ell2p_a.multiply(xi_2) : tmp;
+
+  console.log('x0_den', denominator.toString(), x0_den.toString());
 
   // compute num and den of g(X0(t))
-  const gx0Denominator = x0Denominator.pow(3n);
-  const gx0Numerator = Ell2pB.multiply(gx0Denominator)
-    .add(Ell2pA.multiply(x0Numerator).multiply(x0Denominator.square()))
-    .add(x0Numerator.pow(3n));
+  const gx0_den = x0_den.pow(3n);
+  const gx0_num = Ell2p_b.multiply(gx0_den)
+    .add(Ell2p_a.multiply(x0_num).multiply(x0_den.square()))
+    .add(x0_num.pow(3n));
 
   // try taking sqrt of g(X0(t))
   // this uses the trick for combining division and sqrt from Section 5 of
   // Bernstein, Duif, Lange, Schwabe, and Yang, "High-speed high-security signatures."
   // J Crypt Eng 2(2):77--89, Sept. 2012. http://ed25519.cr.yp.to/ed25519-20110926.pdf
-  let tmp1 = gx0Denominator.pow(7n);
-  let tmp2 = gx0Numerator.multiply(tmp1);
-  tmp1 = tmp1.multiply(tmp2).multiply(gx0Denominator);
-  let sqrtCandidate = tmp2.multiply(tmp1.pow(P_ORDER_X_9));
+  let tmp1 = gx0_den.pow(7n);
+  let tmp2 = gx0_num.multiply(tmp1);
+  tmp1 = tmp1.multiply(tmp2).multiply(gx0_den);
+  let sqrt_candidate = tmp2.multiply(tmp1.pow(P_ORDER_X_9));
+
+  //console.log('sqrt_candidate', sqrt_candidate.toString());
 
   // check if g(X0(t)) is square and return the sqrt if so
   for (const root of rootsOfUnity) {
-    const y0 = sqrtCandidate.multiply(root);
-    const candidate = y0.square().multiply(gx0Denominator);
-    if (!candidate.equals(gx0Numerator)) {
-      continue;
+    let y0 = sqrt_candidate.multiply(root);
+    if (y0.square().multiply(gx0_den).equals(gx0_num)) {
+      y0 = y0.multiply(sign0(y0) * sign0(t));
+      //console.log('sqrt 1', y0.toString(), t.toString(), sign0(y0), sign0(t));
+      return new Point<BigintTuple>(
+        x0_num.multiply(x0_den),
+        y0.multiply(x0_den.pow(3n)),
+        x0_den,
+        Fp2
+      );
     }
-    const y = y0.multiply(sign0(y0) * sign0(t));
-    return new Point(
-      x0Numerator.multiply(x0Denominator),
-      y.multiply(x0Denominator.pow(3n)),
-      x0Denominator,
-      Fp2
-    );
   }
 
   // if we've gotten here, then g(X0(t)) is not square. convert srqt_candidate to sqrt(g(X1(t)))
-  const x1Numerator = ONE.multiply(t.square()).multiply(x0Numerator);
-  const x1Denomirator = x0Denominator;
-  const gx1Numerator = ONE.pow(3n)
+  const x1_num = xi_2.multiply(t.square()).multiply(x0_num);
+  const x1_den = x0_den;
+  const gx1_num = xi_2.pow(3n)
     .multiply(t.pow(6n))
-    .multiply(gx0Numerator);
-  const gx1Denominator = gx0Denominator;
-  sqrtCandidate = sqrtCandidate.multiply(t.pow(3n));
+    .multiply(gx0_num);
+  const gx1_den = gx0_den;
+  sqrt_candidate = sqrt_candidate.multiply(t.pow(3n));
 
   for (const eta of etas) {
-    const y1 = sqrtCandidate.multiply(eta);
-    const candidate = y1.square().multiply(gx1Denominator);
-    if (!candidate.equals(gx1Numerator)) {
-      continue;
+    const y1 = sqrt_candidate.multiply(eta);
+    const candidate = y1.square().multiply(gx1_den);
+    if (candidate.equals(gx1_num)) {
+      // found sqrt(g(X1(t))). force sign of y to equal sign of t
+      const y = y1.multiply(sign0(y1) * sign0(t));
+      console.log('sqrt 2');
+
+      return new Point(
+        x1_num.multiply(x1_den),
+        y.multiply(x1_den.pow(3n)),
+        x1_den,
+        Fp2
+      );
     }
-    // found sqrt(g(X1(t))). force sign of y to equal sign of t
-    const y = y1.multiply(sign0(y1) * sign0(t));
-    return new Point(
-      x1Numerator.multiply(x1Denomirator),
-      y.multiply(x1Denomirator.pow(3n)),
-      x1Denomirator,
-      Fp2
-    );
   }
 
   throw new Error("osswu2help failed for unknown reasons!");
@@ -1111,12 +1120,7 @@ function osswu2help(t: Fp2) {
 // 3-Isogeny from Ell2' to Ell2
 // coefficients for the 3-isogeny map from Ell2' to Ell2
 
-const xnum: [
-  Field<BigintTuple>,
-  Field<BigintTuple>,
-  Field<BigintTuple>,
-  Field<BigintTuple>
-] = [
+const xnum: Numerators = [
   new Fp2(
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n
@@ -1135,7 +1139,7 @@ const xnum: [
   )
 ];
 
-const xden = [
+const xden: XDenominators = [
   new Fp2(
     0x0n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n
@@ -1146,7 +1150,7 @@ const xden = [
   ),
   new Fp2(0x1n, 0x0n)
 ];
-const ynum = [
+const ynum: Numerators = [
   new Fp2(
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n
@@ -1164,7 +1168,7 @@ const ynum = [
     0x0n
   )
 ];
-const yden = [
+const yden: Numerators = [
   new Fp2(
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn
@@ -1182,80 +1186,59 @@ const yden = [
 
 // compute 3-isogeny map from Ell2' to Ell2
 function computeIsogeny3(p: Point<BigintTuple>) {
-  return p.evalIsogeny([xnum, xden, ynum, yden]);
+  //console.log('preiso', p.toString());
+  return evalIsogeny(p, [xnum, xden, ynum, yden]);
 }
 
-// Addition chain for multiplication by 0xd201000000010000 == -x, the BLS parameter
-function mxChain(point: Point<BigintTuple>) {
-  let Q = point.double();
-  for (let n of [2, 3, 9, 32, 16]) {
-    Q = Q.add(point);
-    while (n--) {
-      Q = Q.double();
-    }
-  }
-  return Q;
-}
+// function frobenius(x: Fp2): Fp2 {
+//   return new Fp2(x.real, x.imag.negate());
+// }
 
-function qiX(x: Fp2) {
-  const [x1, x2] = x.value;
-  return new Fp2(
-    kQix.multiply(x1),
-    kQix
-      .multiply(x2)
-      .negative()
-      .add(P)
-  );
-}
+// function psi(xn: Fp2, xd: Fp2, yn: Fp2, yd: Fp2) {
+//   const c1 = Fp2.ONE.pow((CURVE.P - 1n) / 3n).invert();
+//   const c2 = Fp2.ONE.pow((CURVE.P - 1n) / 2n).invert();
+//   const P = isogenyPoint;
+//   const qxn = c1.multiply(frobenius(xn));
+//   const qxd = frobenius(xd);
+//   const qyn = c2.multiply(frobenius(yn));
+//   const qyd = frobenius(yd);
+//   return [qxn, qxd, qyn, qyd];
+// }
 
-function qiY(y: Fp2) {
-  const [y1, y2] = y.value;
-  return new Fp2(kQiy.multiply(y1 + y2), kQiy.multiply(y1 - y2));
-}
-
-function psi(point: Point<BigintTuple>) {
-  const z2 = point.z.pow(2n) as Fp2;
-  const xNumerator = kCx.multiply(qiX(iwsc.multiply(point.x as Fp2)));
-  const xDenominator = qiX(iwsc.multiply(z2));
-  const yNumerator = kCy.multiply(qiY(iwsc.multiply(point.y as Fp2)));
-  const yDenominator = qiY(iwsc.multiply(z2.multiply(point.z as Fp2)));
-  const z = xDenominator.multiply(yDenominator);
-  const x = xNumerator.multiply(yDenominator).multiply(z);
-  const y = yNumerator
-    .multiply(xDenominator)
-    .multiply(z)
-    .multiply(z);
-  return new Point(x, y, z, Fp2);
-}
-
-function clearh2(point: Point<BigintTuple>) {
-  const minusPsi = psi(point).negative();
-  let work = mxChain(point)
-    .add(point)
-    .add(minusPsi); // (-x + 1) P - psi(P)
-  work = mxChain(work)
-    .add(minusPsi)
-    .add(point.negative()); // (x^2 - x - 1) P + (x - 1) psi(P)
-  const doublePsi = psi(psi(point.double())); // psi(psi(2P))
-  work = work.add(doublePsi); // (x^2 - x - 1) P + (x - 1) psi(P) + psi(psi(2P))
-  return work;
+function clear_cofactor_bls12381_g2(point: Point<BigintTuple>) {
+  return point.multiply(CURVE.h2);
+  // const c1 = new Fp(-15132376222941642752n).value;
+  // const P = point;
+  // const t1 = P.multiply(c1);
+  // let t2 = psi(P);
+  // let t3 = P.multiply(2);
+  // t3 = psi(psi(t3));
+  // t3 = t3.subtract(t2);
+  // t2 = t1.add(t2);
+  // t2 = t2.multiply(c1);
+  // t3 = t3.add(t2);
+  // t3 = t3.subtract(t1);
+  // const Q = t3.subtract(P);
+  // return Q;
 }
 
 // map from Fp2 element(s) to point in G2 subgroup of Ell2
-function optswu2map(t1: Fp2, t2?: Fp2) {
-  let tmp = osswu2help(t1);
-  if (t2 instanceof Fp2) {
-    const point2 = osswu2help(t2);
-    tmp = tmp.add(point2);
-  }
-  const point = computeIsogeny3(tmp);
-  return clearh2(point);
-}
+function opt_swu2_map(u1: Fp2, u2?: Fp2) {
+  console.log('opt_swu2_map');
+  console.log('u1=', u1.toString());
+  console.log('u2=', u2?.toString());
 
-async function getXCoordinate(hash: Hash, domain: Bytes) {
-  const xReconstructed = toBigInt(await sha256(concatTypedArrays(hash, domain, '01')));
-  const xImage = toBigInt(await sha256(concatTypedArrays(hash, domain, '02')));
-  return new Fp2(xReconstructed, xImage);
+  let point = osswu2_help(u1);
+  if (u2 instanceof Fp2) {
+    const point2 = osswu2_help(u2);
+    console.log('preiso', point.toString(), point2.toString());
+    point = point.add(point2);
+    console.log('preiso2', point.toString());
+  }
+  const iso = computeIsogeny3(point);
+  console.log(`iso ${iso}`);
+
+  return clear_cofactor_bls12381_g2(iso);
 }
 
 const POW_SUM = POW_2_383 + POW_2_382;
@@ -1264,7 +1247,7 @@ function compressG1(point: Point<bigint>) {
   if (point.equals(Z1)) {
     return POW_SUM;
   }
-  const [x, y] = point.to2D() as [Fp, Fp];
+  const [x, y] = point.toAffine() as [Fp, Fp];
   const flag = (y.value * 2n) / P;
   return x.value + flag * POW_2_381 + POW_2_383;
 }
@@ -1296,7 +1279,7 @@ function compressG2(point: Point<BigintTuple>) {
   if (!point.isOnCurve(B2)) {
     throw new Error('The given point is not on the twisted curve over FQ**2');
   }
-  const [[x0, x1], [y0, y1]] = point.to2D().map((a) => a.value);
+  const [[x0, x1], [y0, y1]] = point.toAffine().map((a) => a.value);
   const producer = y1 > 0 ? y1 : y0;
   const aflag1 = (producer * 2n) / P;
   const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
@@ -1321,7 +1304,7 @@ function decompressG2([z1, z2]: BigintTuple) {
   if (isGreaterCoefficient || isZeroCoefficient) {
     y = y.multiply(-1n);
   }
-  const point = new Point(x, y, y.one, Fp2);
+  const point = new Point(x, y, Fp2.ONE, Fp2);
   if (!point.isOnCurve(B2)) {
     throw new Error('The given point is not on the twisted curve over Fp2');
   }
@@ -1348,27 +1331,9 @@ export function signatureToG2(signature: Bytes) {
   return decompressG2([z1, z2]);
 }
 
-export async function hashToG2Old(hash: Hash, domain: Bytes) {
-  let xCoordinate = await getXCoordinate(hash, domain);
-  let newResult: Fp2 | null = null;
-  do {
-    newResult = xCoordinate.pow(3n).add(new Fp2(4n, 4n)).sqrt();
-    const addition = newResult ? xCoordinate.zero : xCoordinate.one;
-    xCoordinate = xCoordinate.add(addition);
-  } while (newResult === null);
-  const yCoordinate: Fp2 = newResult;
-  const result = new Point(xCoordinate, yCoordinate, new Fp2(1n, 0n), Fp2);
-  return result.multiply(Fp2.COFACTOR);
-}
-
-export async function hashToG2(hash: Hash, domain: Bytes) {
-  const [tuple1, tuple2] = await Promise.all([
-    hashToP2(hash, 0, domain),
-    hashToP2(hash, 1, domain)
-  ]);
-  const t1 = new Fp2(...tuple1);
-  const t2 = new Fp2(...tuple2);
-  return optswu2map(t1, t2);
+export async function hashToG2(hash: Hash, domain: Bytes): Promise<Point<BigintTuple>> {
+  // @ts-ignore
+  return new Uint8Array([hash as number, domain as number]);
 }
 
 // ## Fixed Generators
@@ -1381,13 +1346,13 @@ export async function hashToG2(hash: Hash, domain: Bytes) {
 // identity. This results in the following fixed generators:
 
 // Generator for curve over Fp
-export const G1 = new Point(new Fp(CURVE.Gx), new Fp(CURVE.Gy), new Fp(1n), Fp);
+export const G1 = new Point(new Fp(CURVE.Gx), new Fp(CURVE.Gy), Fp.ONE, Fp);
 
 // Generator for twisted curve over Fp2
 export const G2 = new Point(
   new Fp2(CURVE.G2x[0], CURVE.G2x[1]),
   new Fp2(CURVE.G2y[0], CURVE.G2y[1]),
-  new Fp2(1n, 0n),
+  Fp2.ONE,
   Fp2
 );
 // Create a function representing the line between P1 and P2, and evaluate it at T
@@ -1396,9 +1361,9 @@ export const G2 = new Point(
 function createLineBetween<T>(p1: Point<T>, p2: Point<T>, n: Point<T>) {
   let mNumerator = p2.y.multiply(p1.z).subtract(p1.y.multiply(p2.z));
   let mDenominator = p2.x.multiply(p1.z).subtract(p1.x.multiply(p2.z));
-  if (!mNumerator.equals(mNumerator.zero) && mDenominator.equals(mDenominator.zero)) {
+  if (!mNumerator.isEmpty() && mDenominator.isEmpty()) {
     return [n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)), p1.z.multiply(n.z)];
-  } else if (mNumerator.equals(mNumerator.zero)) {
+  } else if (mNumerator.isEmpty()) {
     mNumerator = p1.x.square().multiply(3n);
     mDenominator = p1.y.multiply(p1.z).multiply(2n);
   }
@@ -1483,6 +1448,7 @@ export async function sign(message: Hash, privateKey: PrivateKey, domain: Domain
   domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
   privateKey = toBigInt(privateKey);
   const messageValue = await hashToG2(message, domain);
+  // @ts-ignore
   const signature = messageValue.multiply(privateKey);
   return signatureFromG2(signature);
 }
@@ -1498,9 +1464,10 @@ export async function verify(
   const signaturePoint = signatureToG2(signature);
   try {
     const signaturePairing = pairing(signaturePoint, G1);
+    // @ts-ignore
     const hashPairing = pairing(await hashToG2(message, domain), publicKeyPoint);
     const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
-    return finalExponent.equals(finalExponent.one);
+    return finalExponent.equals(Fp12.ONE);
   } catch {
     return false;
   }
@@ -1534,7 +1501,7 @@ export async function verifyBatch(
   if (messages.length === 0) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   try {
-    let producer = new Fp12().one;
+    let producer = Fp12.ONE;
     for (const message of new Set(messages)) {
       const groupPublicKey = messages.reduce(
         (groupPublicKey, m, i) =>
@@ -1547,7 +1514,7 @@ export async function verifyBatch(
     }
     producer = producer.multiply(pairing(signatureToG2(signature), G1.negative()) as Fp12);
     const finalExponent = finalExponentiate(producer);
-    return finalExponent.equals(finalExponent.one);
+    return finalExponent.equals(Fp12.ONE);
   } catch {
     return false;
   }

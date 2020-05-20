@@ -230,8 +230,8 @@ describe("bls12-381 Fp", () => {
         (num1) => {
           const a = new Fp(num1);
           const b = new Fp(num1);
-          expect(a.zero.subtract(a)).toEqual(a.negative());
-          expect(a.subtract(b)).toEqual(a.add(b.negative()));
+          expect(a.zero.subtract(a)).toEqual(a.negate());
+          expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
         }
       ),
@@ -246,8 +246,8 @@ describe("bls12-381 Fp", () => {
         fc.bigInt(1n, Fp.ORDER),
         num => {
           const a = new Fp(num);
-          expect(a.negative()).toEqual(a.zero.subtract(a));
-          expect(a.negative()).toEqual(a.multiply(-1n));
+          expect(a.negate()).toEqual(a.zero.subtract(a));
+          expect(a.negate()).toEqual(a.multiply(-1n));
         }
       ),
       {

@@ -18,10 +18,7 @@ declare type Signature = Bytes;
 declare type BigintTuple = [bigint, bigint];
 export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 interface Field<T> {
-    readonly one: Field<T>;
-    readonly zero: Field<T>;
     readonly value: T;
-    normalize(v: Field<T> | T | bigint): bigint | Field<T>;
     isEmpty(): boolean;
     equals(otherValue: Field<T> | T): boolean;
     add(otherValue: Field<T> | T): Field<T>;
@@ -29,70 +26,71 @@ interface Field<T> {
     div(otherValue: Field<T> | T | bigint): Field<T>;
     square(): Field<T>;
     subtract(otherValue: Field<T> | T): Field<T>;
-    negative(): Field<T>;
+    negate(): Field<T>;
     invert(): Field<T>;
     pow(n: bigint): Field<T>;
 }
 export declare class Fp implements Field<bigint> {
-    static ORDER: bigint;
+    static readonly ORDER: bigint;
+    static readonly ZERO: Fp;
+    static readonly ONE: Fp;
     private _value;
     get value(): bigint;
-    get zero(): Fp;
-    get one(): Fp;
-    constructor(value?: bigint);
-    private mod;
+    constructor(value: bigint);
     normalize(v: Fp | bigint): Fp;
     isEmpty(): boolean;
     equals(other: Fp): boolean;
-    negative(): Fp;
+    negate(): Fp;
     invert(): Fp;
-    add(other: Fp | bigint): Fp;
+    add(other: Fp): Fp;
     square(): Fp;
     pow(n: bigint): Fp;
-    subtract(other: Fp | bigint): Fp;
-    multiply(other: Fp | bigint): Fp;
-    div(other: Fp | bigint): Fp;
+    subtract(other: Fp): Fp;
+    multiply(other: Fp): Fp;
+    div(other: Fp): Fp;
+    toString(): string;
 }
 export declare class Fp2 implements Field<BigintTuple> {
     static ORDER: bigint;
     static DIV_ORDER: bigint;
+    static ROOT: Fp;
+    static readonly ZERO: Fp2;
+    static readonly ONE: Fp2;
     private static EIGHTH_ROOTS_OF_UNITY;
     static COFACTOR: bigint;
-    private coeficient1;
-    private coeficient2;
+    real: Fp;
+    imag: Fp;
     get value(): BigintTuple;
-    get zero(): Fp2;
-    get one(): Fp2;
-    constructor(coef1?: Fp | bigint, coef2?: Fp | bigint);
-    normalize(v: Fp2 | BigintTuple | bigint): bigint | Fp2;
+    constructor(real: Fp | bigint, imag: Fp | bigint);
+    toString(): string;
     isEmpty(): boolean;
     equals(rhs: Fp2): boolean;
-    negative(): Fp2;
+    negate(): Fp2;
     add(rhs: Fp2): Fp2;
     subtract(rhs: Fp2): Fp2;
-    multiply(otherValue: Fp2 | bigint): Fp2;
+    multiply(rhs: Fp2 | bigint): Fp2;
     mulByNonresidue(): Fp2;
     square(): Fp2;
     sqrt(): Fp2 | null;
     pow(n: bigint): Fp2;
     invert(): Fp2;
-    div(otherValue: Fp2 | bigint): Fp2;
+    div(otherValue: Fp2): Fp2;
 }
 declare type Fp12Like = Fp12 | BigintTwelve;
 export declare class Fp12 implements Field<BigintTwelve> {
+    static readonly ZERO: Fp12;
+    static readonly ONE: Fp12;
     private coefficients;
     private static readonly MODULE_COEFFICIENTS;
     private static readonly ENTRY_COEFFICIENTS;
     get value(): BigintTwelve;
-    get zero(): Fp12;
-    get one(): Fp12;
     constructor();
     constructor(c0: Fp, c1: Fp, c2: Fp, c3: Fp, c4: Fp, c5: Fp, c6: Fp, c7: Fp, c8: Fp, c9: Fp, c10: Fp, c11: Fp);
     constructor(c0: bigint, c1: bigint, c2: bigint, c3: bigint, c4: bigint, c5: bigint, c6: bigint, c7: bigint, c8: bigint, c9: bigint, c10: bigint, c11: bigint);
     normalize(v: Fp12Like | bigint): bigint | Fp12;
     isEmpty(): boolean;
     equals(rhs: Fp12Like): boolean;
-    negative(): Fp12;
+    negate(): Fp12;
     add(rhs: Fp12Like): Fp12;
     subtract(rhs: Fp12Like): Fp12;
     multiply(otherValue: Fp12Like | bigint): Fp12;
@@ -106,12 +104,15 @@ export declare class Fp12 implements Field<BigintTwelve> {
 }
 declare type Constructor<T> = {
     new (...args: any[]): Field<T>;
+} & {
+    ZERO: Field<T>;
+    ONE: Field<T>;
 };
 export declare class Point<T> {
     x: Field<T>;
     y: Field<T>;
     z: Field<T>;
-    private C;
+    C: Constructor<T>;
     static get W(): Fp12;
     static get W_SQUARE(): Fp12;
     static get W_CUBE(): Fp12;
@@ -120,17 +121,19 @@ export declare class Point<T> {
     isOnCurve(b: Field<T>): boolean;
     equals(other: Point<T>): boolean;
     negative(): Point<T>;
-    to2D(): Field<T>[];
+    toString(): string;
+    toAffine(): Field<T>[];
     double(): Point<T>;
     add(other: Point<T>): Point<T>;
     subtract(other: Point<T>): Point<T>;
     multiply(n: number | bigint): Point<T>;
     twist(): Point<BigintTwelve>;
-    evalIsogeny(coefficients: Array<Array<Field<T>>>): Point<T>;
 }
 export declare const B: Fp;
 export declare const B2: Fp2;
 export declare const B12: Fp12;
+export declare function hash_to_field(msg: Uint8Array, count: number): Promise<bigint[][]>;
+export declare function thash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>>;
 export declare function signatureToG2(signature: Bytes): Point<BigintTuple>;
 export declare function hashToG2(hash: Hash, domain: Bytes): Promise<Point<BigintTuple>>;
 export declare const G1: Point<bigint>;
