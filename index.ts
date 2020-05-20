@@ -3,7 +3,7 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
-const {getTime} = require('micro-bmark');
+const { getTime } = require('micro-bmark');
 
 export const CURVE = {
   // a characteristic
@@ -17,7 +17,10 @@ export const CURVE = {
 
   // G2
   // G^2 - 1
-  P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn ** 2n - 1n,
+  P2:
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
+      2n -
+    1n,
   h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
   G2x: [
     0x24aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
@@ -44,17 +47,8 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint
 ];
-type Numerators = [
-  Field<BigintTuple>,
-  Field<BigintTuple>,
-  Field<BigintTuple>,
-  Field<BigintTuple>
-]
-type XDenominators = [
-  Field<BigintTuple>,
-  Field<BigintTuple>,
-  Field<BigintTuple>
-]
+type Numerators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
+type XDenominators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
 
 type ReturnType<T extends Function> = T extends (...args: any[]) => infer R ? R : any;
 type IncludedTypes<Base, Type> = {
@@ -158,7 +152,7 @@ export class Fp2 implements Field<BigintTuple> {
     new Fp2(1n, 0n),
     new Fp2(0n, 1n),
     new Fp2(rv1, rv1),
-    new Fp2(rv1, Fp2.ORDER - rv1)
+    new Fp2(rv1, Fp2.ORDER - rv1),
   ];
   public static COFACTOR = CURVE.h2;
 
@@ -177,7 +171,7 @@ export class Fp2 implements Field<BigintTuple> {
   toString() {
     const c1 = this.real.toString();
     const c2 = this.imag.toString();
-    return `(${c1} + ${c2}×i)`
+    return `(${c1} + ${c2}×i)`;
   }
 
   isEmpty() {
@@ -197,10 +191,7 @@ export class Fp2 implements Field<BigintTuple> {
   }
 
   subtract(rhs: Fp2) {
-    return new Fp2(
-      this.real.subtract(rhs.real),
-      this.imag.subtract(rhs.imag)
-    );
+    return new Fp2(this.real.subtract(rhs.real), this.imag.subtract(rhs.imag));
   }
 
   multiply(rhs: Fp2 | bigint) {
@@ -247,10 +238,7 @@ export class Fp2 implements Field<BigintTuple> {
   // and because u^2 = -1, we get
   // (a - b) + (a + b)u
   mulByNonresidue() {
-    return new Fp2(
-      this.real.subtract(this.imag),
-      this.real.add(this.imag)
-    );
+    return new Fp2(this.real.subtract(this.imag), this.real.add(this.imag));
   }
 
   // Complex squaring:
@@ -281,8 +269,7 @@ export class Fp2 implements Field<BigintTuple> {
     const x1 = candidateSqrt.div(Fp2.EIGHTH_ROOTS_OF_UNITY[rootIndex >> 1]);
     const x2 = x1.negate();
     const isImageGreater = x1.imag.value > x2.imag.value;
-    const isReconstructedGreater =
-      x1.imag.equals(x2.imag) && x1.real.value > x2.real.value;
+    const isReconstructedGreater = x1.imag.equals(x2.imag) && x1.real.value > x2.real.value;
     return isImageGreater || isReconstructedGreater ? x1 : x2;
   }
 
@@ -410,7 +397,9 @@ export class Fp12 implements Field<BigintTwelve> {
 
   multiply(otherValue: Fp12Like | bigint) {
     if (typeof otherValue === 'bigint') {
-      return new Fp12(...(this.coefficients.map((a) => a.multiply(new Fp(otherValue))) as FpTwelve));
+      return new Fp12(
+        ...(this.coefficients.map((a) => a.multiply(new Fp(otherValue))) as FpTwelve)
+      );
     }
     const LENGTH = this.coefficients.length;
 
@@ -522,7 +511,7 @@ export class Fp12 implements Field<BigintTwelve> {
   }
 }
 
-type Constructor<T> = { new (...args: any[]): Field<T> } & {ZERO: Field<T>; ONE: Field<T>;};
+type Constructor<T> = { new (...args: any[]): Field<T> } & { ZERO: Field<T>; ONE: Field<T> };
 type GroupCoordinats<T> = { x: Field<T>; y: Field<T>; z: Field<T> };
 // type Constructorzz<T> = Function & T & { prototype: T }
 // type Constructor<T extends {} = {}> = new (...args: any[]) => T;
@@ -581,7 +570,7 @@ export class Point<T> {
 
   toString() {
     const [x, y] = this.toAffine();
-    return `Point<x=${x}, y=${y}>`
+    return `Point<x=${x}, y=${y}>`;
   }
 
   toAffine() {
@@ -602,7 +591,7 @@ export class Point<T> {
     const E = A.multiply(3n);
     const F = E.square();
     const X3 = F.subtract(D.multiply(2n));
-    const Y3 = E.multiply((D.subtract(X3)).subtract(C.multiply(8n)));
+    const Y3 = E.multiply(D.subtract(X3).subtract(C.multiply(8n)));
     const Z3 = Y1.multiply(Z1).multiply(2n);
     if (Z3.isEmpty()) return new Point(this.C.ZERO, this.C.ONE, this.C.ZERO, this.C);
     return new Point(X3, Y3, Z3, this.C);
@@ -633,7 +622,7 @@ export class Point<T> {
         //console.log('dbl');
         return this.double();
       } else {
-        throw new Error()
+        throw new Error();
         return new Point(this.C.ZERO, this.C.ZERO, this.C.ONE, this.C);
       }
     }
@@ -655,7 +644,7 @@ export class Point<T> {
 
   multiply(n: number | bigint) {
     n = BigInt(n);
-    this.C.prototype
+    this.C.prototype;
     let result = new Point(this.C.ONE, this.C.ONE, this.C.ZERO, this.C);
     let point = this as Point<T>;
     while (n > 0n) {
@@ -685,45 +674,6 @@ export class Point<T> {
     return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
   }
 }
-
-  // Isogeny map evaluation specified by map_coeffs
-  // map_coeffs should be specified as (xnum, xden, ynum, yden)
-  // This function evaluates the isogeny over Jacobian projective coordinates.
-  // For details, see Section 4.3 of
-  // Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
-  // ePrint # 2019/403, https://ia.cr/2019/403.
-function evalIsogeny(p: Point<BigintTuple>, coefficients: [Numerators, XDenominators, Numerators, Numerators]) {
-    const {x, y, z} = p;
-    const vals = new Array(4);
-
-    // precompute the required powers of Z^2
-    const maxOrd = Math.max(...coefficients.map(a => a.length));
-    const zPowers = new Array(maxOrd);
-    zPowers[0] = z.pow(0n);
-    zPowers[1] = z.pow(2n);
-    for (let i = 2; i < maxOrd; i++) {
-      zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
-    }
-    for (let i = 0; i < coefficients.length; i++) {
-      const coeff = Array.from(coefficients[i]).reverse();
-      const coeffsZ = coeff.map((c, i) => c.multiply(zPowers[i]));
-      let tmp = coeffsZ[0];
-      for (let j = 1; j < coeffsZ.length; j++) {
-        tmp = tmp.multiply(x).add(coeffsZ[j]);
-      }
-      vals[i] = tmp;
-    }
-
-    vals[1] = vals[1].multiply(zPowers[1]);
-    vals[2] = vals[2].multiply(y);
-    vals[3] = vals[3].multiply(z.pow(3n));
-
-    const z2 = vals[1].multiply(vals[3]);
-    const x2 = vals[0].multiply(vals[3]).multiply(z2);
-    const y2 = vals[2].multiply(vals[1]).multiply(z2.square());
-
-    return new Point(x2, y2, z2, p.C);
-  }
 
 // https://eprint.iacr.org/2019/403.pdf
 // 2.1 The BLS12-381 elliptic curve
@@ -938,7 +888,11 @@ function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
   return arr;
 }
 
-async function expand_message_xmd(msg: Uint8Array, DST: Uint8Array, len_in_bytes: number): Promise<Uint8Array> {
+async function expand_message_xmd(
+  msg: Uint8Array,
+  DST: Uint8Array,
+  len_in_bytes: number
+): Promise<Uint8Array> {
   const H = sha256;
   const b_in_bytes = Number(SHA256_DIGEST_SIZE);
   const r_in_bytes = b_in_bytes * 2;
@@ -952,11 +906,7 @@ async function expand_message_xmd(msg: Uint8Array, DST: Uint8Array, len_in_bytes
   const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
   b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
   for (let i = 1; i <= ell; i++) {
-    const args = [
-      strxor(b_0, b[i - 1]),
-      i2osp(i + 1, 1),
-      DST_prime
-    ];
+    const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
     b[i] = await H(concatTypedArrays(...args));
   }
   const pseudo_random_bytes = concatTypedArrays(...b);
@@ -966,10 +916,12 @@ async function expand_message_xmd(msg: Uint8Array, DST: Uint8Array, len_in_bytes
 const toHex = (n: Uint8Array | (string | number | bigint)[] | bigint) => {
   if (typeof n === 'bigint') return n.toString(16);
   if (n instanceof Uint8Array) n = Array.from(n);
-  return n.map((item: string | number | bigint) => {
-    return typeof item === 'string' ? item : item.toString(16)
-  }).join('');
-}
+  return n
+    .map((item: string | number | bigint) => {
+      return typeof item === 'string' ? item : item.toString(16);
+    })
+    .join('');
+};
 
 export async function hash_to_field(msg: Uint8Array, count: number): Promise<bigint[][]> {
   const m = 2; // degree, 1 for Fp, 2 for Fp2
@@ -981,7 +933,7 @@ export async function hash_to_field(msg: Uint8Array, count: number): Promise<big
   for (let i = 0; i < count; i++) {
     const e = new Array(m);
     for (let j = 0; j < m; j++) {
-      const elm_offset = L * (j + i * m)
+      const elm_offset = L * (j + i * m);
       const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
       e[j] = mod(os2ip(tv), CURVE.P);
     }
@@ -1027,29 +979,17 @@ const Ell2p_b = new Fp2(1012n, 1012n);
 const xi_2 = new Fp2(-2n, -1n);
 // roots of unity, used for computing square roots in Fp2
 //const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
-const rootsOfUnity = [
-  new Fp2(1n, 0n),
-  new Fp2(0n, 1n),
-  new Fp2(rv1, rv1),
-  new Fp2(rv1, -rv1)
-];
-const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n
-const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n
-const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n
-const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n
-const etas = [
-  new Fp2(ev1, ev2),
-  new Fp2(-ev2, ev1),
-  new Fp2(ev3, ev4),
-  new Fp2(-ev4, ev3)
-];
+const rootsOfUnity = [new Fp2(1n, 0n), new Fp2(0n, 1n), new Fp2(rv1, rv1), new Fp2(rv1, -rv1)];
+const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
+const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
+const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
+const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+const etas = [new Fp2(ev1, ev2), new Fp2(-ev2, ev1), new Fp2(ev3, ev4), new Fp2(-ev4, ev3)];
 
 function osswu2_help(t: Fp2) {
   console.log('osswu2_help', t.toString());
   // first, compute X0(t), detecting and handling exceptional case
-  const denominator = xi_2.square()
-    .multiply(t.pow(4n))
-    .add(xi_2.multiply(t.square()));
+  const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
   const x0_num = Ell2p_b.multiply(denominator.add(Fp2.ONE));
   const tmp = Ell2p_a.negate().multiply(denominator);
   const x0_den = tmp.equals(Fp2.ZERO) ? Ell2p_a.multiply(xi_2) : tmp;
@@ -1091,9 +1031,7 @@ function osswu2_help(t: Fp2) {
   // if we've gotten here, then g(X0(t)) is not square. convert srqt_candidate to sqrt(g(X1(t)))
   const x1_num = xi_2.multiply(t.square()).multiply(x0_num);
   const x1_den = x0_den;
-  const gx1_num = xi_2.pow(3n)
-    .multiply(t.pow(6n))
-    .multiply(gx0_num);
+  const gx1_num = xi_2.pow(3n).multiply(t.pow(6n)).multiply(gx0_num);
   const gx1_den = gx0_den;
   sqrt_candidate = sqrt_candidate.multiply(t.pow(3n));
 
@@ -1105,16 +1043,11 @@ function osswu2_help(t: Fp2) {
       const y = y1.multiply(sign0(y1) * sign0(t));
       console.log('sqrt 2');
 
-      return new Point(
-        x1_num.multiply(x1_den),
-        y.multiply(x1_den.pow(3n)),
-        x1_den,
-        Fp2
-      );
+      return new Point(x1_num.multiply(x1_den), y.multiply(x1_den.pow(3n)), x1_den, Fp2);
     }
   }
 
-  throw new Error("osswu2help failed for unknown reasons!");
+  throw new Error('osswu2help failed for unknown reasons!');
 }
 
 // 3-Isogeny from Ell2' to Ell2
@@ -1136,7 +1069,7 @@ const xnum: Numerators = [
   new Fp2(
     0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
     0x0n
-  )
+  ),
 ];
 
 const xden: XDenominators = [
@@ -1148,7 +1081,7 @@ const xden: XDenominators = [
     0xcn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn
   ),
-  new Fp2(0x1n, 0x0n)
+  new Fp2(0x1n, 0x0n),
 ];
 const ynum: Numerators = [
   new Fp2(
@@ -1166,7 +1099,7 @@ const ynum: Numerators = [
   new Fp2(
     0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
     0x0n
-  )
+  ),
 ];
 const yden: Numerators = [
   new Fp2(
@@ -1181,8 +1114,50 @@ const yden: Numerators = [
     0x12n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n
   ),
-  new Fp2(0x1n, 0x0n)
+  new Fp2(0x1n, 0x0n),
 ];
+
+// Isogeny map evaluation specified by map_coeffs
+// map_coeffs should be specified as (xnum, xden, ynum, yden)
+// This function evaluates the isogeny over Jacobian projective coordinates.
+// For details, see Section 4.3 of
+// Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
+// ePrint # 2019/403, https://ia.cr/2019/403.
+function evalIsogeny(
+  p: Point<BigintTuple>,
+  coefficients: [Numerators, XDenominators, Numerators, Numerators]
+) {
+  const { x, y, z } = p;
+  const vals = new Array(4);
+
+  // precompute the required powers of Z^2
+  const maxOrd = Math.max(...coefficients.map((a) => a.length));
+  const zPowers = new Array(maxOrd);
+  zPowers[0] = z.pow(0n);
+  zPowers[1] = z.pow(2n);
+  for (let i = 2; i < maxOrd; i++) {
+    zPowers[i] = zPowers[i - 1].multiply(zPowers[1]);
+  }
+  for (let i = 0; i < coefficients.length; i++) {
+    const coeff = Array.from(coefficients[i]).reverse();
+    const coeffsZ = coeff.map((c, i) => c.multiply(zPowers[i]));
+    let tmp = coeffsZ[0];
+    for (let j = 1; j < coeffsZ.length; j++) {
+      tmp = tmp.multiply(x).add(coeffsZ[j]);
+    }
+    vals[i] = tmp;
+  }
+
+  vals[1] = vals[1].multiply(zPowers[1]);
+  vals[2] = vals[2].multiply(y);
+  vals[3] = vals[3].multiply(z.pow(3n));
+
+  const z2 = vals[1].multiply(vals[3]);
+  const x2 = vals[0].multiply(vals[3]).multiply(z2);
+  const y2 = vals[2].multiply(vals[1]).multiply(z2.square());
+
+  return new Point(x2, y2, z2, p.C);
+}
 
 // compute 3-isogeny map from Ell2' to Ell2
 function computeIsogeny3(p: Point<BigintTuple>) {
@@ -1431,8 +1406,8 @@ export function pairing(
   P: Point<bigint>,
   withFinalExponent: boolean = true
 ) {
-  if (!Q.isOnCurve(B2)) throw new Error("Point 1 is not on curve");
-  if (!P.isOnCurve(B)) throw new Error("Point 2 is not on curve");
+  if (!Q.isOnCurve(B2)) throw new Error('Point 1 is not on curve');
+  if (!P.isOnCurve(B)) throw new Error('Point 2 is not on curve');
   return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
 }
 
