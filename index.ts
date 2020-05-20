@@ -1190,36 +1190,35 @@ function computeIsogeny3(p: Point<BigintTuple>) {
   return evalIsogeny(p, [xnum, xden, ynum, yden]);
 }
 
-// function frobenius(x: Fp2): Fp2 {
-//   return new Fp2(x.real, x.imag.negate());
-// }
+function frobenius(x: Fp2): Fp2 {
+  return new Fp2(x.real, x.imag.negate());
+}
 
-// function psi(xn: Fp2, xd: Fp2, yn: Fp2, yd: Fp2) {
-//   const c1 = Fp2.ONE.pow((CURVE.P - 1n) / 3n).invert();
-//   const c2 = Fp2.ONE.pow((CURVE.P - 1n) / 2n).invert();
-//   const P = isogenyPoint;
-//   const qxn = c1.multiply(frobenius(xn));
-//   const qxd = frobenius(xd);
-//   const qyn = c2.multiply(frobenius(yn));
-//   const qyd = frobenius(yd);
-//   return [qxn, qxd, qyn, qyd];
-// }
+function psi(xn: Fp2, xd: Fp2, yn: Fp2, yd: Fp2) {
+  const c1 = Fp2.ONE.pow((CURVE.P - 1n) / 3n).invert();
+  const c2 = Fp2.ONE.pow((CURVE.P - 1n) / 2n).invert();
+  const P = isogenyPoint;
+  const qxn = c1.multiply(frobenius(xn));
+  const qxd = frobenius(xd);
+  const qyn = c2.multiply(frobenius(yn));
+  const qyd = frobenius(yd);
+  return [qxn, qxd, qyn, qyd];
+}
 
 function clear_cofactor_bls12381_g2(point: Point<BigintTuple>) {
-  return point.multiply(CURVE.h2);
-  // const c1 = new Fp(-15132376222941642752n).value;
-  // const P = point;
-  // const t1 = P.multiply(c1);
-  // let t2 = psi(P);
-  // let t3 = P.multiply(2);
-  // t3 = psi(psi(t3));
-  // t3 = t3.subtract(t2);
-  // t2 = t1.add(t2);
-  // t2 = t2.multiply(c1);
-  // t3 = t3.add(t2);
-  // t3 = t3.subtract(t1);
-  // const Q = t3.subtract(P);
-  // return Q;
+  const c1 = new Fp(-15132376222941642752n).value;
+  const P = point;
+  const t1 = P.multiply(c1);
+  let t2 = psi(P);
+  let t3 = P.multiply(2);
+  t3 = psi(psi(t3));
+  t3 = t3.subtract(t2);
+  t2 = t1.add(t2);
+  t2 = t2.multiply(c1);
+  t3 = t3.add(t2);
+  t3 = t3.subtract(t1);
+  const Q = t3.subtract(P);
+  return Q;
 }
 
 // map from Fp2 element(s) to point in G2 subgroup of Ell2
