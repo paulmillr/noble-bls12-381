@@ -735,15 +735,10 @@ async function hash_to_field(msg, count, degree = 2) {
 exports.hash_to_field = hash_to_field;
 async function hash_to_curve(msg) {
     const u = await hash_to_field(msg, 2, 2);
-    console.log(`hash_to_curve, u0=${u[0]}, u1=${u[1]}`);
     const Q0 = map_to_curve(u[0]);
     const Q1 = map_to_curve(u[1]);
-    console.log(`Q0=${Q0}`);
-    console.log(`Q1=${Q1}`);
     const R = Q0.add(Q1);
-    console.log(`R=${R.toString()}`);
     const P = clear_cofactor_bls12381_g2(R);
-    console.log(`P=${P}`);
     return P;
 }
 exports.hash_to_curve = hash_to_curve;
@@ -851,37 +846,10 @@ function computeIsogeny(p, coefficients = [xnum, xden, ynum, yden]) {
     const y2 = vals[2].multiply(vals[1]).multiply(z2.square());
     return new Point(x2, y2, z2, p.C);
 }
-function frobenius(x) {
-    return new Fp2(x.real, x.imag.negate());
-}
-function psi(point) {
-    const [xn, yn] = point.toAffine();
-    const xd = Fp2.ONE;
-    const yd = Fp2.ONE;
-    const c1 = new Fp2(1n, 1n).pow((P - 1n) / 3n).invert();
-    const c2 = new Fp2(1n, 1n).pow((P - 1n) / 2n).invert();
-    const qxn = c1.multiply(frobenius(xn));
-    const qxd = frobenius(xd);
-    const qyn = c2.multiply(frobenius(yn));
-    const qyd = frobenius(yd);
-    return Point.fromAffine(qxn.div(qxd), qyn.div(qyd), Fp2);
-}
+const h_eff = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
 function clear_cofactor_bls12381_g2(point) {
     const P = computeIsogeny(point);
-    console.log(`iso ${P}`);
-    return P.multiply(0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n);
-    const c1 = new Fp(-0xd201000000010000n);
-    const t1 = P.multiply(c1);
-    let t2 = psi(P);
-    let t3 = P.multiply(2n);
-    t3 = psi(psi(t3));
-    t3 = t3.subtract(t2);
-    t2 = t1.add(t2);
-    t2 = t2.multiply(c1);
-    t3 = t3.add(t2);
-    t3 = t3.subtract(t1);
-    const Q = t3.subtract(P);
-    return Q;
+    return P.multiply(h_eff);
 }
 const POW_SUM = POW_2_383 + POW_2_382;
 function compressG1(point) {
