@@ -3,8 +3,6 @@
 // Fp2: (x1, x2), (y1, y2)
 // Fp12
 
-const { getTime } = require('micro-bmark');
-
 export const CURVE = {
   // a characteristic
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
@@ -55,6 +53,10 @@ type IncludedTypes<Base, Type> = {
   [Key in keyof Base]: Base[Key] extends Type ? Key : never;
 };
 type AllowedNames<Base, Type> = keyof IncludedTypes<Base, Type>;
+
+// for benchmark purposes
+const { getTime } = require('micro-bmark');
+export let time = 0n;
 
 // Finite field
 interface Field<T> {
@@ -107,7 +109,17 @@ export class Fp implements Field<bigint> {
   }
 
   invert() {
-    return new Fp(invert(this._value, Fp.ORDER));
+    let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
+    let a = Fp.ORDER;
+    let b = this.value;
+    let q;
+    while (a !== 0n) {
+      [q, b, a] = [b / a, a, b % a];
+      [x0, x1] = [x1, x0 - q * x1];
+      [y0, y1] = [y1, y0 - q * y1];
+    }
+    return new Fp(x0);
+    //return new Fp(invert(this._value, Fp.ORDER));
   }
 
   add(other: Fp) {
@@ -302,8 +314,9 @@ export class Fp2 implements Field<BigintTuple> {
   // of (a + bu). Importantly, this can be computing using
   // only a single inversion in Fp.
   invert() {
-    const t = this.real.square().add(this.imag.square()).invert();
-    return new Fp2(this.real.multiply(t), this.imag.multiply(t.negate()));
+    const [a, b] = this.value;
+    const factor = new Fp(a * a + b * b).invert();
+    return new Fp2(factor.multiply(new Fp(a)), factor.multiply(new Fp(-b)));
   }
 
   div(otherValue: Fp2) {
@@ -528,6 +541,10 @@ export class Point<T> {
     return new Fp12(0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   }
 
+  static fromAffine(x: Fp2, y: Fp2, C: Constructor<BigintTuple>) {
+    return new Point(x, y, C.ONE, C);
+  }
+
   constructor(
     public x: Field<T>,
     public y: Field<T>,
@@ -535,13 +552,17 @@ export class Point<T> {
     public C: Constructor<T>
   ) {}
 
-  isEmpty() {
-    return this.x.isEmpty() && this.y.isEmpty() && this.z.equals(this.C.ONE);
+  isZero() {
+    return this.z.isEmpty();
+  }
+
+  getZero() {
+    return new Point(this.C.ZERO, this.C.ONE, this.C.ZERO, this.C);
   }
 
   // Fast subgroup checks via Bowe19
   isOnCurve(b: Field<T>) {
-    if (this.isEmpty()) {
+    if (this.isZero()) {
       return true;
     }
     const squaredY = this.y.square();
@@ -556,11 +577,17 @@ export class Point<T> {
     // return lefSide.equals(rightSide);
   }
 
+  // Compare one point to another.
+  // ax * bz^2 == az^2 * bx and ay * bz^3 == by * az^3
   equals(other: Point<T>) {
-    // x1 * z2 == x2 * z1 and y1 * z2 == y2 * z1
+    const a = this;
+    const b = other;
+    const az2 = a.z.multiply(a.z);
+    const az3 = az2.multiply(a.z);
+    const bz2 = b.z.multiply(b.z);
+    const bz3 = bz2.multiply(b.z);
     return (
-      this.x.multiply(other.z).equals(other.x.multiply(this.z)) &&
-      this.y.multiply(other.z).equals(other.y.multiply(this.z))
+      a.x.multiply(bz2).equals(az2.multiply(b.x)) && a.y.multiply(bz3).equals(az3.multiply(b.y))
     );
   }
 
@@ -568,19 +595,23 @@ export class Point<T> {
     return new Point(this.x, this.y.negate(), this.z, this.C);
   }
 
-  toString() {
+  toString(isAffine = true) {
+    if (!isAffine) {
+      return `Point<x=${this.x}, y=${this.y}, z=${this.z}>`;
+    }
     const [x, y] = this.toAffine();
     return `Point<x=${x}, y=${y}>`;
   }
 
-  toAffine() {
-    // return [this.x.div(this.z), this.y.div(this.z)];
-    const zInv = this.z.pow(3n).invert();
-    return [this.x.multiply(this.z).multiply(zInv), this.y.multiply(zInv)];
+  toAffine(): [Field<T>, Field<T>] {
+    //return [this.x.div(this.z), this.y.div(this.z)];
+    const z3Inv = this.z.pow(3n).invert();
+    //console.log(`z3inv ${z3Inv}`);
+
+    return [this.x.multiply(this.z).multiply(z3Inv), this.y.multiply(z3Inv)];
   }
 
   double() {
-    if (this.isEmpty()) return this;
     const X1 = this.x;
     const Y1 = this.y;
     const Z1 = this.z;
@@ -591,23 +622,24 @@ export class Point<T> {
     const E = A.multiply(3n);
     const F = E.square();
     const X3 = F.subtract(D.multiply(2n));
-    const Y3 = E.multiply(D.subtract(X3).subtract(C.multiply(8n)));
+    const Y3 = E.multiply(D.subtract(X3)).subtract(C.multiply(8n));
     const Z3 = Y1.multiply(Z1).multiply(2n);
-    if (Z3.isEmpty()) return new Point(this.C.ZERO, this.C.ONE, this.C.ZERO, this.C);
+    //console.log(`DOUBLE END ${X3} ${Y3} ${Z3}`);
+
+    if (Z3.isEmpty()) return this.getZero();
     return new Point(X3, Y3, Z3, this.C);
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-1998-cmo-2
   add(other: Point<T>): Point<T> {
     if (!(other instanceof Point)) throw new TypeError('Point#add: expected Point');
+    // console.log(`ADDING\n\t${this.toString(false)}\n\t${other.toString(false)}`);
     const X1 = this.x;
     const Y1 = this.y;
     const Z1 = this.z;
     const X2 = other.x;
     const Y2 = other.y;
     const Z2 = other.z;
-    if (Z2.isEmpty()) return this;
-    if (Z1.isEmpty()) return other;
     const Z1Z1 = Z1.pow(2n);
     const Z2Z2 = Z2.pow(2n);
     const U1 = X1.multiply(Z2Z2);
@@ -616,25 +648,26 @@ export class Point<T> {
     const S2 = Y2.multiply(Z1).multiply(Z1Z1);
     const H = U2.subtract(U1);
     const rr = S2.subtract(S1).multiply(2n);
-    // H = 0 meaning it's the same point.
-    if (H.isEmpty()) {
-      if (rr.isEmpty()) {
-        //console.log('dbl');
-        return this.double();
-      } else {
-        throw new Error();
-        return new Point(this.C.ZERO, this.C.ZERO, this.C.ONE, this.C);
-      }
-    }
+
+    if (U1.equals(U2) && S1.equals(S2)) return this.double();
     const I = H.multiply(2n).pow(2n);
     const J = H.multiply(I);
     const V = U1.multiply(I);
     const X3 = rr.pow(2n).subtract(J).subtract(V.multiply(2n));
     const Y3 = rr.multiply(V.subtract(X3)).subtract(S1.multiply(J).multiply(2n));
     const Z3 = Z1.multiply(Z2).multiply(H).multiply(2n);
-    // console.log(`xxx ${rr.pow(2n)} ${J.subtract(V.multiply(2n))}`);
-    // console.log(`rrjv, ${rr} ${J} ${V}`);
+    // console.log(`Hrr ${H} ${rr}`);
+    // console.log(`IJV ${I} ${J} ${V}`);
     // console.log(`xyz, ${X3} ${Y3} ${Z3}`);
+    const p_inf = Z1.isEmpty();
+    const q_inf = Z2.isEmpty();
+    // console.log(`pq, ${p_inf} ${q_inf}`);
+
+    if (p_inf && q_inf) return this.getZero();
+    if (q_inf) return this;
+    if (p_inf) return other;
+    if (Z3.isEmpty()) return this.getZero();
+    // console.log(`RETURNIUNG ${X3}`);
     return new Point(X3, Y3, Z3, this.C);
   }
 
@@ -642,19 +675,22 @@ export class Point<T> {
     return this.add(other.negative());
   }
 
-  multiply(n: number | bigint) {
-    n = BigInt(n);
-    this.C.prototype;
-    let result = new Point(this.C.ONE, this.C.ONE, this.C.ZERO, this.C);
-    let point = this as Point<T>;
-    while (n > 0n) {
-      if ((n & 1n) === 1n) {
-        result = result.add(point);
+  multiply(scalar: number | bigint | Fp) {
+    let n = scalar;
+    if (n instanceof Fp) n = n.value;
+    if (typeof n === 'number') n = BigInt(n);
+    // console.log('MULTIPLY');
+    const bin = n.toString(2).split('').map(a => parseInt(a, 2));
+    let Q = this.getZero();
+    let P = this as Point<T>;
+    for (let b of bin) {
+      // console.log(`123 ${b} ${Q}`);
+      Q = Q.double();
+      if (b === 1) {
+        Q = P.add(Q);
       }
-      point = point.double();
-      n >>= 1n;
     }
-    return result;
+    return Q;
   }
 
   // Field isomorphism from z[p] / x**2 to z[p] / x**2 - 2*x + 2
@@ -923,8 +959,15 @@ const toHex = (n: Uint8Array | (string | number | bigint)[] | bigint) => {
     .join('');
 };
 
-export async function hash_to_field(msg: Uint8Array, count: number): Promise<bigint[][]> {
-  const m = 2; // degree, 1 for Fp, 2 for Fp2
+// degree, 1 for Fp, 2 for Fp2
+export async function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fp[]>;
+export async function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fp2[]>;
+export async function hash_to_field(
+  msg: Uint8Array,
+  count: number,
+  degree = 2
+): Promise<Fp[] | Fp2[] | bigint[][]> {
+  const m = degree;
   const L = 64; // 64 for sha2, shake, sha3, blake
   const len_in_bytes = count * m * L;
   const DST = stringToBytes(DST_LABEL);
@@ -939,39 +982,42 @@ export async function hash_to_field(msg: Uint8Array, count: number): Promise<big
     }
     u[i] = e;
   }
-  return u;
+  return u.map((el) => {
+    if (degree === 1) return new Fp(el);
+    if (degree === 2) return new Fp2(el[0], el[1]);
+    return el;
+  });
 }
 
-export async function thash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>> {
-  const [tuple1, tuple2] = await hash_to_field(msg, 2);
-  const t1 = new Fp2(tuple1[0], tuple1[1]);
-  const t2 = new Fp2(tuple2[0], tuple2[1]);
-  return opt_swu2_map(t1, t2);
-}
-//   const u = await hash_to_field(msg, 2);
-//   const Q0 = map_to_curve(u[0]);
-//   const Q1 = map_to_curve(u[1]);
-//   const R = Q0.add(Q1);
-//   const P = clear_cofactor(R);
-//   return P
-
-function getSign(xi: bigint, thresh: bigint, sign: bigint) {
-  if (xi > thresh) {
-    return sign || -1n;
-  }
-  if (xi > 0n) {
-    return sign || 1n;
-  }
-  return sign;
+export async function hash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>> {
+  const u = await hash_to_field(msg, 2, 2);
+  console.log(`hash_to_curve, u0=${u[0]}, u1=${u[1]}`);
+  const Q0 = map_to_curve(u[0]);
+  const Q1 = map_to_curve(u[1]);
+  console.log(`Q0=${Q0}`);
+  console.log(`Q1=${Q1}`);
+  const R = Q0.add(Q1);
+  console.log(`R=${R.toString()}`);
+  const P = clear_cofactor_bls12381_g2(R);
+  console.log(`P=${P}`);
+  return P;
 }
 
-function sign0(x: Fp2) {
-  const thresh = (P - 1n) / 2n;
-  const [x1, x2] = x.value;
-  let sign = 0n;
-  sign = getSign(x2, thresh, sign);
-  sign = getSign(x1, thresh, sign);
-  return sign === 0n ? 1n : sign;
+function sgn0(x: Fp2) {
+  const [x0, x1] = x.value;
+  const sign_0 = x0 % 2n;
+  const zero_0 = x0 === 0n;
+  const sign_1 = x1 % 2n;
+  return BigInt(sign_0 || (zero_0 && sign_1));
+  // let sign = false;
+  // let zero = true;
+  // for (let xi of x.value) {
+  //   const sign_i = xi % 2n;
+  //   const zero_i = xi === 0n;
+  //   sign = sign || Boolean(zero && sign_i);
+  //   zero = zero && zero_i;
+  // }
+  // return BigInt(sign);
 }
 
 const Ell2p_a = new Fp2(0n, 240n);
@@ -986,16 +1032,49 @@ const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247c
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 const etas = [new Fp2(ev1, ev2), new Fp2(-ev2, ev1), new Fp2(ev3, ev4), new Fp2(-ev4, ev3)];
 
-function osswu2_help(t: Fp2) {
-  console.log('osswu2_help', t.toString());
+// function map_to_curve_simple_swu_9mod16(u: Fp): Point<BigintTuple> {
+//   const c1 = (CURVE.P);
+//   u * u;
+//   return new Point
+// }
+
+// Input: u, an element of F.
+// Output: (x, y), a point on E.
+
+// Constants:
+// 1.  c1 = -B / A
+// 2.  c2 = -1 / Z
+
+// Steps:
+// 1.  tv1 = Z * u^2
+// 2.  tv2 = tv1^2
+// 3.   x1 = tv1 + tv2
+// 4.   x1 = inv0(x1)
+// 5.   e1 = x1 == 0
+// 6.   x1 = x1 + 1
+// 7.   x1 = CMOV(x1, c2, e1)    # If (tv1 + tv2) == 0, set x1 = -1 / Z
+// 8.   x1 = x1 * c1      # x1 = (-B / A) * (1 + (1 / (Z^2 * u^4 + Z * u^2)))
+// 9.  gx1 = x1^2
+// 10. gx1 = gx1 + A
+// 11. gx1 = gx1 * x1
+// 12. gx1 = gx1 + B             # gx1 = g(x1) = x1^3 + A * x1 + B
+// 13.  x2 = tv1 * x1            # x2 = Z * u^2 * x1
+// 14. tv2 = tv1 * tv2
+// 15. gx2 = gx1 * tv2           # gx2 = (Z * u^2)^3 * gx1
+// 16.  e2 = is_square(gx1)
+// 17.   x = CMOV(x2, x1, e2)    # If is_square(gx1), x = x1, else x = x2
+// 18.  y2 = CMOV(gx2, gx1, e2)  # If is_square(gx1), y2 = gx1, else y2 = gx2
+// 19.   y = sqrt(y2)
+// 20.  e3 = sgn0(u) == sgn0(y)  # Fix sign of y
+// 21.   y = CMOV(-y, y, e3)
+// 22. return (x, y)
+
+function map_to_curve(t: Fp2) {
   // first, compute X0(t), detecting and handling exceptional case
   const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
   const x0_num = Ell2p_b.multiply(denominator.add(Fp2.ONE));
   const tmp = Ell2p_a.negate().multiply(denominator);
-  const x0_den = tmp.equals(Fp2.ZERO) ? Ell2p_a.multiply(xi_2) : tmp;
-
-  console.log('x0_den', denominator.toString(), x0_den.toString());
-
+  const x0_den = tmp.isEmpty() ? Ell2p_a.multiply(xi_2) : tmp;
   // compute num and den of g(X0(t))
   const gx0_den = x0_den.pow(3n);
   const gx0_num = Ell2p_b.multiply(gx0_den)
@@ -1017,7 +1096,8 @@ function osswu2_help(t: Fp2) {
   for (const root of rootsOfUnity) {
     let y0 = sqrt_candidate.multiply(root);
     if (y0.square().multiply(gx0_den).equals(gx0_num)) {
-      y0 = y0.multiply(sign0(y0) * sign0(t));
+      //y0 = y0.multiply(sgn0(y0) * sgn0(t));
+      if (sgn0(y0) !== sgn0(t)) y0 = y0.negate();
       //console.log('sqrt 1', y0.toString(), t.toString(), sign0(y0), sign0(t));
       return new Point<BigintTuple>(
         x0_num.multiply(x0_den),
@@ -1036,14 +1116,15 @@ function osswu2_help(t: Fp2) {
   sqrt_candidate = sqrt_candidate.multiply(t.pow(3n));
 
   for (const eta of etas) {
-    const y1 = sqrt_candidate.multiply(eta);
+    let y1 = sqrt_candidate.multiply(eta);
     const candidate = y1.square().multiply(gx1_den);
     if (candidate.equals(gx1_num)) {
       // found sqrt(g(X1(t))). force sign of y to equal sign of t
-      const y = y1.multiply(sign0(y1) * sign0(t));
+      if (sgn0(y1) !== sgn0(t)) y1 = y1.negate();
+      //const y = y1.multiply(sgn0(y1) * sgn0(t));
       console.log('sqrt 2');
 
-      return new Point(x1_num.multiply(x1_den), y.multiply(x1_den.pow(3n)), x1_den, Fp2);
+      return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fp2);
     }
   }
 
@@ -1123,10 +1204,7 @@ const yden: Numerators = [
 // For details, see Section 4.3 of
 // Wahby and Boneh, "Fast and simple constant-time hashing to the BLS12-381 elliptic curve."
 // ePrint # 2019/403, https://ia.cr/2019/403.
-function evalIsogeny(
-  p: Point<BigintTuple>,
-  coefficients: [Numerators, XDenominators, Numerators, Numerators]
-) {
+function computeIsogeny(p: Point<BigintTuple>, coefficients = [xnum, xden, ynum, yden]) {
   const { x, y, z } = p;
   const vals = new Array(4);
 
@@ -1159,33 +1237,46 @@ function evalIsogeny(
   return new Point(x2, y2, z2, p.C);
 }
 
-// compute 3-isogeny map from Ell2' to Ell2
-function computeIsogeny3(p: Point<BigintTuple>) {
-  //console.log('preiso', p.toString());
-  return evalIsogeny(p, [xnum, xden, ynum, yden]);
-}
-
 function frobenius(x: Fp2): Fp2 {
   return new Fp2(x.real, x.imag.negate());
 }
 
-function psi(xn: Fp2, xd: Fp2, yn: Fp2, yd: Fp2) {
-  const c1 = Fp2.ONE.pow((CURVE.P - 1n) / 3n).invert();
-  const c2 = Fp2.ONE.pow((CURVE.P - 1n) / 2n).invert();
-  const P = isogenyPoint;
+// Ψ
+function psi(point: Point<BigintTuple>) {
+  const [xn, yn] = point.toAffine() as [Fp2, Fp2];
+  const xd = Fp2.ONE; // 1 + 0i
+  const yd = Fp2.ONE; // 1 + 0i
+  const c1 = new Fp2(1n, 1n).pow((P - 1n) / 3n).invert();
+  const c2 = new Fp2(1n, 1n).pow((P - 1n) / 2n).invert();
   const qxn = c1.multiply(frobenius(xn));
   const qxd = frobenius(xd);
   const qyn = c2.multiply(frobenius(yn));
   const qyd = frobenius(yd);
-  return [qxn, qxd, qyn, qyd];
+  return Point.fromAffine(qxn.div(qxd), qyn.div(qyd), Fp2);
 }
 
+// To clear cofactor for BLS12-381, we can either
+// a) multiply by cofactor P * h2
+// b) twist (isogeny) curve E => E' and use Wahby-Boneh trick from ePrint 2019/403
+// Current benchmarks:
+// 3.45ms for a)
+// 6.38ms for b)
 function clear_cofactor_bls12381_g2(point: Point<BigintTuple>) {
-  const c1 = new Fp(-15132376222941642752n).value;
-  const P = point;
+  // h_eff from https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
+  //return point.multiply(0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n);
+  // TODO: Optimize later.
+  //console.log(`preiso ${point}`);
+  // compute 3-isogeny map from Ell2' to Ell2
+  const P = computeIsogeny(point);
+  console.log(`iso ${P}`);
+  return P.multiply(0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n);
+  const c1 = new Fp(-0xd201000000010000n);
+  // When points are represented in affine
+  // coordinates, one can simply ignore the denominators (xd == 1 and yd
+  // == 1).
   const t1 = P.multiply(c1);
   let t2 = psi(P);
-  let t3 = P.multiply(2);
+  let t3 = P.multiply(2n);
   t3 = psi(psi(t3));
   t3 = t3.subtract(t2);
   t2 = t1.add(t2);
@@ -1194,25 +1285,6 @@ function clear_cofactor_bls12381_g2(point: Point<BigintTuple>) {
   t3 = t3.subtract(t1);
   const Q = t3.subtract(P);
   return Q;
-}
-
-// map from Fp2 element(s) to point in G2 subgroup of Ell2
-function opt_swu2_map(u1: Fp2, u2?: Fp2) {
-  console.log('opt_swu2_map');
-  console.log('u1=', u1.toString());
-  console.log('u2=', u2?.toString());
-
-  let point = osswu2_help(u1);
-  if (u2 instanceof Fp2) {
-    const point2 = osswu2_help(u2);
-    console.log('preiso', point.toString(), point2.toString());
-    point = point.add(point2);
-    console.log('preiso2', point.toString());
-  }
-  const iso = computeIsogeny3(point);
-  console.log(`iso ${iso}`);
-
-  return clear_cofactor_bls12381_g2(iso);
 }
 
 const POW_SUM = POW_2_383 + POW_2_382;
@@ -1348,7 +1420,7 @@ function createLineBetween<T>(p1: Point<T>, p2: Point<T>, n: Point<T>) {
 }
 
 function castPointToFp12(pt: Point<bigint>): Point<BigintTwelve> {
-  if (pt.isEmpty()) {
+  if (pt.isZero()) {
     return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
   }
   return new Point(
@@ -1379,7 +1451,7 @@ function millerLoop(
     0n, 0n, 0n, 0n,
     0n, 0n, 0n, 0n
   );
-  if (Q.isEmpty() || P.isEmpty()) {
+  if (Q.isZero() || P.isZero()) {
     return one;
   }
   let R = Q;
@@ -1413,6 +1485,7 @@ export function pairing(
 
 export function getPublicKey(privateKey: PrivateKey) {
   privateKey = toBigInt(privateKey);
+  // @ts-ignore
   return publicKeyFromG1(G1.multiply(privateKey));
 }
 

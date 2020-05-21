@@ -17,6 +17,7 @@ declare type PublicKey = Bytes;
 declare type Signature = Bytes;
 declare type BigintTuple = [bigint, bigint];
 export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+export declare let time: bigint;
 interface Field<T> {
     readonly value: T;
     isEmpty(): boolean;
@@ -116,24 +117,26 @@ export declare class Point<T> {
     static get W(): Fp12;
     static get W_SQUARE(): Fp12;
     static get W_CUBE(): Fp12;
+    static fromAffine(x: Fp2, y: Fp2, C: Constructor<BigintTuple>): Point<BigintTuple>;
     constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
     isEmpty(): boolean;
     isOnCurve(b: Field<T>): boolean;
     equals(other: Point<T>): boolean;
     negative(): Point<T>;
     toString(): string;
-    toAffine(): Field<T>[];
+    toAffine(): [Field<T>, Field<T>];
     double(): Point<T>;
     add(other: Point<T>): Point<T>;
     subtract(other: Point<T>): Point<T>;
-    multiply(n: number | bigint): Point<T>;
+    multiply(n: number | bigint | Fp): Point<T>;
     twist(): Point<BigintTwelve>;
 }
 export declare const B: Fp;
 export declare const B2: Fp2;
 export declare const B12: Fp12;
-export declare function hash_to_field(msg: Uint8Array, count: number): Promise<bigint[][]>;
-export declare function thash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>>;
+export declare function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fp[]>;
+export declare function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fp2[]>;
+export declare function hash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>>;
 export declare function signatureToG2(signature: Bytes): Point<BigintTuple>;
 export declare function hashToG2(hash: Hash, domain: Bytes): Promise<Point<BigintTuple>>;
 export declare const G1: Point<bigint>;
