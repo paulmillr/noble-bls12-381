@@ -1,6 +1,5 @@
 import * as fc from "fast-check";
-import { Fp } from "../src/fp";
-import { Fp12, BigintTwelve } from "../src/fp12";
+import { Fp, Fp12, BigintTwelve } from "..";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -229,11 +228,11 @@ describe("bls12-381 Fp12", () => {
       fc.property(
         fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12),
-        (num1, num2) => {
+        (num1) => {
           const a = new Fp12(...num1 as BigintTwelve);
           const b = new Fp12(...num1 as BigintTwelve);
-          expect(a.zero.subtract(a)).toEqual(a.negative());
-          expect(a.subtract(b)).toEqual(a.add(b.negative()));
+          expect(a.zero.subtract(a)).toEqual(a.negate());
+          expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
         }
       ),
@@ -246,8 +245,8 @@ describe("bls12-381 Fp12", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fp.ORDER), 12, 12), num => {
         const a = new Fp12(...num as BigintTwelve);
-        expect(a.negative()).toEqual(a.zero.subtract(a));
-        expect(a.negative()).toEqual(a.multiply(-1n));
+        expect(a.negate()).toEqual(a.zero.subtract(a));
+        expect(a.negate()).toEqual(a.multiply(-1n));
       }),
       {
         numRuns: NUM_RUNS

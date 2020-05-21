@@ -14,7 +14,7 @@ bls12-381 in detail.
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
 
-- No dependencies
+- No dependencies, one small file
 - Easily auditable TypeScript/JS code
 - Uses es2020 bigint. Supported in Chrome, Firefox, node 10+
 - All releases are signed and trusted
@@ -212,11 +212,11 @@ BLS12-381 is chosen so that `z` has small Hamming weight (to improve pairing per
 The library is pretty slow right now, but it's still good enough for many everyday cases.
 
 ```
-getPublicKey#test x 1,080 ops/sec ±0.88% (85 runs sampled)
-sign#test x 16.32 ops/sec ±1.08% (75 runs sampled)
-aggregateSignatures#test x 161 ops/sec ±0.92% (79 runs sampled)
-verify#test x 0.48 ops/sec ±0.74% (7 runs sampled)
-Pairing#test x 1.05 ops/sec ±1.43% (7 runs sampled)
+getPublicKey x 1053 ops/sec @ 949μs/op
+sign x 18 ops/sec @ 54ms/op
+verify x 0 ops/sec @ 1374ms/op
+aggregateSignatures x 171 ops/sec @ 5ms/op
+pairing x 1 ops/sec @ 891ms/op
 ```
 
 ## Security
