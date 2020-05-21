@@ -9,10 +9,10 @@ export declare const CURVE: {
     G2x: bigint[];
     G2y: bigint[];
 };
+export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type Hash = Bytes;
 declare type PrivateKey = Bytes | bigint | number;
-declare type Domain = PrivateKey;
 declare type PublicKey = Bytes;
 declare type Signature = Bytes;
 declare type BigintTuple = [bigint, bigint];
@@ -57,7 +57,6 @@ export declare class Fp2 implements Field<BigintTuple> {
     static ROOT: Fp;
     static readonly ZERO: Fp2;
     static readonly ONE: Fp2;
-    private static EIGHTH_ROOTS_OF_UNITY;
     static COFACTOR: bigint;
     real: Fp;
     imag: Fp;
@@ -119,16 +118,17 @@ export declare class Point<T> {
     static get W_CUBE(): Fp12;
     static fromAffine(x: Fp2, y: Fp2, C: Constructor<BigintTuple>): Point<BigintTuple>;
     constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
-    isEmpty(): boolean;
+    isZero(): boolean;
+    getZero(): Point<T>;
     isOnCurve(b: Field<T>): boolean;
     equals(other: Point<T>): boolean;
     negative(): Point<T>;
-    toString(): string;
+    toString(isAffine?: boolean): string;
     toAffine(): [Field<T>, Field<T>];
     double(): Point<T>;
     add(other: Point<T>): Point<T>;
     subtract(other: Point<T>): Point<T>;
-    multiply(n: number | bigint | Fp): Point<T>;
+    multiply(scalar: number | bigint | Fp): Point<T>;
     twist(): Point<BigintTwelve>;
 }
 export declare const B: Fp;
@@ -138,14 +138,13 @@ export declare function hash_to_field(msg: Uint8Array, count: number, degree: 1)
 export declare function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fp2[]>;
 export declare function hash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>>;
 export declare function signatureToG2(signature: Bytes): Point<BigintTuple>;
-export declare function hashToG2(hash: Hash, domain: Bytes): Promise<Point<BigintTuple>>;
 export declare const G1: Point<bigint>;
 export declare const G2: Point<BigintTuple>;
 export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Field<BigintTwelve>;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
-export declare function sign(message: Hash, privateKey: PrivateKey, domain: Domain): Promise<Uint8Array>;
-export declare function verify(message: Hash, publicKey: PublicKey, signature: Signature, domain: Domain): Promise<boolean>;
+export declare function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array>;
+export declare function verify(message: Hash, publicKey: PublicKey, signature: Signature): Promise<boolean>;
 export declare function aggregatePublicKeys(publicKeys: PublicKey[]): Uint8Array;
 export declare function aggregateSignatures(signatures: Signature[]): Uint8Array;
-export declare function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature, domain: Domain): Promise<boolean>;
+export declare function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature): Promise<boolean>;
 export {};

@@ -49,13 +49,13 @@ describe("bls12-381 Fp", () => {
     fc.assert(
       fc.property(fc.bigInt(1n, Fp.ORDER), num => {
         const a = new Fp(num);
-        expect(a.multiply(0n)).toEqual(a.zero);
-        expect(a.multiply(a.zero)).toEqual(a.zero);
-        expect(a.multiply(1n)).toEqual(a);
-        expect(a.multiply(a.one)).toEqual(a);
-        expect(a.multiply(2n)).toEqual(a.add(a));
-        expect(a.multiply(3n)).toEqual(a.add(a).add(a));
-        expect(a.multiply(4n)).toEqual(
+        expect(a.multiply(new Fp(0n))).toEqual(Fp.ZERO);
+        expect(a.multiply(Fp.ZERO)).toEqual(Fp.ZERO);
+        expect(a.multiply(new Fp(1n))).toEqual(a);
+        expect(a.multiply(Fp.ONE)).toEqual(a);
+        expect(a.multiply(new Fp(2n))).toEqual(a.add(a));
+        expect(a.multiply(new Fp(3n))).toEqual(a.add(a).add(a));
+        expect(a.multiply(new Fp(4n))).toEqual(
           a
             .add(a)
             .add(a)
@@ -125,19 +125,19 @@ describe("bls12-381 Fp", () => {
     fc.assert(
       fc.property(fc.bigInt(1n, Fp.ORDER), num => {
         const a = new Fp(num);
-        expect(a.div(a.one)).toEqual(a);
-        expect(a.div(a)).toEqual(a.one);
+        expect(a.div(Fp.ONE)).toEqual(a);
+        expect(a.div(a)).toEqual(Fp.ONE);
       }),
       {
         numRuns: NUM_RUNS
       }
     );
   });
-  it("Fp division with zero equality", () => {
+  it("Fp division with.ZERO equality", () => {
     fc.assert(
       fc.property(fc.bigInt(1n, Fp.ORDER), num => {
         const a = new Fp(num);
-        expect(a.zero.div(a)).toEqual(a.zero);
+        expect(Fp.ZERO.div(a)).toEqual(Fp.ZERO);
       }),
       {
         numRuns: NUM_RUNS
@@ -162,11 +162,11 @@ describe("bls12-381 Fp", () => {
       }
     );
   });
-  it("Fp addition with zero equality", () => {
+  it("Fp addition with.ZERO equality", () => {
     fc.assert(
       fc.property(fc.bigInt(1n, Fp.ORDER), num => {
         const a = new Fp(num);
-        expect(a.add(a.zero)).toEqual(a);
+        expect(a.add(Fp.ZERO)).toEqual(a);
       }),
       {
         numRuns: NUM_RUNS
@@ -207,14 +207,14 @@ describe("bls12-381 Fp", () => {
       }
     );
   });
-  it("Fp minus zero equality", () => {
+  it("Fp minus.ZERO equality", () => {
     fc.assert(
       fc.property(
         fc.bigInt(1n, Fp.ORDER),
         num => {
           const a = new Fp(num);
-          expect(a.subtract(a.zero)).toEqual(a);
-          expect(a.subtract(a)).toEqual(a.zero);
+          expect(a.subtract(Fp.ZERO)).toEqual(a);
+          expect(a.subtract(a)).toEqual(Fp.ZERO);
         }
       ),
       {
@@ -230,9 +230,9 @@ describe("bls12-381 Fp", () => {
         (num1) => {
           const a = new Fp(num1);
           const b = new Fp(num1);
-          expect(a.zero.subtract(a)).toEqual(a.negate());
+          expect(Fp.ZERO.subtract(a)).toEqual(a.negate());
           expect(a.subtract(b)).toEqual(a.add(b.negate()));
-          expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
+          expect(a.subtract(b)).toEqual(a.add(b.multiply(new Fp(-1n))));
         }
       ),
       {
@@ -246,8 +246,8 @@ describe("bls12-381 Fp", () => {
         fc.bigInt(1n, Fp.ORDER),
         num => {
           const a = new Fp(num);
-          expect(a.negate()).toEqual(a.zero.subtract(a));
-          expect(a.negate()).toEqual(a.multiply(-1n));
+          expect(a.negate()).toEqual(Fp.ZERO.subtract(a));
+          expect(a.negate()).toEqual(a.multiply(new Fp(-1n)));
         }
       ),
       {
@@ -277,7 +277,7 @@ describe("bls12-381 Fp", () => {
         fc.bigInt(1n, Fp.ORDER),
         num => {
           const a = new Fp(num);
-          expect(a.pow(0n)).toEqual(a.one);
+          expect(a.pow(0n)).toEqual(Fp.ONE);
           expect(a.pow(1n)).toEqual(a);
           expect(a.pow(2n)).toEqual(a.multiply(a));
           expect(a.pow(3n)).toEqual(a.multiply(a).multiply(a));

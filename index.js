@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.hashToG2 = exports.signatureToG2 = exports.hash_to_curve = exports.hash_to_field = exports.B12 = exports.B2 = exports.B = exports.Point = exports.Fp12 = exports.Fp2 = exports.Fp = exports.time = exports.CURVE = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.signatureToG2 = exports.hash_to_curve = exports.hash_to_field = exports.B12 = exports.B2 = exports.B = exports.Point = exports.Fp12 = exports.Fp2 = exports.Fp = exports.time = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -21,8 +21,7 @@ exports.CURVE = {
     ],
 };
 const P = exports.CURVE.P;
-const DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_TESTGEN';
-const { getTime } = require('micro-bmark');
+exports.DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
 exports.time = 0n;
 function fpToString(num) {
     const str = num.toString(16).padStart(96, '0');
@@ -73,6 +72,12 @@ let Fp = (() => {
             return new Fp(this._value - other._value);
         }
         multiply(other) {
+            try {
+                this._value * other._value;
+            }
+            catch (error) {
+                throw new Error(`${typeof this._value} +++ ${typeof other._value}`);
+            }
             return new Fp(this._value * other._value);
         }
         div(other) {
@@ -158,11 +163,11 @@ let Fp2 = (() => {
         sqrt() {
             const candidateSqrt = this.pow(Fp2.DIV_ORDER);
             const check = candidateSqrt.square().div(this);
-            const rootIndex = Fp2.EIGHTH_ROOTS_OF_UNITY.findIndex((a) => a.equals(check));
+            const rootIndex = rootsOfUnity.findIndex((a) => a.equals(check));
             if (rootIndex === -1 || (rootIndex & 1) === 1) {
                 return null;
             }
-            const x1 = candidateSqrt.div(Fp2.EIGHTH_ROOTS_OF_UNITY[rootIndex >> 1]);
+            const x1 = candidateSqrt.div(rootsOfUnity[rootIndex >> 1]);
             const x2 = x1.negate();
             const isImageGreater = x1.imag.value > x2.imag.value;
             const isReconstructedGreater = x1.imag.equals(x2.imag) && x1.real.value > x2.real.value;
@@ -201,12 +206,6 @@ let Fp2 = (() => {
     Fp2.ROOT = new Fp(-1n);
     Fp2.ZERO = new Fp2(0n, 0n);
     Fp2.ONE = new Fp2(1n, 0n);
-    Fp2.EIGHTH_ROOTS_OF_UNITY = [
-        new Fp2(1n, 0n),
-        new Fp2(0n, 1n),
-        new Fp2(rv1, rv1),
-        new Fp2(rv1, Fp2.ORDER - rv1),
-    ];
     Fp2.COFACTOR = exports.CURVE.h2;
     return Fp2;
 })();
@@ -524,12 +523,6 @@ const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32n;
 const P_ORDER_X_9 = (P ** 2n - 9n) / 16n;
-const kQix = new Fp(0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn);
-const kQiy = new Fp(0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n);
-const kCx = new Fp2(0n, 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn);
-const kCy = new Fp2(0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n, 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n);
-const IWSC = 0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd556n;
-const iwsc = new Fp2(IWSC, IWSC - 1n);
 async function sha256(message) {
     if (typeof window == 'object' && 'crypto' in window) {
         const buffer = await window.crypto.subtle.digest('SHA-256', message.buffer);
@@ -620,30 +613,6 @@ function powMod(a, power, m) {
     }
     return res;
 }
-function egcd(a, b) {
-    let [x, y, u, v] = [0n, 1n, 1n, 0n];
-    while (a !== 0n) {
-        let q = b / a;
-        let r = b % a;
-        let m = x - u * q;
-        let n = y - v * q;
-        [b, a] = [a, r];
-        [x, y] = [u, v];
-        [u, v] = [m, n];
-    }
-    let gcd = b;
-    return [gcd, x, y];
-}
-function invert(number, modulo) {
-    if (number === 0n || modulo <= 0n) {
-        throw new Error('invert: expected positive integers');
-    }
-    let [gcd, x] = egcd(mod(number, modulo), modulo);
-    if (gcd !== 1n) {
-        throw new Error('invert: does not exist');
-    }
-    return mod(x, modulo);
-}
 function stringToBytes(str) {
     const bytes = new Uint8Array(str.length);
     for (let i = 0; i < str.length; i++) {
@@ -697,22 +666,11 @@ async function expand_message_xmd(msg, DST, len_in_bytes) {
     const pseudo_random_bytes = concatTypedArrays(...b);
     return pseudo_random_bytes.slice(0, len_in_bytes);
 }
-const toHex = (n) => {
-    if (typeof n === 'bigint')
-        return n.toString(16);
-    if (n instanceof Uint8Array)
-        n = Array.from(n);
-    return n
-        .map((item) => {
-        return typeof item === 'string' ? item : item.toString(16);
-    })
-        .join('');
-};
 async function hash_to_field(msg, count, degree = 2) {
     const m = degree;
     const L = 64;
     const len_in_bytes = count * m * L;
-    const DST = stringToBytes(DST_LABEL);
+    const DST = stringToBytes(exports.DST_LABEL);
     const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
@@ -742,6 +700,9 @@ async function hash_to_curve(msg) {
     return P;
 }
 exports.hash_to_curve = hash_to_curve;
+function hashToG2(message) {
+    return hash_to_curve(typeof message === 'string' ? hexToArray(message) : message);
+}
 function sgn0(x) {
     const [x0, x1] = x.value;
     const sign_0 = x0 % 2n;
@@ -790,7 +751,6 @@ function map_to_curve(t) {
         if (candidate.equals(gx1_num)) {
             if (sgn0(y1) !== sgn0(t))
                 y1 = y1.negate();
-            console.log('sqrt 2');
             return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fp2);
         }
     }
@@ -932,10 +892,6 @@ function signatureToG2(signature) {
     return decompressG2([z1, z2]);
 }
 exports.signatureToG2 = signatureToG2;
-async function hashToG2(hash, domain) {
-    return new Uint8Array([hash, domain]);
-}
-exports.hashToG2 = hashToG2;
 exports.G1 = new Point(new Fp(exports.CURVE.Gx), new Fp(exports.CURVE.Gy), Fp.ONE, Fp);
 exports.G2 = new Point(new Fp2(exports.CURVE.G2x[0], exports.CURVE.G2x[1]), new Fp2(exports.CURVE.G2y[0], exports.CURVE.G2y[1]), Fp2.ONE, Fp2);
 function createLineBetween(p1, p2, n) {
@@ -1001,22 +957,19 @@ function getPublicKey(privateKey) {
     return publicKeyFromG1(exports.G1.multiply(privateKey));
 }
 exports.getPublicKey = getPublicKey;
-const DOMAIN_LENGTH = 8;
-async function sign(message, privateKey, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+async function sign(message, privateKey) {
     privateKey = toBigInt(privateKey);
-    const messageValue = await hashToG2(message, domain);
+    const messageValue = await hashToG2(message);
     const signature = messageValue.multiply(privateKey);
     return signatureFromG2(signature);
 }
 exports.sign = sign;
-async function verify(message, publicKey, signature, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+async function verify(message, publicKey, signature) {
     const publicKeyPoint = publicKeyToG1(publicKey).negative();
-    const signaturePoint = signatureToG2(signature);
+    const signaturePoint = await hashToG2(signature);
     try {
         const signaturePairing = pairing(signaturePoint, exports.G1);
-        const hashPairing = pairing(await hashToG2(message, domain), publicKeyPoint);
+        const hashPairing = pairing(await hashToG2(message), publicKeyPoint);
         const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
         return finalExponent.equals(Fp12.ONE);
     }
@@ -1039,8 +992,7 @@ function aggregateSignatures(signatures) {
     return signatureFromG2(aggregatedSignature);
 }
 exports.aggregateSignatures = aggregateSignatures;
-async function verifyBatch(messages, publicKeys, signature, domain) {
-    domain = domain instanceof Uint8Array ? domain : toBytesBE(domain, DOMAIN_LENGTH);
+async function verifyBatch(messages, publicKeys, signature) {
     if (messages.length === 0)
         throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)
@@ -1049,7 +1001,7 @@ async function verifyBatch(messages, publicKeys, signature, domain) {
         let producer = Fp12.ONE;
         for (const message of new Set(messages)) {
             const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message ? groupPublicKey : groupPublicKey.add(publicKeyToG1(publicKeys[i])), Z1);
-            producer = producer.multiply(pairing(await hashToG2(message, domain), groupPublicKey));
+            producer = producer.multiply(pairing(await hashToG2(message), groupPublicKey));
         }
         producer = producer.multiply(pairing(signatureToG2(signature), exports.G1.negative()));
         const finalExponent = finalExponentiate(producer);

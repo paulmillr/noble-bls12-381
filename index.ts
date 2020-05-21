@@ -54,12 +54,12 @@ export let time = 0n;
 interface Field<T> {
   readonly value: T;
   isEmpty(): boolean;
-  equals(otherValue: Field<T> | T): boolean;
-  add(otherValue: Field<T> | T): Field<T>;
-  multiply(otherValue: Field<T> | T | bigint): Field<T>;
-  div(otherValue: Field<T> | T | bigint): Field<T>;
+  equals(other: Field<T> | T): boolean;
+  add(other: Field<T> | T): Field<T>;
+  multiply(other: Field<T> | T | bigint): Field<T>;
+  div(other: Field<T> | T | bigint): Field<T>;
   square(): Field<T>;
-  subtract(otherValue: Field<T> | T): Field<T>;
+  subtract(other: Field<T> | T): Field<T>;
   negate(): Field<T>;
   invert(): Field<T>;
   pow(n: bigint): Field<T>;
@@ -130,8 +130,9 @@ export class Fp implements Field<bigint> {
     return new Fp(this._value - other._value);
   }
 
-  multiply(other: Fp) {
-    return new Fp(this._value * other._value);
+  multiply(other: bigint | Fp) {
+    if (other instanceof Fp) other = other.value;
+    return new Fp(this._value * other);
   }
 
   div(other: Fp) {
