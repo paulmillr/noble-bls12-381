@@ -1,8 +1,10 @@
-// Group
-// Fp: (x, y)
-// Fp2: (x1, x2), (y1, y2)
-// Fp12
+// bls12-381 is a construction of two curves.
+// 1. Fq: (x, y) - can be used for private keys
+// 2. Fq2: (x1, x2+i), (y1, y2+i) - can be used for signatures
+// We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
 
+// To verify curve params, see pairing-friendly-curves spec:
+// https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02
 export const CURVE = {
   // a characteristic
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
@@ -71,38 +73,38 @@ function fpToString(num: bigint) {
 }
 
 // Finite field over P.
-export class Fp implements Field<bigint> {
+export class Fq implements Field<bigint> {
   static readonly ORDER = CURVE.P;
-  static readonly ZERO = new Fp(0n);
-  static readonly ONE = new Fp(1n);
+  static readonly ZERO = new Fq(0n);
+  static readonly ONE = new Fq(1n);
 
   private _value: bigint;
   public get value() {
     return this._value;
   }
   constructor(value: bigint) {
-    this._value = mod(value, Fp.ORDER);
+    this._value = mod(value, Fq.ORDER);
   }
 
-  normalize(v: Fp | bigint): Fp {
-    return v instanceof Fp ? v : new Fp(v);
+  normalize(v: Fq | bigint): Fq {
+    return v instanceof Fq ? v : new Fq(v);
   }
 
   isEmpty() {
     return this._value === 0n;
   }
 
-  equals(other: Fp) {
+  equals(other: Fq) {
     return this._value === other._value;
   }
 
   negate() {
-    return new Fp(-this._value);
+    return new Fq(-this._value);
   }
 
   invert() {
     let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
-    let a = Fp.ORDER;
+    let a = Fq.ORDER;
     let b = this.value;
     let q;
     while (a !== 0n) {
@@ -110,32 +112,32 @@ export class Fp implements Field<bigint> {
       [x0, x1] = [x1, x0 - q * x1];
       [y0, y1] = [y1, y0 - q * y1];
     }
-    return new Fp(x0);
+    return new Fq(x0);
     //return new Fp(invert(this._value, Fp.ORDER));
   }
 
-  add(other: Fp) {
-    return new Fp(this._value + other.value);
+  add(other: Fq) {
+    return new Fq(this._value + other.value);
   }
 
   square() {
-    return new Fp(this._value * this._value);
+    return new Fq(this._value * this._value);
   }
 
   pow(n: bigint) {
-    return new Fp(powMod(this._value, n, Fp.ORDER));
+    return new Fq(powMod(this._value, n, Fq.ORDER));
   }
 
-  subtract(other: Fp) {
-    return new Fp(this._value - other._value);
+  subtract(other: Fq) {
+    return new Fq(this._value - other._value);
   }
 
-  multiply(other: bigint | Fp) {
-    if (other instanceof Fp) other = other.value;
-    return new Fp(this._value * other);
+  multiply(other: bigint | Fq) {
+    if (other instanceof Fq) other = other.value;
+    return new Fq(this._value * other);
   }
 
-  div(other: Fp) {
+  div(other: Fq) {
     return this.multiply(other.invert());
   }
 
@@ -147,24 +149,24 @@ export class Fp implements Field<bigint> {
 const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 // Finite extension field over irreducible degree-1 polynominal.
 // Fq(u)/(u2 − β) where β = −1
-export class Fp2 implements Field<BigintTuple> {
+export class Fq2 implements Field<BigintTuple> {
   static ORDER = CURVE.P2;
-  static DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
-  static ROOT = new Fp(-1n);
-  static readonly ZERO = new Fp2(0n, 0n);
-  static readonly ONE = new Fp2(1n, 0n);
+  static DIV_ORDER = (Fq2.ORDER + 8n) / 16n;
+  static ROOT = new Fq(-1n);
+  static readonly ZERO = new Fq2(0n, 0n);
+  static readonly ONE = new Fq2(1n, 0n);
   public static COFACTOR = CURVE.h2;
 
-  public real: Fp;
-  public imag: Fp;
+  public real: Fq;
+  public imag: Fq;
 
   public get value(): BigintTuple {
     return [this.real.value, this.imag.value];
   }
 
-  constructor(real: Fp | bigint, imag: Fp | bigint) {
-    this.real = real instanceof Fp ? real : new Fp(real);
-    this.imag = imag instanceof Fp ? imag : new Fp(imag);
+  constructor(real: Fq | bigint, imag: Fq | bigint) {
+    this.real = real instanceof Fq ? real : new Fq(real);
+    this.imag = imag instanceof Fq ? imag : new Fq(imag);
   }
 
   toString() {
@@ -177,31 +179,31 @@ export class Fp2 implements Field<BigintTuple> {
     return this.real.isEmpty() && this.imag.isEmpty();
   }
 
-  equals(rhs: Fp2) {
+  equals(rhs: Fq2) {
     return this.real.equals(rhs.real) && this.imag.equals(rhs.imag);
   }
 
   negate() {
-    return new Fp2(this.real.negate(), this.imag.negate());
+    return new Fq2(this.real.negate(), this.imag.negate());
   }
 
-  add(rhs: Fp2) {
-    return new Fp2(this.real.add(rhs.real), this.imag.add(rhs.imag));
+  add(rhs: Fq2) {
+    return new Fq2(this.real.add(rhs.real), this.imag.add(rhs.imag));
   }
 
-  subtract(rhs: Fp2) {
-    return new Fp2(this.real.subtract(rhs.real), this.imag.subtract(rhs.imag));
+  subtract(rhs: Fq2) {
+    return new Fq2(this.real.subtract(rhs.real), this.imag.subtract(rhs.imag));
   }
 
-  multiply(rhs: Fp2 | bigint) {
+  multiply(rhs: Fq2 | bigint) {
     if (typeof rhs === 'bigint') {
-      return new Fp2(this.real.multiply(new Fp(rhs)), this.imag.multiply(new Fp(rhs)));
+      return new Fq2(this.real.multiply(new Fq(rhs)), this.imag.multiply(new Fq(rhs)));
     }
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     if (this.constructor !== rhs.constructor) throw new TypeError('Types do not match');
     const a1 = [this.real, this.imag];
     const b1 = [rhs.real, rhs.imag];
-    const c1 = [Fp.ZERO, Fp.ZERO];
+    const c1 = [Fq.ZERO, Fq.ZERO];
     const embedding = 2;
 
     for (let i = 0; i < embedding; i++) {
@@ -212,29 +214,29 @@ export class Fp2 implements Field<BigintTuple> {
           const degree = i + j;
           const md = degree % embedding;
           let xy = x.multiply(y);
-          const root = Fp2.ROOT;
+          const root = Fq2.ROOT;
           if (degree >= embedding) xy = xy.multiply(root);
           c1[md] = c1[md].add(xy);
         }
       }
     }
     const [real, imag] = c1;
-    return new Fp2(real, imag);
+    return new Fq2(real, imag);
   }
 
   mulByNonresidue() {
-    return new Fp2(this.real.subtract(this.imag), this.real.add(this.imag));
+    return new Fq2(this.real.subtract(this.imag), this.real.add(this.imag));
   }
 
   square() {
     const a = this.real.add(this.imag);
     const b = this.real.subtract(this.imag);
     const c = this.real.add(this.real);
-    return new Fp2(a.multiply(b), c.multiply(this.imag));
+    return new Fq2(a.multiply(b), c.multiply(this.imag));
   }
 
   sqrt() {
-    const candidateSqrt = this.pow(Fp2.DIV_ORDER);
+    const candidateSqrt = this.pow(Fq2.DIV_ORDER);
     const check = candidateSqrt.square().div(this);
     const rootIndex = rootsOfUnity.findIndex((a) => a.equals(check));
     if (rootIndex === -1 || (rootIndex & 1) === 1) {
@@ -247,11 +249,11 @@ export class Fp2 implements Field<BigintTuple> {
     return isImageGreater || isReconstructedGreater ? x1 : x2;
   }
 
-  pow(n: bigint): Fp2 {
-    if (n === 0n) return Fp2.ONE;
+  pow(n: bigint): Fq2 {
+    if (n === 0n) return Fq2.ONE;
     if (n === 1n) return this;
-    let result = new Fp2(1n, 0n);
-    let value: Fp2 = this;
+    let result = new Fq2(1n, 0n);
+    let value: Fq2 = this;
     while (n > 0n) {
       if ((n & 1n) === 1n) {
         result = result.multiply(value);
@@ -277,13 +279,13 @@ export class Fp2 implements Field<BigintTuple> {
   // only a single inversion in Fp.
   invert() {
     const [a, b] = this.value;
-    const factor = new Fp(a * a + b * b).invert();
-    return new Fp2(factor.multiply(new Fp(a)), factor.multiply(new Fp(-b)));
+    const factor = new Fq(a * a + b * b).invert();
+    return new Fq2(factor.multiply(new Fq(a)), factor.multiply(new Fq(-b)));
   }
 
-  div(otherValue: Fp2) {
+  div(otherValue: Fq2) {
     if (typeof otherValue === 'bigint') {
-      return new Fp2(this.real.div(otherValue), this.imag.div(otherValue));
+      return new Fq2(this.real.div(otherValue), this.imag.div(otherValue));
     }
     return this.multiply(otherValue.invert());
   }
@@ -295,17 +297,17 @@ const FP12_DEFAULT: BigintTwelve = [
   0n, 1n, 0n, 1n,
   0n, 1n, 0n, 1n
 ];
-type Fp12Like = Fp12 | BigintTwelve;
-type FpTwelve = [Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp, Fp];
+type Fp12Like = Fq12 | BigintTwelve;
+type Fq12Coeffs = [Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq];
 //Finite extension field.
 // This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
-export class Fp12 implements Field<BigintTwelve> {
-  static readonly ZERO = new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+export class Fq12 implements Field<BigintTwelve> {
+  static readonly ZERO = new Fq12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   // static ZERO() {
   //   return new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   // }
-  static readonly ONE = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-  private coefficients: FpTwelve = FP12_DEFAULT.map((a) => new Fp(a)) as FpTwelve;
+  static readonly ONE = new Fq12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+  private coefficients: Fq12Coeffs = FP12_DEFAULT.map((a) => new Fq(a)) as Fq12Coeffs;
   // prettier-ignore
   private static readonly MODULE_COEFFICIENTS: BigintTwelve = [
     2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n
@@ -322,9 +324,9 @@ export class Fp12 implements Field<BigintTwelve> {
   constructor();
   // prettier-ignore
   constructor(
-    c0: Fp, c1: Fp, c2: Fp, c3: Fp,
-    c4: Fp, c5: Fp, c6: Fp, c7: Fp,
-    c8: Fp, c9: Fp, c10: Fp, c11: Fp
+    c0: Fq, c1: Fq, c2: Fq, c3: Fq,
+    c4: Fq, c5: Fq, c6: Fq, c7: Fq,
+    c8: Fq, c9: Fq, c10: Fq, c11: Fq
   );
   // prettier-ignore
   constructor(
@@ -332,18 +334,18 @@ export class Fp12 implements Field<BigintTwelve> {
     c4: bigint, c5: bigint, c6: bigint, c7: bigint,
     c8: bigint, c9: bigint, c10: bigint, c11: bigint
   );
-  constructor(...args: [] | BigintTwelve | FpTwelve) {
+  constructor(...args: [] | BigintTwelve | Fq12Coeffs) {
     args = args.length === 0 ? FP12_DEFAULT : (args.slice(0, 12) as BigintTwelve);
     // @ts-ignore stupid TS
     // prettier-ignore
-    this.coefficients = args[0] instanceof Fp ? args : (args.map(a => new Fp(a)) as FpTwelve);
+    this.coefficients = args[0] instanceof Fq ? args : (args.map(a => new Fq(a)) as Fq12Coeffs);
   }
 
   public normalize(v: Fp12Like | bigint) {
     if (typeof v === 'bigint') {
       return v;
     }
-    return v instanceof Fp12 ? v : new Fp12(...v);
+    return v instanceof Fq12 ? v : new Fq12(...v);
   }
 
   isEmpty() {
@@ -351,40 +353,40 @@ export class Fp12 implements Field<BigintTwelve> {
   }
 
   equals(rhs: Fp12Like) {
-    return this.coefficients.every((a, i) => a.equals((rhs as Fp12).coefficients[i]));
+    return this.coefficients.every((a, i) => a.equals((rhs as Fq12).coefficients[i]));
   }
 
   negate() {
-    return new Fp12(...(this.coefficients.map((a) => a.negate()) as FpTwelve));
+    return new Fq12(...(this.coefficients.map((a) => a.negate()) as Fq12Coeffs));
   }
 
   add(rhs: Fp12Like) {
-    return new Fp12(
-      ...(this.coefficients.map((a, i) => a.add((rhs as Fp12).coefficients[i])) as FpTwelve)
+    return new Fq12(
+      ...(this.coefficients.map((a, i) => a.add((rhs as Fq12).coefficients[i])) as Fq12Coeffs)
     );
   }
 
   subtract(rhs: Fp12Like) {
-    return new Fp12(
-      ...(this.coefficients.map((a, i) => a.subtract((rhs as Fp12).coefficients[i])) as FpTwelve)
+    return new Fq12(
+      ...(this.coefficients.map((a, i) => a.subtract((rhs as Fq12).coefficients[i])) as Fq12Coeffs)
     );
   }
 
   multiply(otherValue: Fp12Like | bigint) {
     if (typeof otherValue === 'bigint') {
-      return new Fp12(
-        ...(this.coefficients.map((a) => a.multiply(new Fp(otherValue))) as FpTwelve)
+      return new Fq12(
+        ...(this.coefficients.map((a) => a.multiply(new Fq(otherValue))) as Fq12Coeffs)
       );
     }
     const LENGTH = this.coefficients.length;
 
     const filler = Array(LENGTH * 2 - 1)
       .fill(null)
-      .map(() => new Fp(0n));
+      .map(() => new Fq(0n));
     for (let i = 0; i < LENGTH; i++) {
       for (let j = 0; j < LENGTH; j++) {
         filler[i + j] = filler[i + j].add(
-          this.coefficients[i].multiply((otherValue as Fp12).coefficients[j])
+          this.coefficients[i].multiply((otherValue as Fq12).coefficients[j])
         );
       }
     }
@@ -393,23 +395,23 @@ export class Fp12 implements Field<BigintTwelve> {
       if (top === undefined) {
         break;
       }
-      for (const [i, value] of Fp12.ENTRY_COEFFICIENTS) {
-        filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fp(value)));
+      for (const [i, value] of Fq12.ENTRY_COEFFICIENTS) {
+        filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fq(value)));
       }
     }
-    return new Fp12(...(filler as FpTwelve));
+    return new Fq12(...(filler as Fq12Coeffs));
   }
 
   square() {
     return this.multiply(this);
   }
 
-  pow(n: bigint): Fp12 {
+  pow(n: bigint): Fq12 {
     if (n === 1n) {
       return this;
     }
-    let result = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-    let value: Fp12 = this;
+    let result = new Fq12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+    let value: Fq12 = this;
     while (n > 0n) {
       if ((n & 1n) === 1n) {
         result = result.multiply(value);
@@ -429,7 +431,7 @@ export class Fp12 implements Field<BigintTwelve> {
   }
 
   private primeNumberInvariant(num: bigint) {
-    return new Fp(num).invert().value;
+    return new Fq(num).invert().value;
   }
 
   private optimizedRoundedDiv(coefficients: bigint[], others: bigint[]) {
@@ -444,20 +446,20 @@ export class Fp12 implements Field<BigintTwelve> {
         tmp[c + i] = tmp[c + i] - zeros[c];
       }
     }
-    return new Fp12(...(zeros.slice(0, this.degree(zeros) + 1) as BigintTwelve));
+    return new Fq12(...(zeros.slice(0, this.degree(zeros) + 1) as BigintTwelve));
   }
 
-  invert(): Fp12 {
+  invert(): Fq12 {
     const LENGTH = this.coefficients.length;
-    let lm = [...Fp12.ONE.coefficients.map((a) => a.value), 0n];
-    let hm = [...Fp12.ZERO.coefficients.map((a) => a.value), 0n];
+    let lm = [...Fq12.ONE.coefficients.map((a) => a.value), 0n];
+    let hm = [...Fq12.ZERO.coefficients.map((a) => a.value), 0n];
     let low = [...this.coefficients.map((a) => a.value), 0n];
-    let high = [...Fp12.MODULE_COEFFICIENTS, 1n];
+    let high = [...Fq12.MODULE_COEFFICIENTS, 1n];
     while (this.degree(low) !== 0) {
       const { coefficients } = this.optimizedRoundedDiv(high, low);
       const zeros = Array(LENGTH + 1 - coefficients.length)
         .fill(null)
-        .map(() => new Fp(0n));
+        .map(() => new Fq(0n));
       const roundedDiv = coefficients.concat(zeros);
       let nm = [...hm];
       let nw = [...high];
@@ -467,20 +469,20 @@ export class Fp12 implements Field<BigintTwelve> {
           nw[i + j] -= low[i] * roundedDiv[j].value;
         }
       }
-      nm = nm.map((a) => new Fp(a).value);
-      nw = nw.map((a) => new Fp(a).value);
+      nm = nm.map((a) => new Fq(a).value);
+      nw = nw.map((a) => new Fq(a).value);
       hm = lm;
       lm = nm;
       high = low;
       low = nw;
     }
-    const result = new Fp12(...(lm as BigintTwelve));
+    const result = new Fq12(...(lm as BigintTwelve));
     return result.div(low[0]);
   }
 
-  div(otherValue: Fp12 | bigint) {
+  div(otherValue: Fq12 | bigint) {
     if (typeof otherValue === 'bigint') {
-      return new Fp12(...(this.coefficients.map((a) => a.div(new Fp(otherValue))) as FpTwelve));
+      return new Fq12(...(this.coefficients.map((a) => a.div(new Fq(otherValue))) as Fq12Coeffs));
     }
     return this.multiply(otherValue.invert());
   }
@@ -492,16 +494,16 @@ type GroupCoordinates<T> = { x: Field<T>; y: Field<T>; z: Field<T> };
 export class Point<T> {
   // "Twist" a point in E(Fp2) into a point in E(Fp12)
   public static get W() {
-    return new Fp12(0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+    return new Fq12(0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   }
   public static get W_SQUARE() {
-    return new Fp12(0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+    return new Fq12(0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   }
   public static get W_CUBE() {
-    return new Fp12(0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+    return new Fq12(0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
   }
 
-  static fromAffine(x: Fp2, y: Fp2, C: Constructor<BigintTuple>) {
+  static fromAffine(x: Fq2, y: Fq2, C: Constructor<BigintTuple>) {
     return new Point(x, y, C.ONE, C);
   }
 
@@ -619,9 +621,9 @@ export class Point<T> {
     return this.add(other.negative());
   }
 
-  multiply(scalar: number | bigint | Fp) {
+  multiply(scalar: number | bigint | Fq) {
     let n = scalar;
-    if (n instanceof Fp) n = n.value;
+    if (n instanceof Fq) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
     const bin = n.toString(2).split('').map(a => parseInt(a, 2));
     let Q = this.getZero();
@@ -639,17 +641,17 @@ export class Point<T> {
   twist() {
     // Prevent twisting of non-multidimensional type
     if (!Array.isArray(this.x.value)) {
-      return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
+      return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
     }
     // @ts-ignore stupid TS
     const { x, y, z }: GroupCoordinates<BigintTuple | BigintTwelve> = this;
     const [cx1, cx2] = [x.value[0] - x.value[1], x.value[1]];
     const [cy1, cy2] = [y.value[0] - y.value[1], y.value[1]];
     const [cz1, cz2] = [z.value[0] - z.value[1], z.value[1]];
-    const newX = new Fp12(cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n);
-    const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
-    const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
-    return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
+    const newX = new Fq12(cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n);
+    const newY = new Fq12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
+    const newZ = new Fq12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
+    return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fq12);
   }
 }
 
@@ -662,14 +664,14 @@ function finalExponentiate(p: Field<BigintTwelve>) {
 }
 
 // Curve is y**2 = x**3 + 4
-export const B = new Fp(4n);
+export const B = new Fq(4n);
 // Twisted curve over Fp2
-export const B2 = new Fp2(4n, 4n);
+export const B2 = new Fq2(4n, 4n);
 // Extension curve over Fp12; same b value as over Fp
-export const B12 = new Fp12(4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+export const B12 = new Fq12(4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
 
-const Z1 = new Point(new Fp(1n), new Fp(1n), new Fp(0n), Fp);
-const Z2 = new Point(new Fp2(1n, 0n), new Fp2(1n, 0n), new Fp2(0n, 0n), Fp2);
+const Z1 = new Point(new Fq(1n), new Fq(1n), new Fq(0n), Fq);
+const Z2 = new Point(new Fq2(1n, 0n), new Fq2(1n, 0n), new Fq2(0n, 0n), Fq2);
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -846,13 +848,13 @@ async function expand_message_xmd(
 }
 
 // degree, 1 for Fp, 2 for Fp2
-export async function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fp[]>;
-export async function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fp2[]>;
+export async function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fq[]>;
+export async function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fq2[]>;
 export async function hash_to_field(
   msg: Uint8Array,
   count: number,
   degree = 2
-): Promise<Fp[] | Fp2[] | bigint[][]> {
+): Promise<Fq[] | Fq2[] | bigint[][]> {
   const m = degree;
   const L = 64; // 64 for sha2, shake, sha3, blake
   const len_in_bytes = count * m * L;
@@ -869,8 +871,8 @@ export async function hash_to_field(
     u[i] = e;
   }
   return u.map((el) => {
-    if (degree === 1) return new Fp(el);
-    if (degree === 2) return new Fp2(el[0], el[1]);
+    if (degree === 1) return new Fq(el);
+    if (degree === 2) return new Fq2(el[0], el[1]);
     return el;
   });
 }
@@ -889,7 +891,7 @@ function hashToG2(message: Hash) {
   return hash_to_curve(typeof message === 'string' ? hexToArray(message) : message);
 }
 
-function sgn0(x: Fp2) {
+function sgn0(x: Fq2) {
   const [x0, x1] = x.value;
   const sign_0 = x0 % 2n;
   const zero_0 = x0 === 0n;
@@ -897,22 +899,22 @@ function sgn0(x: Fp2) {
   return BigInt(sign_0 || (zero_0 && sign_1));
 }
 
-const Ell2p_a = new Fp2(0n, 240n);
-const Ell2p_b = new Fp2(1012n, 1012n);
-const xi_2 = new Fp2(-2n, -1n);
+const Ell2p_a = new Fq2(0n, 240n);
+const Ell2p_b = new Fq2(1012n, 1012n);
+const xi_2 = new Fq2(-2n, -1n);
 // roots of unity, used for computing square roots in Fp2
 //const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
-const rootsOfUnity = [new Fp2(1n, 0n), new Fp2(0n, 1n), new Fp2(rv1, rv1), new Fp2(rv1, -rv1)];
+const rootsOfUnity = [new Fq2(1n, 0n), new Fq2(0n, 1n), new Fq2(rv1, rv1), new Fq2(rv1, -rv1)];
 const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
 const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
-const etas = [new Fp2(ev1, ev2), new Fp2(-ev2, ev1), new Fp2(ev3, ev4), new Fp2(-ev4, ev3)];
+const etas = [new Fq2(ev1, ev2), new Fq2(-ev2, ev1), new Fq2(ev3, ev4), new Fq2(-ev4, ev3)];
 
-function map_to_curve(t: Fp2) {
+function map_to_curve(t: Fq2) {
   // first, compute X0(t), detecting and handling exceptional case
   const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
-  const x0_num = Ell2p_b.multiply(denominator.add(Fp2.ONE));
+  const x0_num = Ell2p_b.multiply(denominator.add(Fq2.ONE));
   const tmp = Ell2p_a.negate().multiply(denominator);
   const x0_den = tmp.isEmpty() ? Ell2p_a.multiply(xi_2) : tmp;
   // compute num and den of g(X0(t))
@@ -939,7 +941,7 @@ function map_to_curve(t: Fp2) {
         x0_num.multiply(x0_den),
         y0.multiply(x0_den.pow(3n)),
         x0_den,
-        Fp2
+        Fq2
       );
     }
   }
@@ -957,7 +959,7 @@ function map_to_curve(t: Fp2) {
     if (candidate.equals(gx1_num)) {
       // found sqrt(g(X1(t))). force sign of y to equal sign of t
       if (sgn0(y1) !== sgn0(t)) y1 = y1.negate();
-      return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fp2);
+      return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fq2);
     }
   }
 
@@ -967,67 +969,67 @@ function map_to_curve(t: Fp2) {
 // 3-Isogeny from Ell2' to Ell2
 // coefficients for the 3-isogeny map from Ell2' to Ell2
 const xnum: Numerators = [
-  new Fp2(
+  new Fq2(
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n
   ),
-  new Fp2(
+  new Fq2(
     0x0n,
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71an
   ),
-  new Fp2(
+  new Fq2(
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71en,
     0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38dn
   ),
-  new Fp2(
+  new Fq2(
     0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
     0x0n
   ),
 ];
 
 const xden: XDenominators = [
-  new Fp2(
+  new Fq2(
     0x0n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n
   ),
-  new Fp2(
+  new Fq2(
     0xcn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn
   ),
-  new Fp2(0x1n, 0x0n),
+  new Fq2(0x1n, 0x0n),
 ];
 const ynum: Numerators = [
-  new Fp2(
+  new Fq2(
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n
   ),
-  new Fp2(
+  new Fq2(
     0x0n,
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97ben
   ),
-  new Fp2(
+  new Fq2(
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71cn,
     0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38fn
   ),
-  new Fp2(
+  new Fq2(
     0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
     0x0n
   ),
 ];
 const yden: Numerators = [
-  new Fp2(
+  new Fq2(
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn
   ),
-  new Fp2(
+  new Fq2(
     0x0n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3n
   ),
-  new Fp2(
+  new Fq2(
     0x12n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n
   ),
-  new Fp2(0x1n, 0x0n),
+  new Fq2(0x1n, 0x0n),
 ];
 
 // Isogeny map evaluation specified by map_coeffs
@@ -1083,7 +1085,7 @@ function compressG1(point: Point<bigint>) {
   if (point.equals(Z1)) {
     return POW_SUM;
   }
-  const [x, y] = point.toAffine() as [Fp, Fp];
+  const [x, y] = point.toAffine() as [Fq, Fq];
   const flag = (y.value * 2n) / P;
   return x.value + flag * POW_2_381 + POW_2_383;
 }
@@ -1105,7 +1107,7 @@ function decompressG1(compressedValue: bigint) {
   if ((y * 2n) / P !== aflag) {
     y = P - y;
   }
-  return new Point(new Fp(x), new Fp(y), new Fp(1n), Fp);
+  return new Point(new Fq(x), new Fq(y), new Fq(1n), Fq);
 }
 
 function compressG2(point: Point<BigintTuple>) {
@@ -1128,7 +1130,7 @@ function decompressG2([z1, z2]: BigintTuple) {
   if (bflag1 === 1n) {
     return Z2;
   }
-  const x = new Fp2(z2, z1 % POW_2_381);
+  const x = new Fq2(z2, z1 % POW_2_381);
   let y = x.pow(3n).add(B2).sqrt();
   if (y === null) {
     throw new Error('Failed to find a modular squareroot');
@@ -1140,7 +1142,7 @@ function decompressG2([z1, z2]: BigintTuple) {
   if (isGreaterCoefficient || isZeroCoefficient) {
     y = y.multiply(-1n);
   }
-  const point = new Point(x, y, Fp2.ONE, Fp2);
+  const point = new Point(x, y, Fq2.ONE, Fq2);
   if (!point.isOnCurve(B2)) {
     throw new Error('The given point is not on the twisted curve over Fp2');
   }
@@ -1177,14 +1179,14 @@ export function signatureToG2(signature: Bytes) {
 // identity. This results in the following fixed generators:
 
 // Generator for curve over Fp
-export const G1 = new Point(new Fp(CURVE.Gx), new Fp(CURVE.Gy), Fp.ONE, Fp);
+export const G1 = new Point(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE, Fq);
 
 // Generator for twisted curve over Fp2
 export const G2 = new Point(
-  new Fp2(CURVE.G2x[0], CURVE.G2x[1]),
-  new Fp2(CURVE.G2y[0], CURVE.G2y[1]),
-  Fp2.ONE,
-  Fp2
+  new Fq2(CURVE.G2x[0], CURVE.G2x[1]),
+  new Fq2(CURVE.G2y[0], CURVE.G2y[1]),
+  Fq2.ONE,
+  Fq2
 );
 // Create a function representing the line between P1 and P2, and evaluate it at T
 // and evaluate it at T. Returns a numerator and a denominator
@@ -1206,13 +1208,13 @@ function createLineBetween<T>(p1: Point<T>, p2: Point<T>, n: Point<T>) {
 
 function castPointToFp12(pt: Point<bigint>): Point<BigintTwelve> {
   if (pt.isZero()) {
-    return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
+    return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
   }
   return new Point(
-    new Fp12((pt.x as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
-    new Fp12((pt.y as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
-    new Fp12((pt.z as Fp).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
-    Fp12
+    new Fq12((pt.x as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    new Fq12((pt.y as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    new Fq12((pt.z as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n),
+    Fq12
   );
 }
 
@@ -1231,7 +1233,7 @@ function millerLoop(
   withFinalExponent: boolean = false
 ) {
   // prettier-ignore
-  const one: Field<BigintTwelve> = new Fp12(
+  const one: Field<BigintTwelve> = new Fq12(
     1n, 0n, 0n, 0n,
     0n, 0n, 0n, 0n,
     0n, 0n, 0n, 0n
@@ -1292,7 +1294,7 @@ export async function verify(
     const signaturePairing = pairing(signaturePoint, G1);
     const hashPairing = pairing(await hashToG2(message), publicKeyPoint);
     const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
-    return finalExponent.equals(Fp12.ONE);
+    return finalExponent.equals(Fq12.ONE);
   } catch {
     return false;
   }
@@ -1324,7 +1326,7 @@ export async function verifyBatch(
   if (messages.length === 0) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   try {
-    let producer = Fp12.ONE;
+    let producer = Fq12.ONE;
     for (const message of new Set(messages)) {
       const groupPublicKey = messages.reduce(
         (groupPublicKey, m, i) =>
@@ -1332,12 +1334,12 @@ export async function verifyBatch(
         Z1
       );
       producer = producer.multiply(
-        pairing(await hashToG2(message), groupPublicKey) as Fp12
+        pairing(await hashToG2(message), groupPublicKey) as Fq12
       );
     }
-    producer = producer.multiply(pairing(signatureToG2(signature), G1.negative()) as Fp12);
+    producer = producer.multiply(pairing(signatureToG2(signature), G1.negative()) as Fq12);
     const finalExponent = finalExponentiate(producer);
-    return finalExponent.equals(Fp12.ONE);
+    return finalExponent.equals(Fq12.ONE);
   } catch {
     return false;
   }

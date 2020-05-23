@@ -1,14 +1,20 @@
-# noble-bls12-381
+# noble-bls12-381 ![Node CI](https://github.com/paulmillr/noble-secp256k1/workflows/Node%20CI/badge.svg) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
 [bls12-381](https://electriccoin.co/blog/new-snark-curve/), a pairing-friendly elliptic curve construction.
 
 This is a Barreto-Lynn-Scott curve with an embedding degree of 12. It's optimal for zk-SNARKs at the 128-bit security level.
 
-It allows simple construction of [threshold signatures](https://medium.com/@snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716), which allows a user to
-sign lots of messages with one signature and verify them swiftly in a batch.
+Implements Boneh-Lynn-Shacham signature scheme allowing construction of
+[threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
+which allows a user to sign lots of messages with one signature and verify them swiftly in a batch.
 
-See the [great article by @benjaminion](https://hackmd.io/@benjaminion/bls12-381) that describes
-bls12-381 in detail.
+Matches following specs:
+
+- [Pairing-friendly curves 02](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02)
+- [BLS signatures 02](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02)
+- [Hash to curve 07](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07)
+
+Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) to get started with the primitives.
 
 ### This library belongs to *noble* crypto
 
@@ -28,54 +34,35 @@ bls12-381 in detail.
 
 > npm install noble-bls12-381
 
-### Sign a message
-
 ```js
 import * as bls from "bls12-381";
 
-const DOMAIN = 2;
-const PRIVATE_KEY = 0xa665a45920422f9d417e4867ef;
-const HASH_MESSAGE = new Uint8Array([99, 100, 101, 102, 103]);
+// Use hex or Uint8Arrays
+const privateKey = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c';
+const msg = 'hello';
 
 (async () => {
-  const publicKey = bls.getPublicKey(PRIVATE_KEY);
-  const signature = await bls.sign(HASH_MESSAGE, PRIVATE_KEY, DOMAIN);
-  const isCorrect = await bls.verify(HASH_MESSAGE, publicKey, signature, DOMAIN);
-})();
-```
+  const publicKey = bls.getPublicKey(privateKey);
+  const signature1 = await bls.sign(msg, PRIprivateKeyVATE_KEY);
+  const isCorrect1 = await bls.verify(msg, publicKey, signature);
 
-### Sign 1 message 3 times
+  // Sign 1 msg with 3 keys
+  const privateKeys = [
+    '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+    'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
+    '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
+  ];
+  const signatures = await Promise.all(privateKeys.map(p => bls.sign(msg, p)));
+  const aggPubKey = await bls.aggregatePublicKeys(publicKeys);
+  const aggSignature = await bls.aggregateSignatures(signatures);
+  const isCorrect2 = await bls.verify(msg, aggPubKey, signature);
 
-```js
-import * as bls from "bls12-381";
-
-const DOMAIN = 2;
-const PRIVATE_KEYS = [81, 455, 19];
-const HASH_MESSAGE = new Uint8Array([99, 100, 101, 102, 103]);
-
-(async () => {
-  const publicKeys = PRIVATE_KEYS.map(bls.getPublicKey);
-  const signatures = await Promise.all(PRIVATE_KEYS.map(p => bls.sign(HASH_MESSAGE, p, DOMAIN)));
-  const publicKey = await bls.aggregatePublicKeys(publicKeys);
-  const signature = await bls.aggregateSignatures(signatures);
-  const isCorrect = await bls.verify(HASH_MESSAGE, publicKey, signature, DOMAIN);
-})();
-```
-
-### Sign 3 messages with 3 keys
-
-```js
-import * as bls from "bls12-381";
-
-const DOMAIN = 2;
-const PRIVATE_KEYS = [81, 455, 19];
-const HASH_MESSAGES = ["deadbeef", "111111", "aaaaaabbbbbb"];
-
-(async () => {
-  const publicKeys = PRIVATE_KEYS.map(bls.getPublicKey);
-  const signatures = await Promise.all(PRIVATE_KEYS.map((p, i) => bls.sign(HASH_MESSAGES[i], p, DOMAIN)));
-  const signature = await bls.aggregateSignatures(signatures);
-  const isCorrect = await bls.verifyMultiple(HASH_MESSAGES, publicKeys, signature, DOMAIN);
+  // Sign 3 msgs with 3 keys
+  const messages = ['whatsup', 'all good', 'thanks'];
+  const publicKeys = privateKeys.map(bls.getPublicKey);
+  const signatures2 = await Promise.all(privateKeys.map((p, i) => bls.sign(messages[i], p)));
+  const aggSignature2 = await bls.aggregateSignatures(signatures);
+  const isCorrect3 = await bls.verifyMultiple(messages, publicKeys, signature);
 })();
 ```
 
@@ -103,8 +90,7 @@ function getPublicKey(privateKey: Uint8Array | string | bigint): Uint8Array;
 ```typescript
 function sign(
   hash: Uint8Array | string,
-  privateKey: Uint8Array | string | bigint,
-  domain: Uint8Array | string | bigint
+  privateKey: Uint8Array | string | bigint
 ): Promise<Uint8Array>;
 ```
 - `hash: Uint8Array | string` - message hash which would be signed
@@ -117,8 +103,7 @@ function sign(
 function verify(
   hash: Uint8Array | string,
   publicKey: Uint8Array | string,
-  signature: Uint8Array | string,
-  domain: Uint8Array | string | bigint
+  signature: Uint8Array | string
 ): Promise<boolean>
 ```
 - `hash: Uint8Array | string` - message hash that needs to be verified
@@ -145,8 +130,7 @@ function aggregateSignatures(signatures: Uint8Array[] | string[]): Uint8Array;
 function verifyMultiple(
   hashes: Uint8Array[] | string[],
   publicKeys: Uint8Array[] | string[],
-  signature: Uint8Array | string,
-  domain: Uint8Array | string | bigint
+  signature: Uint8Array | string
 ): Promise<boolean>
 ```
 - `hashes: Uint8Array[] | string[]` - messages hashes that needs to be verified
@@ -171,45 +155,48 @@ function pairing(
 
 ```typescript
 // 𝔽p
-bls.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn
+bls.CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn
 
 // Prime order
-bls.PRIME_ORDER // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
+bls.CURVE.r // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
 
 // Hash base point (x, y)
-bls.G1 // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
+bls.CURVE.Gx // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
 // x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
 // y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
 
 // Signature base point ((x_1, x_2), (y_1, y_2))
-bls.G2
+bls.CURVE.Gy
 // x = 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758, 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160
 // y = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582, 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
 
 // Classes
 bls.Fp // Subgroup
 bls.Fp2 // 2-dimensional number
-bls.Fp12 // 12-dimensional number
+bls.Fp12
 bls.Point // Elliptic curve point
 ```
 
-## Curve Description
+## Internals
 
-BLS12-381 is a pairing-friendly elliptic curve construction from the [BLS family](https://eprint.iacr.org/2002/088), with embedding degree 12. It is built over a 381-bit prime field `GF(p)` with...
+- BLS Relies on Bilinear Pairing (expensive)
+- Private Keys: 32 bytes
+- Public Keys: 48 bytes: 381 bit affine x coordinate, encoded into 48 big-endian bytes.
+- Signatures: 96 bytes: two 381 bit integers (affine x coordinate), encoded into two 48 big-endian byte arrays.
+    - The signature is a point on the G2 subgroup, which is defined over a finite field
+    with elements twice as big as the G1 curve (G2 is over Fq2 rather than Fq. Fq2 is analogous to the complex numbers).
+- The 12 stands for the Embedding degree.
 
-* z = `-0xd201000000010000`
-* p = (z - 1)<sup>2</sup> ((z<sup>4</sup> - z<sup>2</sup> + 1) / 3) + z
-	* = `0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab`
-* q = z<sup>4</sup> - z<sup>2</sup> + 1
-	* = `0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001`
+Formulas:
 
-... yielding two **source groups** G<sub>1</sub> and G<sub>2</sub>, each of 255-bit prime order `q`, such that an efficiently computable non-degenerate bilinear pairing function `e` exists into a third **target group** G<sub>T</sub>. Specifically, G<sub>1</sub> is the `q`-order subgroup of E(F<sub>p</sub>) : y^2 = x^3 + 4 and G<sub>2</sub> is the `q`-order subgroup of E'(F<sub>p<sup>2</sup></sub>) : y<sup>2</sup> = x<sup>3</sup> + 4(u + 1) where the extention field F<sub>p<sup>2</sup></sub> is defined as F<sub>p</sub>(u) / (u<sup>2</sup> + 1).
-
-BLS12-381 is chosen so that `z` has small Hamming weight (to improve pairing performance) and also so that `GF(q)` has a large 2<sup>32</sup> primitive root of unity for performing radix-2 fast Fourier transforms for efficient multi-point evaluation and interpolation. It is also chosen so that it exists in a particularly efficient and rigid subfamily of BLS12 curves.
+- `P = pk x G` - public keys
+- `S = pk x H(m)` - signing
+- `e(P, H(m)) == e(G,S)` - verification using pairings
+- `e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))` - signature aggregation
 
 ## Speed
 
-The library is pretty slow right now, but it's still good enough for many everyday cases.
+The library is pretty slow right now, but it's still good enough for many everyday cases. The benchmarks:
 
 ```
 getPublicKey x 1053 ops/sec @ 949μs/op
