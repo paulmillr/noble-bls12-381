@@ -7,8 +7,8 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
-        const b = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
+        const b = new Fq2([num[0], num[1]]);
         expect(a.equals(b)).toBe(true);
         expect(b.equals(a)).toBe(true);
       }),
@@ -23,8 +23,8 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
           expect(a.equals(b)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
           expect(b.equals(a)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
         }
@@ -37,7 +37,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 square and multiplication equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.square()).toEqual(a.multiply(a));
       }),
       {
@@ -48,7 +48,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 multiplication and add equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.multiply(0n)).toEqual(Fq2.ZERO);
         expect(a.multiply(Fq2.ZERO)).toEqual(Fq2.ZERO);
         expect(a.multiply(1n)).toEqual(a);
@@ -73,8 +73,8 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
           expect(a.multiply(b)).toEqual(b.multiply(a));
         }
       ),
@@ -90,9 +90,9 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2, num3) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
-          const c = new Fq2(num3[0], num3[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
+          const c = new Fq2([num3[0], num3[1]]);
           expect(a.multiply(b.multiply(c))).toEqual(a.multiply(b).multiply(c));
         }
       ),
@@ -108,9 +108,9 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2, num3) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
-          const c = new Fq2(num3[0], num3[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
+          const c = new Fq2([num3[0], num3[1]]);
           expect(a.multiply(b.add(c))).toEqual(
             b.multiply(a).add(c.multiply(a))
           );
@@ -124,8 +124,8 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 division with one equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
-        expect(a.div(new Fq2(1n, 0n))).toEqual(a);
+        const a = new Fq2([num[0], num[1]]);
+        expect(a.div(new Fq2([1n, 0n]))).toEqual(a);
         expect(a.div(Fq2.ONE)).toEqual(a);
         expect(a.div(a)).toEqual(Fq2.ONE);
       }),
@@ -137,7 +137,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 division with zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(Fq2.ZERO.div(a)).toEqual(Fq2.ZERO);
       }),
       {
@@ -152,9 +152,9 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2, num3) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
-          const c = new Fq2(num3[0], num3[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
+          const c = new Fq2([num3[0], num3[1]]);
           expect(a.add(b).div(c)).toEqual(a.div(c).add(b.div(c)));
         }
       ),
@@ -166,7 +166,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 addition with zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.add(Fq2.ZERO)).toEqual(a);
       }),
       {
@@ -180,8 +180,8 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
           expect(a.add(b)).toEqual(b.add(a));
         }
       ),
@@ -197,9 +197,9 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2, num3) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
-          const c = new Fq2(num3[0], num3[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
+          const c = new Fq2([num3[0], num3[1]]);
           expect(a.add(b.add(c))).toEqual(a.add(b).add(c));
         }
       ),
@@ -211,7 +211,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 minus zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.subtract(Fq2.ZERO)).toEqual(a);
         expect(a.subtract(a)).toEqual(Fq2.ZERO);
       }),
@@ -226,8 +226,8 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num1[0], num1[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num1[0], num1[1]]);
           expect(Fq2.ZERO.subtract(a)).toEqual(a.negate());
           expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
@@ -241,7 +241,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 negative equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.negate()).toEqual(Fq2.ZERO.subtract(a));
         expect(a.negate()).toEqual(a.multiply(-1n));
       }),
@@ -256,8 +256,8 @@ describe("bls12-381 Fp2", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2),
         (num1, num2) => {
-          const a = new Fq2(num1[0], num1[1]);
-          const b = new Fq2(num2[0], num2[1]);
+          const a = new Fq2([num1[0], num1[1]]);
+          const b = new Fq2([num2[0], num2[1]]);
           expect(a.div(b)).toEqual(a.multiply(b.invert()));
         }
       ),
@@ -269,7 +269,7 @@ describe("bls12-381 Fp2", () => {
   it("Fp2 pow and multiplitaction equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), num => {
-        const a = new Fq2(num[0], num[1]);
+        const a = new Fq2([num[0], num[1]]);
         expect(a.pow(0n)).toEqual(Fq2.ONE);
         expect(a.pow(1n)).toEqual(a);
         expect(a.pow(2n)).toEqual(a.multiply(a));

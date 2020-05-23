@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.signatureToG2 = exports.hash_to_curve = exports.hash_to_field = exports.B12 = exports.B2 = exports.B = exports.Point = exports.Fp12 = exports.Fp2 = exports.Fp = exports.time = exports.DST_LABEL = exports.CURVE = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.G2 = exports.G1 = exports.signatureToG2 = exports.hash_to_curve = exports.hash_to_field = exports.B12 = exports.B2 = exports.B = exports.Point = exports.Fq12 = exports.Fq2 = exports.Fq = exports.time = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -27,16 +27,13 @@ function fpToString(num) {
     const str = num.toString(16).padStart(96, '0');
     return str.slice(0, 4) + '...' + str.slice(-4);
 }
-let Fp = (() => {
-    class Fp {
+let Fq = (() => {
+    class Fq {
         constructor(value) {
-            this._value = mod(value, Fp.ORDER);
+            this._value = mod(value, Fq.ORDER);
         }
         get value() {
             return this._value;
-        }
-        normalize(v) {
-            return v instanceof Fp ? v : new Fp(v);
         }
         isEmpty() {
             return this._value === 0n;
@@ -45,11 +42,11 @@ let Fp = (() => {
             return this._value === other._value;
         }
         negate() {
-            return new Fp(-this._value);
+            return new Fq(-this._value);
         }
         invert() {
             let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
-            let a = Fp.ORDER;
+            let a = Fq.ORDER;
             let b = this.value;
             let q;
             while (a !== 0n) {
@@ -57,28 +54,24 @@ let Fp = (() => {
                 [x0, x1] = [x1, x0 - q * x1];
                 [y0, y1] = [y1, y0 - q * y1];
             }
-            return new Fp(x0);
+            return new Fq(x0);
         }
         add(other) {
-            return new Fp(this._value + other.value);
+            return new Fq(this._value + other.value);
         }
         square() {
-            return new Fp(this._value * this._value);
+            return new Fq(this._value * this._value);
         }
         pow(n) {
-            return new Fp(powMod(this._value, n, Fp.ORDER));
+            return new Fq(powMod(this._value, n, Fq.ORDER));
         }
         subtract(other) {
-            return new Fp(this._value - other._value);
+            return new Fq(this._value - other._value);
         }
         multiply(other) {
-            try {
-                this._value * other._value;
-            }
-            catch (error) {
-                throw new Error(`${typeof this._value} +++ ${typeof other._value}`);
-            }
-            return new Fp(this._value * other._value);
+            if (other instanceof Fq)
+                other = other.value;
+            return new Fq(this._value * other);
         }
         div(other) {
             return this.multiply(other.invert());
@@ -87,51 +80,61 @@ let Fp = (() => {
             return fpToString(this.value);
         }
     }
-    Fp.ORDER = exports.CURVE.P;
-    Fp.ZERO = new Fp(0n);
-    Fp.ONE = new Fp(1n);
-    return Fp;
+    Fq.ORDER = exports.CURVE.P;
+    Fq.ZERO = new Fq(0n);
+    Fq.ONE = new Fq(1n);
+    return Fq;
 })();
-exports.Fp = Fp;
+exports.Fq = Fq;
 const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
-let Fp2 = (() => {
-    class Fp2 {
-        constructor(real, imag) {
-            this.real = real instanceof Fp ? real : new Fp(real);
-            this.imag = imag instanceof Fp ? imag : new Fp(imag);
+let Fq2 = (() => {
+    class Fq2 {
+        constructor(coefficients) {
+            this.degree = 2;
+            if (coefficients.length !== this.degree) {
+                throw new Error(`Expected array with ${this.degree} elements`);
+            }
+            this.coefficients = coefficients.map((i) => (i instanceof Fq ? i : new Fq(i)));
+        }
+        get real() {
+            return this.coefficients[0];
+        }
+        get imag() {
+            return this.coefficients[1];
         }
         get value() {
-            return [this.real.value, this.imag.value];
+            return this.coefficients.map((c) => c.value);
         }
         toString() {
-            const c1 = this.real.toString();
-            const c2 = this.imag.toString();
-            return `(${c1} + ${c2}×i)`;
+            return `(${this.real} + ${this.imag}×i)`;
+        }
+        zip(other, mapper) {
+            return this.coefficients.map((c, i) => mapper(c, other.coefficients[i]));
         }
         isEmpty() {
-            return this.real.isEmpty() && this.imag.isEmpty();
+            return this.coefficients.every((c) => c.isEmpty());
         }
-        equals(rhs) {
-            return this.real.equals(rhs.real) && this.imag.equals(rhs.imag);
+        equals(other) {
+            return this.zip(other, (a, b) => a.equals(b)).every((a) => a);
         }
         negate() {
-            return new Fp2(this.real.negate(), this.imag.negate());
+            return new Fq2(this.coefficients.map((c) => c.negate()));
         }
-        add(rhs) {
-            return new Fp2(this.real.add(rhs.real), this.imag.add(rhs.imag));
+        add(other) {
+            return new Fq2(this.zip(other, (a, b) => a.add(b)));
         }
-        subtract(rhs) {
-            return new Fp2(this.real.subtract(rhs.real), this.imag.subtract(rhs.imag));
+        subtract(other) {
+            return new Fq2(this.zip(other, (a, b) => a.subtract(b)));
         }
-        multiply(rhs) {
-            if (typeof rhs === 'bigint') {
-                return new Fp2(this.real.multiply(new Fp(rhs)), this.imag.multiply(new Fp(rhs)));
+        multiply(other) {
+            if (typeof other === 'bigint') {
+                return new Fq2([this.real.multiply(new Fq(other)), this.imag.multiply(new Fq(other))]);
             }
-            if (this.constructor !== rhs.constructor)
+            if (this.constructor !== other.constructor)
                 throw new TypeError('Types do not match');
             const a1 = [this.real, this.imag];
-            const b1 = [rhs.real, rhs.imag];
-            const c1 = [Fp.ZERO, Fp.ZERO];
+            const b1 = [other.real, other.imag];
+            const coeffs = [Fq.ZERO, Fq.ZERO];
             const embedding = 2;
             for (let i = 0; i < embedding; i++) {
                 const x = a1[i];
@@ -141,27 +144,26 @@ let Fp2 = (() => {
                         const degree = i + j;
                         const md = degree % embedding;
                         let xy = x.multiply(y);
-                        const root = Fp2.ROOT;
+                        const root = Fq2.ROOT;
                         if (degree >= embedding)
                             xy = xy.multiply(root);
-                        c1[md] = c1[md].add(xy);
+                        coeffs[md] = coeffs[md].add(xy);
                     }
                 }
             }
-            const [real, imag] = c1;
-            return new Fp2(real, imag);
+            return new Fq2(coeffs);
         }
         mulByNonresidue() {
-            return new Fp2(this.real.subtract(this.imag), this.real.add(this.imag));
+            return new Fq2([this.real.subtract(this.imag), this.real.add(this.imag)]);
         }
         square() {
             const a = this.real.add(this.imag);
             const b = this.real.subtract(this.imag);
             const c = this.real.add(this.real);
-            return new Fp2(a.multiply(b), c.multiply(this.imag));
+            return new Fq2([a.multiply(b), c.multiply(this.imag)]);
         }
         sqrt() {
-            const candidateSqrt = this.pow(Fp2.DIV_ORDER);
+            const candidateSqrt = this.pow(Fq2.DIV_ORDER);
             const check = candidateSqrt.square().div(this);
             const rootIndex = rootsOfUnity.findIndex((a) => a.equals(check));
             if (rootIndex === -1 || (rootIndex & 1) === 1) {
@@ -175,10 +177,10 @@ let Fp2 = (() => {
         }
         pow(n) {
             if (n === 0n)
-                return Fp2.ONE;
+                return Fq2.ONE;
             if (n === 1n)
                 return this;
-            let result = new Fp2(1n, 0n);
+            let result = Fq2.ONE;
             let value = this;
             while (n > 0n) {
                 if ((n & 1n) === 1n) {
@@ -191,72 +193,72 @@ let Fp2 = (() => {
         }
         invert() {
             const [a, b] = this.value;
-            const factor = new Fp(a * a + b * b).invert();
-            return new Fp2(factor.multiply(new Fp(a)), factor.multiply(new Fp(-b)));
+            const factor = new Fq(a * a + b * b).invert();
+            return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
         }
-        div(otherValue) {
-            if (typeof otherValue === 'bigint') {
-                return new Fp2(this.real.div(otherValue), this.imag.div(otherValue));
+        div(other) {
+            if (typeof other === 'bigint') {
+                return new Fq2([this.real.div(other), this.imag.div(other)]);
             }
-            return this.multiply(otherValue.invert());
+            return this.multiply(other.invert());
         }
     }
-    Fp2.ORDER = exports.CURVE.P2;
-    Fp2.DIV_ORDER = (Fp2.ORDER + 8n) / 16n;
-    Fp2.ROOT = new Fp(-1n);
-    Fp2.ZERO = new Fp2(0n, 0n);
-    Fp2.ONE = new Fp2(1n, 0n);
-    Fp2.COFACTOR = exports.CURVE.h2;
-    return Fp2;
+    Fq2.ORDER = exports.CURVE.P2;
+    Fq2.DIV_ORDER = (Fq2.ORDER + 8n) / 16n;
+    Fq2.ROOT = new Fq(-1n);
+    Fq2.ZERO = new Fq2([0n, 0n]);
+    Fq2.ONE = new Fq2([1n, 0n]);
+    Fq2.COFACTOR = exports.CURVE.h2;
+    return Fq2;
 })();
-exports.Fp2 = Fp2;
+exports.Fq2 = Fq2;
 const FP12_DEFAULT = [
     0n, 1n, 0n, 1n,
     0n, 1n, 0n, 1n,
     0n, 1n, 0n, 1n
 ];
-let Fp12 = (() => {
-    class Fp12 {
-        constructor(...args) {
-            this.coefficients = FP12_DEFAULT.map((a) => new Fp(a));
-            args = args.length === 0 ? FP12_DEFAULT : args.slice(0, 12);
-            this.coefficients = args[0] instanceof Fp ? args : args.map(a => new Fp(a));
+let Fq12 = (() => {
+    class Fq12 {
+        constructor(args = FP12_DEFAULT) {
+            this.coefficients = FP12_DEFAULT.map((a) => new Fq(a));
+            if (args.length !== 12) {
+                throw new Error(`Invalid number of coefficients. Expected 12, not ${args.length}`);
+            }
+            const coeffs = args.slice().map(c => c instanceof Fq ? c : new Fq(c));
+            this.coefficients = coeffs;
         }
         get value() {
             return this.coefficients.map((c) => c.value);
         }
-        normalize(v) {
-            if (typeof v === 'bigint') {
-                return v;
-            }
-            return v instanceof Fp12 ? v : new Fp12(...v);
+        zip(other, mapper) {
+            return this.coefficients.map((c, i) => mapper(c, other.coefficients[i]));
         }
         isEmpty() {
-            return this.coefficients.every((a) => a.isEmpty());
+            return this.coefficients.every((c) => c.isEmpty());
         }
-        equals(rhs) {
-            return this.coefficients.every((a, i) => a.equals(rhs.coefficients[i]));
+        equals(other) {
+            return this.zip(other, (a, b) => a.equals(b)).every((a) => a);
         }
         negate() {
-            return new Fp12(...this.coefficients.map((a) => a.negate()));
+            return new Fq12(this.coefficients.map((c) => c.negate()));
         }
-        add(rhs) {
-            return new Fp12(...this.coefficients.map((a, i) => a.add(rhs.coefficients[i])));
+        add(other) {
+            return new Fq12(this.zip(other, (a, b) => a.add(b)));
         }
-        subtract(rhs) {
-            return new Fp12(...this.coefficients.map((a, i) => a.subtract(rhs.coefficients[i])));
+        subtract(other) {
+            return new Fq12(this.zip(other, (a, b) => a.subtract(b)));
         }
-        multiply(otherValue) {
-            if (typeof otherValue === 'bigint') {
-                return new Fp12(...this.coefficients.map((a) => a.multiply(new Fp(otherValue))));
+        multiply(other) {
+            if (typeof other === 'bigint') {
+                return new Fq12(this.coefficients.map((a) => a.multiply(new Fq(other))));
             }
             const LENGTH = this.coefficients.length;
             const filler = Array(LENGTH * 2 - 1)
                 .fill(null)
-                .map(() => new Fp(0n));
+                .map(() => Fq.ZERO);
             for (let i = 0; i < LENGTH; i++) {
                 for (let j = 0; j < LENGTH; j++) {
-                    filler[i + j] = filler[i + j].add(this.coefficients[i].multiply(otherValue.coefficients[j]));
+                    filler[i + j] = filler[i + j].add(this.coefficients[i].multiply(other.coefficients[j]));
                 }
             }
             for (let exp = LENGTH - 2; exp >= 0; exp--) {
@@ -264,11 +266,11 @@ let Fp12 = (() => {
                 if (top === undefined) {
                     break;
                 }
-                for (const [i, value] of Fp12.ENTRY_COEFFICIENTS) {
-                    filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fp(value)));
+                for (const [i, value] of Fq12.ENTRY_COEFFICIENTS) {
+                    filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fq(value)));
                 }
             }
-            return new Fp12(...filler);
+            return new Fq12(filler);
         }
         square() {
             return this.multiply(this);
@@ -277,7 +279,7 @@ let Fp12 = (() => {
             if (n === 1n) {
                 return this;
             }
-            let result = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+            let result = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
             let value = this;
             while (n > 0n) {
                 if ((n & 1n) === 1n) {
@@ -296,7 +298,7 @@ let Fp12 = (() => {
             return degree;
         }
         primeNumberInvariant(num) {
-            return new Fp(num).invert().value;
+            return new Fq(num).invert().value;
         }
         optimizedRoundedDiv(coefficients, others) {
             const tmp = [...coefficients];
@@ -310,19 +312,19 @@ let Fp12 = (() => {
                     tmp[c + i] = tmp[c + i] - zeros[c];
                 }
             }
-            return new Fp12(...zeros.slice(0, this.degree(zeros) + 1));
+            return new Fq12(zeros.slice(0, 12));
         }
         invert() {
             const LENGTH = this.coefficients.length;
-            let lm = [...Fp12.ONE.coefficients.map((a) => a.value), 0n];
-            let hm = [...Fp12.ZERO.coefficients.map((a) => a.value), 0n];
+            let lm = [...Fq12.ONE.coefficients.map((a) => a.value), 0n];
+            let hm = [...Fq12.ZERO.coefficients.map((a) => a.value), 0n];
             let low = [...this.coefficients.map((a) => a.value), 0n];
-            let high = [...Fp12.MODULE_COEFFICIENTS, 1n];
+            let high = [...Fq12.MODULE_COEFFICIENTS, 1n];
             while (this.degree(low) !== 0) {
                 const { coefficients } = this.optimizedRoundedDiv(high, low);
                 const zeros = Array(LENGTH + 1 - coefficients.length)
                     .fill(null)
-                    .map(() => new Fp(0n));
+                    .map(() => Fq.ZERO);
                 const roundedDiv = coefficients.concat(zeros);
                 let nm = [...hm];
                 let nw = [...high];
@@ -332,35 +334,36 @@ let Fp12 = (() => {
                         nw[i + j] -= low[i] * roundedDiv[j].value;
                     }
                 }
-                nm = nm.map((a) => new Fp(a).value);
-                nw = nw.map((a) => new Fp(a).value);
+                nm = nm.map((a) => new Fq(a).value);
+                nw = nw.map((a) => new Fq(a).value);
                 hm = lm;
                 lm = nm;
                 high = low;
                 low = nw;
             }
-            const result = new Fp12(...lm);
+            const result = new Fq12(lm.slice(0, 12));
             return result.div(low[0]);
         }
-        div(otherValue) {
-            if (typeof otherValue === 'bigint') {
-                return new Fp12(...this.coefficients.map((a) => a.div(new Fp(otherValue))));
+        div(other) {
+            if (typeof other === 'bigint') {
+                const num = new Fq(other);
+                return new Fq12(this.coefficients.map((a) => a.div(num)));
             }
-            return this.multiply(otherValue.invert());
+            return this.multiply(other.invert());
         }
     }
-    Fp12.ZERO = new Fp12(0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-    Fp12.ONE = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-    Fp12.MODULE_COEFFICIENTS = [
+    Fq12.ZERO = new Fq12([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+    Fq12.ONE = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+    Fq12.MODULE_COEFFICIENTS = [
         2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n
     ];
-    Fp12.ENTRY_COEFFICIENTS = [
+    Fq12.ENTRY_COEFFICIENTS = [
         [0, 2n],
         [6, -2n],
     ];
-    return Fp12;
+    return Fq12;
 })();
-exports.Fp12 = Fp12;
+exports.Fq12 = Fq12;
 class Point {
     constructor(x, y, z, C) {
         this.x = x;
@@ -369,13 +372,13 @@ class Point {
         this.C = C;
     }
     static get W() {
-        return new Fp12(0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+        return new Fq12([0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
     }
     static get W_SQUARE() {
-        return new Fp12(0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+        return new Fq12([0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
     }
     static get W_CUBE() {
-        return new Fp12(0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+        return new Fq12([0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
     }
     static fromAffine(x, y, C) {
         return new Point(x, y, C.ONE, C);
@@ -479,11 +482,14 @@ class Point {
     }
     multiply(scalar) {
         let n = scalar;
-        if (n instanceof Fp)
+        if (n instanceof Fq)
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
-        const bin = n.toString(2).split('').map(a => parseInt(a, 2));
+        const bin = n
+            .toString(2)
+            .split('')
+            .map((a) => parseInt(a, 2));
         let Q = this.getZero();
         let P = this;
         for (let b of bin) {
@@ -496,27 +502,27 @@ class Point {
     }
     twist() {
         if (!Array.isArray(this.x.value)) {
-            return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
+            return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
         }
         const { x, y, z } = this;
         const [cx1, cx2] = [x.value[0] - x.value[1], x.value[1]];
         const [cy1, cy2] = [y.value[0] - y.value[1], y.value[1]];
         const [cz1, cz2] = [z.value[0] - z.value[1], z.value[1]];
-        const newX = new Fp12(cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n);
-        const newY = new Fp12(cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n);
-        const newZ = new Fp12(cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n);
-        return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fp12);
+        const newX = new Fq12([cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n]);
+        const newY = new Fq12([cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n]);
+        const newZ = new Fq12([cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n]);
+        return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fq12);
     }
 }
 exports.Point = Point;
 function finalExponentiate(p) {
     return p.pow((exports.CURVE.P ** 12n - 1n) / exports.CURVE.r);
 }
-exports.B = new Fp(4n);
-exports.B2 = new Fp2(4n, 4n);
-exports.B12 = new Fp12(4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
-const Z1 = new Point(new Fp(1n), new Fp(1n), new Fp(0n), Fp);
-const Z2 = new Point(new Fp2(1n, 0n), new Fp2(1n, 0n), new Fp2(0n, 0n), Fp2);
+exports.B = new Fq(4n);
+exports.B2 = new Fq2([4n, 4n]);
+exports.B12 = new Fq12([4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
+const Z1 = new Point(Fq.ONE, Fq.ONE, Fq.ZERO, Fq);
+const Z2 = new Point(Fq2.ONE, Fq2.ONE, Fq2.ZERO, Fq2);
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
@@ -684,9 +690,9 @@ async function hash_to_field(msg, count, degree = 2) {
     }
     return u.map((el) => {
         if (degree === 1)
-            return new Fp(el);
+            return new Fq(el);
         if (degree === 2)
-            return new Fp2(el[0], el[1]);
+            return new Fq2([el[0], el[1]]);
         return el;
     });
 }
@@ -710,18 +716,23 @@ function sgn0(x) {
     const sign_1 = x1 % 2n;
     return BigInt(sign_0 || (zero_0 && sign_1));
 }
-const Ell2p_a = new Fp2(0n, 240n);
-const Ell2p_b = new Fp2(1012n, 1012n);
-const xi_2 = new Fp2(-2n, -1n);
-const rootsOfUnity = [new Fp2(1n, 0n), new Fp2(0n, 1n), new Fp2(rv1, rv1), new Fp2(rv1, -rv1)];
+const Ell2p_a = new Fq2([0n, 240n]);
+const Ell2p_b = new Fq2([1012n, 1012n]);
+const xi_2 = new Fq2([-2n, -1n]);
+const rootsOfUnity = [
+    new Fq2([1n, 0n]),
+    new Fq2([0n, 1n]),
+    new Fq2([rv1, rv1]),
+    new Fq2([rv1, -rv1]),
+];
 const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
 const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
-const etas = [new Fp2(ev1, ev2), new Fp2(-ev2, ev1), new Fp2(ev3, ev4), new Fp2(-ev4, ev3)];
+const etas = [new Fq2([ev1, ev2]), new Fq2([-ev2, ev1]), new Fq2([ev3, ev4]), new Fq2([-ev4, ev3])];
 function map_to_curve(t) {
     const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
-    const x0_num = Ell2p_b.multiply(denominator.add(Fp2.ONE));
+    const x0_num = Ell2p_b.multiply(denominator.add(Fq2.ONE));
     const tmp = Ell2p_a.negate().multiply(denominator);
     const x0_den = tmp.isEmpty() ? Ell2p_a.multiply(xi_2) : tmp;
     const gx0_den = x0_den.pow(3n);
@@ -737,7 +748,7 @@ function map_to_curve(t) {
         if (y0.square().multiply(gx0_den).equals(gx0_num)) {
             if (sgn0(y0) !== sgn0(t))
                 y0 = y0.negate();
-            return new Point(x0_num.multiply(x0_den), y0.multiply(x0_den.pow(3n)), x0_den, Fp2);
+            return new Point(x0_num.multiply(x0_den), y0.multiply(x0_den.pow(3n)), x0_den, Fq2);
         }
     }
     const x1_num = xi_2.multiply(t.square()).multiply(x0_num);
@@ -751,33 +762,72 @@ function map_to_curve(t) {
         if (candidate.equals(gx1_num)) {
             if (sgn0(y1) !== sgn0(t))
                 y1 = y1.negate();
-            return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fp2);
+            return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fq2);
         }
     }
     throw new Error('osswu2help failed for unknown reasons!');
 }
 const xnum = [
-    new Fp2(0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n, 0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n),
-    new Fp2(0x0n, 0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71an),
-    new Fp2(0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71en, 0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38dn),
-    new Fp2(0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n, 0x0n),
+    new Fq2([
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
+    ]),
+    new Fq2([
+        0x0n,
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71an,
+    ]),
+    new Fq2([
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71en,
+        0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38dn,
+    ]),
+    new Fq2([
+        0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
+        0x0n,
+    ]),
 ];
 const xden = [
-    new Fp2(0x0n, 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n),
-    new Fp2(0xcn, 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn),
-    new Fp2(0x1n, 0x0n),
+    new Fq2([
+        0x0n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n,
+    ]),
+    new Fq2([
+        0xcn,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn,
+    ]),
+    new Fq2([0x1n, 0x0n]),
 ];
 const ynum = [
-    new Fp2(0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n, 0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n),
-    new Fp2(0x0n, 0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97ben),
-    new Fp2(0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71cn, 0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38fn),
-    new Fp2(0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n, 0x0n),
+    new Fq2([
+        0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
+        0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
+    ]),
+    new Fq2([
+        0x0n,
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97ben,
+    ]),
+    new Fq2([
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71cn,
+        0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38fn,
+    ]),
+    new Fq2([
+        0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
+        0x0n,
+    ]),
 ];
 const yden = [
-    new Fp2(0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn, 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn),
-    new Fp2(0x0n, 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3n),
-    new Fp2(0x12n, 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n),
-    new Fp2(0x1n, 0x0n),
+    new Fq2([
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
+    ]),
+    new Fq2([
+        0x0n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3n,
+    ]),
+    new Fq2([
+        0x12n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n,
+    ]),
+    new Fq2([0x1n, 0x0n]),
 ];
 function computeIsogeny(p, coefficients = [xnum, xden, ynum, yden]) {
     const { x, y, z } = p;
@@ -836,7 +886,7 @@ function decompressG1(compressedValue) {
     if ((y * 2n) / P !== aflag) {
         y = P - y;
     }
-    return new Point(new Fp(x), new Fp(y), new Fp(1n), Fp);
+    return new Point(new Fq(x), new Fq(y), new Fq(1n), Fq);
 }
 function compressG2(point) {
     if (point.equals(Z2)) {
@@ -857,7 +907,7 @@ function decompressG2([z1, z2]) {
     if (bflag1 === 1n) {
         return Z2;
     }
-    const x = new Fp2(z2, z1 % POW_2_381);
+    const x = new Fq2([z2, z1 % POW_2_381]);
     let y = x.pow(3n).add(exports.B2).sqrt();
     if (y === null) {
         throw new Error('Failed to find a modular squareroot');
@@ -869,7 +919,7 @@ function decompressG2([z1, z2]) {
     if (isGreaterCoefficient || isZeroCoefficient) {
         y = y.multiply(-1n);
     }
-    const point = new Point(x, y, Fp2.ONE, Fp2);
+    const point = new Point(x, y, Fq2.ONE, Fq2);
     if (!point.isOnCurve(exports.B2)) {
         throw new Error('The given point is not on the twisted curve over Fp2');
     }
@@ -892,8 +942,8 @@ function signatureToG2(signature) {
     return decompressG2([z1, z2]);
 }
 exports.signatureToG2 = signatureToG2;
-exports.G1 = new Point(new Fp(exports.CURVE.Gx), new Fp(exports.CURVE.Gy), Fp.ONE, Fp);
-exports.G2 = new Point(new Fp2(exports.CURVE.G2x[0], exports.CURVE.G2x[1]), new Fp2(exports.CURVE.G2y[0], exports.CURVE.G2y[1]), Fp2.ONE, Fp2);
+exports.G1 = new Point(new Fq(exports.CURVE.Gx), new Fq(exports.CURVE.Gy), Fq.ONE, Fq);
+exports.G2 = new Point(new Fq2(exports.CURVE.G2x), new Fq2(exports.CURVE.G2y), Fq2.ONE, Fq2);
 function createLineBetween(p1, p2, n) {
     let mNumerator = p2.y.multiply(p1.z).subtract(p1.y.multiply(p2.z));
     let mDenominator = p2.x.multiply(p1.z).subtract(p1.x.multiply(p2.z));
@@ -911,9 +961,9 @@ function createLineBetween(p1, p2, n) {
 }
 function castPointToFp12(pt) {
     if (pt.isZero()) {
-        return new Point(new Fp12(), new Fp12(), new Fp12(), Fp12);
+        return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
     }
-    return new Point(new Fp12(pt.x.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n), new Fp12(pt.y.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n), new Fp12(pt.z.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n), Fp12);
+    return new Point(new Fq12([pt.x.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), new Fq12([pt.y.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), new Fq12([pt.z.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), Fq12);
 }
 const PSEUDO_BINARY_ENCODING = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -922,7 +972,11 @@ const PSEUDO_BINARY_ENCODING = [
     1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1
 ];
 function millerLoop(Q, P, withFinalExponent = false) {
-    const one = new Fp12(1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n);
+    const one = new Fq12([
+        1n, 0n, 0n, 0n,
+        0n, 0n, 0n, 0n,
+        0n, 0n, 0n, 0n
+    ]);
     if (Q.isZero() || P.isZero()) {
         return one;
     }
@@ -971,7 +1025,7 @@ async function verify(message, publicKey, signature) {
         const signaturePairing = pairing(signaturePoint, exports.G1);
         const hashPairing = pairing(await hashToG2(message), publicKeyPoint);
         const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
-        return finalExponent.equals(Fp12.ONE);
+        return finalExponent.equals(Fq12.ONE);
     }
     catch {
         return false;
@@ -998,14 +1052,14 @@ async function verifyBatch(messages, publicKeys, signature) {
     if (publicKeys.length !== messages.length)
         throw new Error('Pubkey count should equal msg count');
     try {
-        let producer = Fp12.ONE;
+        let producer = Fq12.ONE;
         for (const message of new Set(messages)) {
             const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message ? groupPublicKey : groupPublicKey.add(publicKeyToG1(publicKeys[i])), Z1);
             producer = producer.multiply(pairing(await hashToG2(message), groupPublicKey));
         }
         producer = producer.multiply(pairing(signatureToG2(signature), exports.G1.negative()));
         const finalExponent = finalExponentiate(producer);
-        return finalExponent.equals(Fp12.ONE);
+        return finalExponent.equals(Fq12.ONE);
     }
     catch {
         return false;
