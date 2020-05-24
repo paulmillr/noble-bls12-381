@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { Fq, Fq2, B, B2, Point } from "..";
+import { Fq, Fq2, Point, PointG1, PointG2 } from "..";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -26,7 +26,7 @@ describe("bls12-381 Point", () => {
     });
     it("should be placed on curve vector 1", () => {
       const a = new Point(new Fq(0n), new Fq(1n), new Fq(0n), Fq);
-      expect(a.isOnCurve(B)).toBe(true);
+      new PointG1(a).assertValidity();
     });
     it("should be placed on curve vector 2", () => {
       const a = new Point(
@@ -39,7 +39,7 @@ describe("bls12-381 Point", () => {
         new Fq(1n),
         Fq
       );
-      expect(a.isOnCurve(B)).toBe(true);
+      new PointG1(a).assertValidity();
     });
     it.skip("should be placed on curve vector 3", () => {
       const a = new Point(
@@ -54,11 +54,11 @@ describe("bls12-381 Point", () => {
         ),
         Fq
       );
-      expect(a.isOnCurve(B)).toBe(true);
+      new PointG1(a).assertValidity();
     });
     it("should not be placed on curve vector 1", () => {
       const a = new Point(new Fq(0n), new Fq(1n), new Fq(1n), Fq);
-      expect(a.isOnCurve(B)).toBe(false);
+      expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it("should not be placed on curve vector 2", () => {
       const a = new Point(
@@ -71,7 +71,7 @@ describe("bls12-381 Point", () => {
         new Fq(1n),
         Fq
       );
-      expect(a.isOnCurve(B)).toBe(false);
+      expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it.skip("should not be placed on curve vector 3", () => {
       const a = new Point(
@@ -86,7 +86,7 @@ describe("bls12-381 Point", () => {
         ),
         Fq
       );
-      expect(a.isOnCurve(B)).toBe(false);
+      expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it.skip("should be doubled and placed on curve vector 1", () => {
       const a = new Point(
@@ -100,7 +100,7 @@ describe("bls12-381 Point", () => {
         Fq
       );
       const double = a.double();
-      expect(double.isOnCurve(B)).toBe(true);
+      new PointG1(double).assertValidity();
       expect(double).toEqual(
         new Point(
           new Fq(
@@ -132,7 +132,7 @@ describe("bls12-381 Point", () => {
         Fq
       );
       const double = a.double();
-      expect(double.isOnCurve(B)).toBe(true);
+      new PointG1(double).assertValidity();
       expect(double).toEqual(
         new Point(
           new Fq(
@@ -188,7 +188,7 @@ describe("bls12-381 Point", () => {
         new Fq2([0n, 0n]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(true);
+      new PointG2(a).assertValidity();
     });
     it("should be placed on curve vector 2", () => {
       const a = new Point(
@@ -203,7 +203,7 @@ describe("bls12-381 Point", () => {
         new Fq2([1n, 0n]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(true);
+      new PointG2(a).assertValidity();
     });
     it.skip("should be placed on curve vector 3", () => {
       const a = new Point(
@@ -221,7 +221,7 @@ describe("bls12-381 Point", () => {
         ]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(true);
+      new PointG2(a).assertValidity();
     });
     it("should not be placed on curve vector 1", () => {
       const a = new Point(
@@ -230,7 +230,7 @@ describe("bls12-381 Point", () => {
         new Fq2([1n, 0n]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(false);
+      expect(() => new PointG2(a).assertValidity()).toThrowError();
     });
     it("should not be placed on curve vector 2", () => {
       const a = new Point(
@@ -245,7 +245,7 @@ describe("bls12-381 Point", () => {
         new Fq2([1n, 0n]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(false);
+      expect(() => new PointG2(a).assertValidity()).toThrowError();
     });
     it.skip("should not be placed on curve vector 3", () => {
       const a = new Point(
@@ -263,7 +263,7 @@ describe("bls12-381 Point", () => {
         ]),
         Fq2
       );
-      expect(a.isOnCurve(B2)).toBe(false);
+      expect(() => new PointG2(a).assertValidity()).toThrowError();
     });
   });
   it.skip("should be doubled and placed on curve vector 1", () => {
@@ -280,7 +280,7 @@ describe("bls12-381 Point", () => {
       Fq2
     );
     const double = a.double();
-    expect(double.isOnCurve(B2)).toBe(true);
+    new PointG2(double).assertValidity();
     expect(double).toEqual(
       new Point(
         new Fq2([
@@ -318,7 +318,7 @@ describe("bls12-381 Point", () => {
       Fq2
     );
     const double = a.double();
-    expect(double.isOnCurve(B2)).toBe(true);
+    new PointG2(double).assertValidity();
     expect(double).toEqual(
       new Point(
         new Fq2([

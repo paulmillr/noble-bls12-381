@@ -14,6 +14,7 @@ export const CURVE = {
   h: 0x396c8c005555e1568c00aaab0000aaabn,
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
   Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+  b: 4n,
 
   // G2
   // G^2 - 1
@@ -30,6 +31,7 @@ export const CURVE = {
     0xce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
     0x606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
   ],
+  b2: [4n, 4n]
 };
 const P = CURVE.P;
 export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
@@ -46,8 +48,6 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint
 ];
-type Numerators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
-type XDenominators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
 
 // for benchmark purposes
 export let time = 0n;
@@ -311,7 +311,7 @@ type Fq12Coeffs = [Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq];
 export class Fq12 implements Field<BigintTwelve> {
   static readonly ZERO = new Fq12([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
   static readonly ONE = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-  private coefficients = FP12_DEFAULT.map((a) => new Fq(a)) as Fq12Coeffs;
+  private coefficients: Fq12Coeffs;
   // prettier-ignore
   private static readonly MODULE_COEFFICIENTS: BigintTwelve = [
     2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n
@@ -327,9 +327,9 @@ export class Fq12 implements Field<BigintTwelve> {
 
   constructor(args: (bigint | Fq)[] = FP12_DEFAULT) {
     if (args.length !== 12) {
-      throw new Error(`Invalid number of coefficients. Expected 12, not ${args.length}`)
+      throw new Error(`Invalid number of coefficients. Expected 12, not ${args.length}`);
     }
-    const coeffs = args.slice().map(c => c instanceof Fq ? c : new Fq(c)) as Fq12Coeffs;
+    const coeffs = args.slice().map((c) => (c instanceof Fq ? c : new Fq(c))) as Fq12Coeffs;
     this.coefficients = coeffs;
   }
 
@@ -506,19 +506,6 @@ export class Point<T> {
     return new Point(this.C.ZERO, this.C.ONE, this.C.ZERO, this.C);
   }
 
-  // Fast subgroup checks via Bowe19
-  isOnCurve(b: Field<T>) {
-    if (this.isZero()) {
-      return true;
-    }
-    const squaredY = this.y.square();
-    const cubedX = this.x.pow(3n);
-    const z6 = this.z.pow(6n);
-    const infty = this.x.isEmpty() && !this.y.isEmpty() && this.z.isEmpty();
-    const match = squaredY.equals(b.multiply(z6).add(cubedX));
-    return infty || match;
-  }
-
   // Compare one point to another.
   // ax * bz^2 == az^2 * bx and ay * bz^3 == by * az^3
   equals(other: Point<T>) {
@@ -624,23 +611,6 @@ export class Point<T> {
     }
     return Q;
   }
-
-  // Field isomorphism from z[p] / x**2 to z[p] / x**2 - 2*x + 2
-  twist() {
-    // Prevent twisting of non-multidimensional type
-    if (!Array.isArray(this.x.value)) {
-      return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
-    }
-    // @ts-ignore stupid TS
-    const { x, y, z }: GroupCoordinates<BigintTuple | BigintTwelve> = this;
-    const [cx1, cx2] = [x.value[0] - x.value[1], x.value[1]];
-    const [cy1, cy2] = [y.value[0] - y.value[1], y.value[1]];
-    const [cz1, cz2] = [z.value[0] - z.value[1], z.value[1]];
-    const newX = new Fq12([cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n]);
-    const newY = new Fq12([cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n]);
-    const newZ = new Fq12([cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n]);
-    return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fq12);
-  }
 }
 
 // https://eprint.iacr.org/2019/403.pdf
@@ -650,16 +620,6 @@ export class Point<T> {
 function finalExponentiate(p: Field<BigintTwelve>) {
   return p.pow((CURVE.P ** 12n - 1n) / CURVE.r);
 }
-
-// Curve is y**2 = x**3 + 4
-export const B = new Fq(4n);
-// Twisted curve over Fp2
-export const B2 = new Fq2([4n, 4n]);
-// Extension curve over Fp12; same b value as over Fp
-export const B12 = new Fq12([4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-
-const Z1 = new Point(Fq.ONE, Fq.ONE, Fq.ZERO, Fq);
-const Z2 = new Point(Fq2.ONE, Fq2.ONE, Fq2.ZERO, Fq2);
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -810,155 +770,8 @@ function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
   return arr;
 }
 
-async function expand_message_xmd(
-  msg: Uint8Array,
-  DST: Uint8Array,
-  len_in_bytes: number
-): Promise<Uint8Array> {
-  const H = sha256;
-  const b_in_bytes = Number(SHA256_DIGEST_SIZE);
-  const r_in_bytes = b_in_bytes * 2;
-
-  const ell = Math.ceil(len_in_bytes / b_in_bytes);
-  if (ell > 255) throw new Error('Invalid xmd length');
-  const DST_prime = concatTypedArrays(DST, i2osp(DST.length, 1));
-  const Z_pad = i2osp(0, r_in_bytes);
-  const l_i_b_str = i2osp(len_in_bytes, 2);
-  const b = new Array<Uint8Array>(ell);
-  const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
-  b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
-  for (let i = 1; i <= ell; i++) {
-    const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
-    b[i] = await H(concatTypedArrays(...args));
-  }
-  const pseudo_random_bytes = concatTypedArrays(...b);
-  return pseudo_random_bytes.slice(0, len_in_bytes);
-}
-
-// degree, 1 for Fp, 2 for Fp2
-export async function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fq[]>;
-export async function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fq2[]>;
-export async function hash_to_field(
-  msg: Uint8Array,
-  count: number,
-  degree = 2
-): Promise<Fq[] | Fq2[] | bigint[][]> {
-  const m = degree;
-  const L = 64; // 64 for sha2, shake, sha3, blake
-  const len_in_bytes = count * m * L;
-  const DST = stringToBytes(DST_LABEL);
-  const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
-  const u = new Array(count);
-  for (let i = 0; i < count; i++) {
-    const e = new Array(m);
-    for (let j = 0; j < m; j++) {
-      const elm_offset = L * (j + i * m);
-      const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-      e[j] = mod(os2ip(tv), CURVE.P);
-    }
-    u[i] = e;
-  }
-  return u.map((el) => {
-    if (degree === 1) return new Fq(el);
-    if (degree === 2) return new Fq2([el[0], el[1]]);
-    return el;
-  });
-}
-
-export async function hash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>> {
-  const u = await hash_to_field(msg, 2, 2);
-  const Q0 = map_to_curve(u[0]);
-  const Q1 = map_to_curve(u[1]);
-  const R = Q0.add(Q1);
-  const P = clear_cofactor_bls12381_g2(R);
-  //console.log(`hash_to_curve, u0=${u[0]} u1=${u[1]} Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
-  return P;
-}
-
-function hashToG2(message: Hash) {
-  return hash_to_curve(typeof message === 'string' ? hexToArray(message) : message);
-}
-
-function sgn0(x: Fq2) {
-  const [x0, x1] = x.value;
-  const sign_0 = x0 % 2n;
-  const zero_0 = x0 === 0n;
-  const sign_1 = x1 % 2n;
-  return BigInt(sign_0 || (zero_0 && sign_1));
-}
-
-const Ell2p_a = new Fq2([0n, 240n]);
-const Ell2p_b = new Fq2([1012n, 1012n]);
-const xi_2 = new Fq2([-2n, -1n]);
-// roots of unity, used for computing square roots in Fp2
-//const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
-const rootsOfUnity = [
-  new Fq2([1n, 0n]),
-  new Fq2([0n, 1n]),
-  new Fq2([rv1, rv1]),
-  new Fq2([rv1, -rv1]),
-];
-const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
-const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
-const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
-const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
-const etas = [new Fq2([ev1, ev2]), new Fq2([-ev2, ev1]), new Fq2([ev3, ev4]), new Fq2([-ev4, ev3])];
-
-function map_to_curve(t: Fq2) {
-  // first, compute X0(t), detecting and handling exceptional case
-  const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
-  const x0_num = Ell2p_b.multiply(denominator.add(Fq2.ONE));
-  const tmp = Ell2p_a.negate().multiply(denominator);
-  const x0_den = tmp.isEmpty() ? Ell2p_a.multiply(xi_2) : tmp;
-  // compute num and den of g(X0(t))
-  const gx0_den = x0_den.pow(3n);
-  const gx0_num = Ell2p_b.multiply(gx0_den)
-    .add(Ell2p_a.multiply(x0_num).multiply(x0_den.square()))
-    .add(x0_num.pow(3n));
-
-  // try taking sqrt of g(X0(t))
-  // this uses the trick for combining division and sqrt from Section 5 of
-  // Bernstein, Duif, Lange, Schwabe, and Yang, "High-speed high-security signatures."
-  // J Crypt Eng 2(2):77--89, Sept. 2012. http://ed25519.cr.yp.to/ed25519-20110926.pdf
-  let tmp1 = gx0_den.pow(7n);
-  let tmp2 = gx0_num.multiply(tmp1);
-  tmp1 = tmp1.multiply(tmp2).multiply(gx0_den);
-  let sqrt_candidate = tmp2.multiply(tmp1.pow(P_ORDER_X_9));
-  // check if g(X0(t)) is square and return the sqrt if so
-  for (const root of rootsOfUnity) {
-    let y0 = sqrt_candidate.multiply(root);
-    if (y0.square().multiply(gx0_den).equals(gx0_num)) {
-      //y0 = y0.multiply(sgn0(y0) * sgn0(t));
-      if (sgn0(y0) !== sgn0(t)) y0 = y0.negate();
-      return new Point<BigintTuple>(
-        x0_num.multiply(x0_den),
-        y0.multiply(x0_den.pow(3n)),
-        x0_den,
-        Fq2
-      );
-    }
-  }
-
-  // if we've gotten here, then g(X0(t)) is not square. convert srqt_candidate to sqrt(g(X1(t)))
-  const x1_num = xi_2.multiply(t.square()).multiply(x0_num);
-  const x1_den = x0_den;
-  const gx1_num = xi_2.pow(3n).multiply(t.pow(6n)).multiply(gx0_num);
-  const gx1_den = gx0_den;
-  sqrt_candidate = sqrt_candidate.multiply(t.pow(3n));
-
-  for (const eta of etas) {
-    let y1 = sqrt_candidate.multiply(eta);
-    const candidate = y1.square().multiply(gx1_den);
-    if (candidate.equals(gx1_num)) {
-      // found sqrt(g(X1(t))). force sign of y to equal sign of t
-      if (sgn0(y1) !== sgn0(t)) y1 = y1.negate();
-      return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fq2);
-    }
-  }
-
-  throw new Error('osswu2help failed for unknown reasons!');
-}
-
+type Numerators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
+type XDenominators = [Field<BigintTuple>, Field<BigintTuple>, Field<BigintTuple>];
 // 3-Isogeny from Ell2' to Ell2
 // coefficients for the 3-isogeny map from Ell2' to Ell2
 const xnum: Numerators = [
@@ -1072,110 +885,319 @@ function clear_cofactor_bls12381_g2(point: Point<BigintTuple>) {
   return P.multiply(h_eff);
 }
 
-const POW_SUM = POW_2_383 + POW_2_382;
+async function expand_message_xmd(
+  msg: Uint8Array,
+  DST: Uint8Array,
+  len_in_bytes: number
+): Promise<Uint8Array> {
+  const H = sha256;
+  const b_in_bytes = Number(SHA256_DIGEST_SIZE);
+  const r_in_bytes = b_in_bytes * 2;
 
-function compressG1(point: Point<bigint>) {
-  if (point.equals(Z1)) {
-    return POW_SUM;
+  const ell = Math.ceil(len_in_bytes / b_in_bytes);
+  if (ell > 255) throw new Error('Invalid xmd length');
+  const DST_prime = concatTypedArrays(DST, i2osp(DST.length, 1));
+  const Z_pad = i2osp(0, r_in_bytes);
+  const l_i_b_str = i2osp(len_in_bytes, 2);
+  const b = new Array<Uint8Array>(ell);
+  const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
+  b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
+  for (let i = 1; i <= ell; i++) {
+    const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
+    b[i] = await H(concatTypedArrays(...args));
   }
-  const [x, y] = point.toAffine() as [Fq, Fq];
-  const flag = (y.value * 2n) / P;
-  return x.value + flag * POW_2_381 + POW_2_383;
+  const pseudo_random_bytes = concatTypedArrays(...b);
+  return pseudo_random_bytes.slice(0, len_in_bytes);
 }
 
-const PART_OF_P = (CURVE.P + 1n) / 4n;
-
-function decompressG1(compressedValue: bigint) {
-  const bflag = (compressedValue % POW_2_383) / POW_2_382;
-  if (bflag === 1n) {
-    return Z1;
+// degree - extension degree, 1 for Fp, 2 for Fp2
+// isRandomOracle - specifies NU or RO as per spec
+export async function hash_to_field(
+  msg: Uint8Array,
+  degree: number,
+  isRandomOracle = true,
+): Promise<bigint[][]> {
+  const count = isRandomOracle ? 2 : 1;
+  const m = degree;
+  const L = 64; // 64 for sha2, shake, sha3, blake
+  const len_in_bytes = count * m * L;
+  const DST = stringToBytes(DST_LABEL);
+  const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+  const u = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const e = new Array(m);
+    for (let j = 0; j < m; j++) {
+      const elm_offset = L * (j + i * m);
+      const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
+      e[j] = mod(os2ip(tv), CURVE.P);
+    }
+    u[i] = e;
   }
-  const x = compressedValue % POW_2_381;
-  const fullY = (x ** 3n + B.value) % P;
-  let y = powMod(fullY, PART_OF_P, P);
-  if (powMod(y, 2n, P) !== fullY) {
-    throw new Error('The given point is not on G1: y**2 = x**3 + b');
-  }
-  const aflag = (compressedValue % POW_2_382) / POW_2_381;
-  if ((y * 2n) / P !== aflag) {
-    y = P - y;
-  }
-  return new Point(new Fq(x), new Fq(y), new Fq(1n), Fq);
+  return u;
 }
 
-function compressG2(point: Point<BigintTuple>) {
-  if (point.equals(Z2)) {
-    return [POW_2_383 + POW_2_382, 0n];
-  }
-  if (!point.isOnCurve(B2)) {
-    throw new Error('The given point is not on the twisted curve over FQ**2');
-  }
-  const [[x0, x1], [y0, y1]] = point.toAffine().map((a) => a.value);
-  const producer = y1 > 0 ? y1 : y0;
-  const aflag1 = (producer * 2n) / P;
-  const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
-  const z2 = x0;
-  return [z1, z2];
+// hash_to_curve implementations
+// async function hashToG1(msg: Hash): Promise<Point<BigintTuple>> {
+//   if (typeof msg === 'string') msg = hexToArray(msg);
+//   const u = await hash_to_field(msg, 1);
+//   const Q0 = map_to_curve_G2(new Fq2(u[0]));
+//   const Q1 = map_to_curve_G2(new Fq2(u[1]));
+//   const R = Q0.add(Q1);
+//   const P = clear_cofactor_bls12381_g2(R);
+//   //console.log(`hash_to_curve, u0=${u[0]} u1=${u[1]} Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
+//   return P;
+// }
+
+async function hashToG2(msg: Hash): Promise<Point<BigintTuple>> {
+  if (typeof msg === 'string') msg = hexToArray(msg);
+  const u = await hash_to_field(msg, 2);
+  const Q0 = map_to_curve_G2(new Fq2(u[0]));
+  const Q1 = map_to_curve_G2(new Fq2(u[1]));
+  const R = Q0.add(Q1);
+  const P = clear_cofactor_bls12381_g2(R);
+  //console.log(`hash_to_curve, u0=${u[0]} u1=${u[1]} Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
+  return P;
 }
 
-function decompressG2([z1, z2]: BigintTuple) {
-  const bflag1 = (z1 % POW_2_383) / POW_2_382;
-  if (bflag1 === 1n) {
-    return Z2;
+function sgn0(x: Fq2) {
+  const [x0, x1] = x.value;
+  const sign_0 = x0 % 2n;
+  const zero_0 = x0 === 0n;
+  const sign_1 = x1 % 2n;
+  return BigInt(sign_0 || (zero_0 && sign_1));
+}
+
+const Ell2p_a = new Fq2([0n, 240n]);
+const Ell2p_b = new Fq2([1012n, 1012n]);
+const xi_2 = new Fq2([-2n, -1n]);
+// roots of unity, used for computing square roots in Fp2
+//const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
+const rootsOfUnity = [
+  new Fq2([1n, 0n]),
+  new Fq2([0n, 1n]),
+  new Fq2([rv1, rv1]),
+  new Fq2([rv1, -rv1]),
+];
+const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
+const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
+const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
+const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+const etas = [new Fq2([ev1, ev2]), new Fq2([-ev2, ev1]), new Fq2([ev3, ev4]), new Fq2([-ev4, ev3])];
+
+function map_to_curve_G2(t: Fq2) {
+  // first, compute X0(t), detecting and handling exceptional case
+  const denominator = xi_2.square().multiply(t.pow(4n)).add(xi_2.multiply(t.square()));
+  const x0_num = Ell2p_b.multiply(denominator.add(Fq2.ONE));
+  const tmp = Ell2p_a.negate().multiply(denominator);
+  const x0_den = tmp.isEmpty() ? Ell2p_a.multiply(xi_2) : tmp;
+  // compute num and den of g(X0(t))
+  const gx0_den = x0_den.pow(3n);
+  const gx0_num = Ell2p_b.multiply(gx0_den)
+    .add(Ell2p_a.multiply(x0_num).multiply(x0_den.square()))
+    .add(x0_num.pow(3n));
+
+  // try taking sqrt of g(X0(t))
+  // this uses the trick for combining division and sqrt from Section 5 of
+  // Bernstein, Duif, Lange, Schwabe, and Yang, "High-speed high-security signatures."
+  // J Crypt Eng 2(2):77--89, Sept. 2012. http://ed25519.cr.yp.to/ed25519-20110926.pdf
+  let tmp1 = gx0_den.pow(7n);
+  let tmp2 = gx0_num.multiply(tmp1);
+  tmp1 = tmp1.multiply(tmp2).multiply(gx0_den);
+  let sqrt_candidate = tmp2.multiply(tmp1.pow(P_ORDER_X_9));
+  // check if g(X0(t)) is square and return the sqrt if so
+  for (const root of rootsOfUnity) {
+    let y0 = sqrt_candidate.multiply(root);
+    if (y0.square().multiply(gx0_den).equals(gx0_num)) {
+      //y0 = y0.multiply(sgn0(y0) * sgn0(t));
+      if (sgn0(y0) !== sgn0(t)) y0 = y0.negate();
+      return new Point<BigintTuple>(
+        x0_num.multiply(x0_den),
+        y0.multiply(x0_den.pow(3n)),
+        x0_den,
+        Fq2
+      );
+    }
   }
-  const x = new Fq2([z2, z1 % POW_2_381]);
-  let y = x.pow(3n).add(B2).sqrt();
-  if (y === null) {
-    throw new Error('Failed to find a modular squareroot');
+
+  // if we've gotten here, then g(X0(t)) is not square. convert srqt_candidate to sqrt(g(X1(t)))
+  const x1_num = xi_2.multiply(t.square()).multiply(x0_num);
+  const x1_den = x0_den;
+  const gx1_num = xi_2.pow(3n).multiply(t.pow(6n)).multiply(gx0_num);
+  const gx1_den = gx0_den;
+  sqrt_candidate = sqrt_candidate.multiply(t.pow(3n));
+
+  for (const eta of etas) {
+    let y1 = sqrt_candidate.multiply(eta);
+    const candidate = y1.square().multiply(gx1_den);
+    if (candidate.equals(gx1_num)) {
+      // found sqrt(g(X1(t))). force sign of y to equal sign of t
+      if (sgn0(y1) !== sgn0(t)) y1 = y1.negate();
+      return new Point(x1_num.multiply(x1_den), y1.multiply(x1_den.pow(3n)), x1_den, Fq2);
+    }
   }
-  const [y0, y1] = y.value;
-  const aflag1 = (z1 % POW_2_382) / POW_2_381;
-  const isGreaterCoefficient = y1 > 0 && (y1 * 2n) / P !== aflag1;
-  const isZeroCoefficient = y1 === 0n && (y0 * 2n) / P !== aflag1;
-  if (isGreaterCoefficient || isZeroCoefficient) {
-    y = y.multiply(-1n);
+
+  throw new Error('osswu2help failed for unknown reasons!');
+}
+
+export class PointG1 {
+  static BASE = new Point(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE, Fq);
+  static ZERO = new Point(Fq.ONE, Fq.ONE, Fq.ZERO, Fq);
+
+  constructor(public point: Point<bigint>) {}
+  static fromHex(hex: PublicKey) {
+    const compressedValue = fromBytesBE(hex);
+    const bflag = (compressedValue % POW_2_383) / POW_2_382;
+    if (bflag === 1n) {
+      return this.ZERO;
+    }
+    const x = compressedValue % POW_2_381;
+    const fullY = (x ** 3n + new Fq(CURVE.b).value) % P;
+    let y = powMod(fullY, (P + 1n) / 4n, P);
+    if (powMod(y, 2n, P) !== fullY) {
+      throw new Error('The given point is not on G1: y**2 = x**3 + b');
+    }
+    const aflag = (compressedValue % POW_2_382) / POW_2_381;
+    if ((y * 2n) / P !== aflag) {
+      y = P - y;
+    }
+    const p = new Point(new Fq(x), new Fq(y), new Fq(1n), Fq);
+    return p;
   }
-  const point = new Point(x, y, Fq2.ONE, Fq2);
-  if (!point.isOnCurve(B2)) {
-    throw new Error('The given point is not on the twisted curve over Fp2');
+
+  toHex() {
+    const {point} = this;
+    let hex;
+    if (point.equals(PointG1.ZERO)) {
+      hex = POW_2_383 + POW_2_382;
+    } else {
+      const [x, y] = point.toAffine();
+      const flag = (y.value * 2n) / P;
+      hex = x.value + flag * POW_2_381 + POW_2_383;
+    }
+    return toBytesBE(hex, PUBLIC_KEY_LENGTH)
   }
-  return point;
+
+  toFq12() {
+    const pt = this.point;
+    if (pt.isZero()) {
+      return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
+    }
+    return new Point(
+      new Fq12([pt.x.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
+      new Fq12([pt.y.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
+      new Fq12([pt.z.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
+      Fq12
+    );
+  }
+
+  // Fast subgroup checks via Bowe19
+  assertValidity() {
+    const b = new Fq(CURVE.b);
+    if (this.point.isZero()) return true;
+    const {x, y, z} = this.point;
+    const squaredY = y.square();
+    const cubedX = x.pow(3n);
+    const z6 = z.pow(6n);
+    const infty = x.isEmpty() && !y.isEmpty() && z.isEmpty();
+    // TODO: typesc
+    const match = squaredY.equals(b.multiply(z6 as Fq).add(cubedX as Fq));
+    const isOnCurve = infty || match;
+    if (!isOnCurve) throw new Error('Invalid point: not on curve over Fq');
+  }
 }
 
-function publicKeyFromG1(point: Point<bigint>) {
-  return toBytesBE(compressG1(point), PUBLIC_KEY_LENGTH);
+export class PointG2 {
+  static BASE = new Point(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE, Fq2);
+  static ZERO = new Point(Fq2.ONE, Fq2.ONE, Fq2.ZERO, Fq2);
+
+  constructor(public point: Point<BigintTuple>) {}
+  // static fromHex(hex: PublicKey) {
+  //   //const [z1, z2] = hex;
+  // }
+  static fromx1x1(z1: bigint, z2: bigint) {
+    const bflag1 = (z1 % POW_2_383) / POW_2_382;
+    if (bflag1 === 1n) {
+      return this.ZERO;
+    }
+    const x = new Fq2([z2, z1 % POW_2_381]);
+    let y = x.pow(3n).add(new Fq2(CURVE.b2)).sqrt();
+    if (y === null) {
+      throw new Error('Failed to find a modular squareroot');
+    }
+    const [y0, y1] = y.value;
+    const aflag1 = (z1 % POW_2_382) / POW_2_381;
+    const isGreaterCoefficient = y1 > 0 && (y1 * 2n) / P !== aflag1;
+    const isZeroCoefficient = y1 === 0n && (y0 * 2n) / P !== aflag1;
+    if (isGreaterCoefficient || isZeroCoefficient) {
+      y = y.multiply(-1n);
+    }
+    const point = new PointG2(new Point(x, y, Fq2.ONE, Fq2));
+    point.assertValidity();
+    return point.point;
+  }
+  static fromSignature(hex: Signature) {
+    const half = hex.length / 2;
+    const z1 = fromBytesBE(hex.slice(0, half));
+    const z2 = fromBytesBE(hex.slice(half));
+    return this.fromx1x1(z1, z2);
+  }
+
+  toHex() {
+    const {point} = this;
+    if (point.equals(PointG2.ZERO)) {
+      return [POW_2_383 + POW_2_382, 0n];
+    }
+    this.assertValidity();
+    const [[x0, x1], [y0, y1]] = point.toAffine().map((a) => a.value);
+    const producer = y1 > 0 ? y1 : y0;
+    const aflag1 = (producer * 2n) / P;
+    const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
+    const z2 = x0;
+    return [z1, z2];
+  }
+  toSignature() {
+    const [z1, z2] = this.toHex();
+    return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
+  }
+
+  // Field isomorphism from z[p] / x**2 to z[p] / x**2 - 2*x + 2
+  toFq12() {
+    const {point} = this;
+    if (!Array.isArray(point.x.value)) {
+      return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
+    }
+    // @ts-ignore stupid TS
+    const { x, y, z }: GroupCoordinates<BigintTuple | BigintTwelve> = p;
+    const [cx1, cx2] = [x.value[0] - x.value[1], x.value[1]];
+    const [cy1, cy2] = [y.value[0] - y.value[1], y.value[1]];
+    const [cz1, cz2] = [z.value[0] - z.value[1], z.value[1]];
+    const newX = new Fq12([cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n]);
+    const newY = new Fq12([cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n]);
+    const newZ = new Fq12([cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n]);
+    return new Point(newX.div(Point.W_SQUARE), newY.div(Point.W_CUBE), newZ, Fq12);
+  }
+
+  assertValidity() {
+    const b = new Fq2(CURVE.b2);
+    if (this.point.isZero()) return true;
+    const {x, y, z} = this.point;
+    const squaredY = y.square();
+    const cubedX = x.pow(3n);
+    const z6 = z.pow(6n);
+    const infty = x.isEmpty() && !y.isEmpty() && z.isEmpty();
+    // TODO: typesc
+    const match = squaredY.equals(b.multiply(z6 as Fq2).add(cubedX as Fq2));
+    const isOnCurve = infty || match;
+    if (!isOnCurve) throw new Error('Invalid point: not on curve over Fq2');
+  }
 }
 
-function publicKeyToG1(publicKey: Bytes) {
-  return decompressG1(fromBytesBE(publicKey));
+export class PointG12 {
+  // Extension curve over Fp12; same b value as over Fp
+  static B = new Fq12([4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
 }
 
-function signatureFromG2(point: Point<BigintTuple>) {
-  const [z1, z2] = compressG2(point);
-  return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
-}
 
-export function signatureToG2(signature: Bytes) {
-  const halfSignature = signature.length / 2;
-  const z1 = fromBytesBE(signature.slice(0, halfSignature));
-  const z2 = fromBytesBE(signature.slice(halfSignature));
-  return decompressG2([z1, z2]);
-}
-
-// ## Fixed Generators
-// Although any generator produced by hashing to $\mathbb{G}_1$ or $\mathbb{G}_2$ is
-// safe to use in a cryptographic protocol, we specify some simple, fixed generators.
-//
-// In order to derive these generators, we select the lexicographically smallest
-// valid $x$-coordinate and the lexicographically smallest corresponding $y$-coordinate,
-// and then scale the resulting point by the cofactor, such that the result is not the
-// identity. This results in the following fixed generators:
-
-// Generator for curve over Fp
-export const G1 = new Point(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE, Fq);
-
-// Generator for twisted curve over Fp2
-export const G2 = new Point(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE, Fq2);
 // Create a function representing the line between P1 and P2, and evaluate it at T
 // and evaluate it at T. Returns a numerator and a denominator
 // to avoid unneeded divisions
@@ -1194,18 +1216,6 @@ function createLineBetween<T>(p1: Point<T>, p2: Point<T>, n: Point<T>) {
   return [numeratorLine.subtract(denominatorLine), z];
 }
 
-function castPointToFp12(pt: Point<bigint>): Point<BigintTwelve> {
-  if (pt.isZero()) {
-    return new Point(new Fq12(), new Fq12(), new Fq12(), Fq12);
-  }
-  return new Point(
-    new Fq12([(pt.x as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
-    new Fq12([(pt.y as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
-    new Fq12([(pt.z as Fq).value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]),
-    Fq12
-  );
-}
-
 // prettier-ignore
 const PSEUDO_BINARY_ENCODING = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1221,11 +1231,7 @@ function millerLoop(
   withFinalExponent: boolean = false
 ) {
   // prettier-ignore
-  const one: Field<BigintTwelve> = new Fq12([
-    1n, 0n, 0n, 0n,
-    0n, 0n, 0n, 0n,
-    0n, 0n, 0n, 0n
-  ]);
+  const one: Field<BigintTwelve> = Fq12.ONE;
   if (Q.isZero() || P.isZero()) {
     return one;
   }
@@ -1253,29 +1259,30 @@ export function pairing(
   P: Point<bigint>,
   withFinalExponent: boolean = true
 ) {
-  if (!Q.isOnCurve(B2)) throw new Error('Point 1 is not on curve');
-  if (!P.isOnCurve(B)) throw new Error('Point 2 is not on curve');
-  return millerLoop(Q.twist(), castPointToFp12(P), withFinalExponent);
+  const q = new PointG2(Q);
+  const p = new PointG1(P);
+  q.assertValidity();
+  p.assertValidity();
+  return millerLoop(q.toFq12(), p.toFq12(), withFinalExponent);
 }
 
 export function getPublicKey(privateKey: PrivateKey) {
   privateKey = toBigInt(privateKey);
-  // @ts-ignore
-  return publicKeyFromG1(G1.multiply(privateKey));
+  return new PointG1(PointG1.BASE.multiply(privateKey)).toHex();
 }
 
-export async function sign(message: Hash, privateKey: PrivateKey) {
+export async function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array> {
   privateKey = toBigInt(privateKey);
   const messageValue = await hashToG2(message);
-  const signature = messageValue.multiply(privateKey);
-  return signatureFromG2(signature);
+  const sigPoint = messageValue.multiply(privateKey);
+  return new PointG2(sigPoint).toSignature();
 }
 
-export async function verify(message: Hash, publicKey: PublicKey, signature: Signature) {
-  const publicKeyPoint = publicKeyToG1(publicKey).negative();
+export async function verify(message: Hash, publicKey: PublicKey, signature: Signature): Promise<boolean> {
+  const publicKeyPoint = PointG1.fromHex(publicKey).negative();
   const signaturePoint = await hashToG2(signature);
   try {
-    const signaturePairing = pairing(signaturePoint, G1);
+    const signaturePairing = pairing(signaturePoint, PointG1.BASE);
     const hashPairing = pairing(await hashToG2(message), publicKeyPoint);
     const finalExponent = finalExponentiate(signaturePairing.multiply(hashPairing));
     return finalExponent.equals(Fq12.ONE);
@@ -1285,37 +1292,37 @@ export async function verify(message: Hash, publicKey: PublicKey, signature: Sig
 }
 
 export function aggregatePublicKeys(publicKeys: PublicKey[]) {
-  if (publicKeys.length === 0) throw new Error('Expected non-empty array');
+  if (!publicKeys.length) throw new Error('Expected non-empty array');
   const aggregatedPublicKey = publicKeys.reduce(
-    (sum, publicKey) => sum.add(publicKeyToG1(publicKey)),
-    Z1
+    (sum, publicKey) => sum.add(PointG1.fromHex(publicKey)),
+    PointG1.ZERO
   );
-  return publicKeyFromG1(aggregatedPublicKey);
+  return new PointG1(aggregatedPublicKey).toHex();
 }
 
 export function aggregateSignatures(signatures: Signature[]) {
-  if (signatures.length === 0) throw new Error('Expected non-empty array');
+  if (!signatures.length) throw new Error('Expected non-empty array');
   const aggregatedSignature = signatures.reduce(
-    (sum, signature) => sum.add(signatureToG2(signature)),
-    Z2
+    (sum, signature) => sum.add(PointG2.fromSignature(signature)),
+    PointG2.ZERO
   );
-  return signatureFromG2(aggregatedSignature);
+  return new PointG2(aggregatedSignature).toSignature();
 }
 
 export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature) {
-  if (messages.length === 0) throw new Error('Expected non-empty messages array');
+  if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   try {
     let producer = Fq12.ONE;
     for (const message of new Set(messages)) {
       const groupPublicKey = messages.reduce(
         (groupPublicKey, m, i) =>
-          m !== message ? groupPublicKey : groupPublicKey.add(publicKeyToG1(publicKeys[i])),
-        Z1
+          m !== message ? groupPublicKey : groupPublicKey.add(PointG1.fromHex(publicKeys[i])),
+        PointG1.ZERO
       );
       producer = producer.multiply(pairing(await hashToG2(message), groupPublicKey) as Fq12);
     }
-    producer = producer.multiply(pairing(signatureToG2(signature), G1.negative()) as Fq12);
+    producer = producer.multiply(pairing(PointG2.fromSignature(signature), PointG1.BASE.negative()) as Fq12);
     const finalExponent = finalExponentiate(producer);
     return finalExponent.equals(Fq12.ONE);
   } catch {

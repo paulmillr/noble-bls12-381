@@ -4,10 +4,12 @@ export declare const CURVE: {
     h: bigint;
     Gx: bigint;
     Gy: bigint;
+    b: bigint;
     P2: bigint;
     h2: bigint;
     G2x: bigint[];
     G2y: bigint[];
+    b2: bigint[];
 };
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
@@ -119,7 +121,6 @@ export declare class Point<T> {
     constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
     isZero(): boolean;
     getZero(): Point<T>;
-    isOnCurve(b: Field<T>): boolean;
     equals(other: Point<T>): boolean;
     negative(): Point<T>;
     toString(isAffine?: boolean): string;
@@ -128,17 +129,33 @@ export declare class Point<T> {
     add(other: Point<T>): Point<T>;
     subtract(other: Point<T>): Point<T>;
     multiply(scalar: number | bigint | Fq): Point<T>;
-    twist(): Point<BigintTwelve>;
 }
-export declare const B: Fq;
-export declare const B2: Fq2;
-export declare const B12: Fq12;
-export declare function hash_to_field(msg: Uint8Array, count: number, degree: 1): Promise<Fq[]>;
-export declare function hash_to_field(msg: Uint8Array, count: number, degree: 2): Promise<Fq2[]>;
-export declare function hash_to_curve(msg: Uint8Array): Promise<Point<BigintTuple>>;
-export declare function signatureToG2(signature: Bytes): Point<BigintTuple>;
-export declare const G1: Point<bigint>;
-export declare const G2: Point<BigintTuple>;
+export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
+export declare class PointG1 {
+    point: Point<bigint>;
+    static BASE: Point<bigint>;
+    static ZERO: Point<bigint>;
+    constructor(point: Point<bigint>);
+    static fromHex(hex: PublicKey): Point<bigint>;
+    toHex(): Uint8Array;
+    toFq12(): Point<BigintTwelve>;
+    assertValidity(): true | undefined;
+}
+export declare class PointG2 {
+    point: Point<BigintTuple>;
+    static BASE: Point<BigintTuple>;
+    static ZERO: Point<BigintTuple>;
+    constructor(point: Point<BigintTuple>);
+    static fromx1x1(z1: bigint, z2: bigint): Point<BigintTuple>;
+    static fromSignature(hex: Signature): Point<BigintTuple>;
+    toHex(): bigint[];
+    toSignature(): Uint8Array;
+    toFq12(): Point<BigintTwelve>;
+    assertValidity(): true | undefined;
+}
+export declare class PointG12 {
+    static B: Fq12;
+}
 export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Field<BigintTwelve>;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array>;
