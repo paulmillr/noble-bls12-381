@@ -219,7 +219,6 @@ We're using built-in JS `BigInt`, which is "unsuitable for use in cryptography" 
 3. If your goal is absolute security, don't use any JS lib — including bindings to native ones. Use low-level libraries & languages.
 4. We however consider infrastructure attacks like rogue NPM modules very important; that's why it's crucial to minimize the amount of 3rd-party dependencies & native bindings. If your app uses 500 dependencies, any dep could get hacked and you'll be downloading rootkits with every `npm install`. Our goal is to minimize this attack vector.
 
-
 ## License
 
 MIT (c) Paul Miller [(https://paulmillr.com)](https://paulmillr.com), see LICENSE file.
