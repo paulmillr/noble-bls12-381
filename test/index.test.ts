@@ -101,15 +101,15 @@ describe("bls12-381", () => {
     const decomp = new bls.PointG1(bls.PointG1.fromCompressedHex(publicKey));
     expect(publicKey).toEqual(decomp.toCompressedHex());
   });
-  it("should produce correct signatures", async () => {
+  it.skip("should produce correct signatures (550 vectors)", async () => {
     for (const [priv, msg, expected] of G2_VECTORS) {
       const sig = await bls.sign(msg, priv);
       //console.log('index', i++);
       expect(toHex(sig)).toEqual(expected);
     }
   });
-  it.skip("should verify signed message", async () => {
-    for (const [priv, msg] of G2_VECTORS.slice(0, 5)) {
+  it("should verify signed message", async () => {
+    for (const [priv, msg] of G2_VECTORS.slice(0, 25)) {
       const sig = await bls.sign(msg, priv);
       const pub = bls.getPublicKey(priv);
       const res = await bls.verify(sig, msg, pub);

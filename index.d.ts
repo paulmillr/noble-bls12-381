@@ -22,7 +22,7 @@ export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigi
 export declare let time: bigint;
 interface Field<T> {
     readonly value: T;
-    isEmpty(): boolean;
+    isZero(): boolean;
     equals(other: Field<T> | T): boolean;
     add(other: Field<T> | T): Field<T>;
     multiply(other: Field<T> | T | bigint): Field<T>;
@@ -40,7 +40,7 @@ export declare class Fq implements Field<bigint> {
     private _value;
     get value(): bigint;
     constructor(value: bigint);
-    isEmpty(): boolean;
+    isZero(): boolean;
     equals(other: Fq): boolean;
     negate(): Fq;
     invert(): Fq;
@@ -58,7 +58,7 @@ export declare class Fq2 implements Field<BigintTuple> {
     static readonly ZERO: Fq2;
     static readonly ONE: Fq2;
     static readonly COFACTOR: bigint;
-    static readonly PE_ROOTS_OF_UNITY: Fq2[];
+    static readonly ROOTS_OF_UNITY: Fq2[];
     static readonly ETAs: Fq2[];
     coefficients: Fq[];
     private degree;
@@ -68,7 +68,7 @@ export declare class Fq2 implements Field<BigintTuple> {
     constructor(coefficients: (Fq | bigint)[]);
     toString(): string;
     private zip;
-    isEmpty(): boolean;
+    isZero(): boolean;
     equals(other: Fq2): boolean;
     negate(): Fq2;
     add(other: Fq2): Fq2;
@@ -90,7 +90,7 @@ export declare class Fq12 implements Field<BigintTwelve> {
     get value(): BigintTwelve;
     constructor(args?: (bigint | Fq)[]);
     private zip;
-    isEmpty(): boolean;
+    isZero(): boolean;
     equals(other: Fq12): boolean;
     negate(): Fq12;
     add(other: Fq12): Fq12;
@@ -121,27 +121,13 @@ export declare class ProjectivePoint<T> {
     isZero(): boolean;
     getZero(): ProjectivePoint<T>;
     equals(other: ProjectivePoint<T>): boolean;
-    negative(): ProjectivePoint<T>;
+    negate(): ProjectivePoint<T>;
     toString(isAffine?: boolean): string;
     toAffine(): [Field<T>, Field<T>];
     double(): ProjectivePoint<T>;
     add(other: ProjectivePoint<T>): ProjectivePoint<T>;
     subtract(other: ProjectivePoint<T>): ProjectivePoint<T>;
     multiply(scalar: number | bigint | Fq): ProjectivePoint<T>;
-}
-export declare class JacobianPoint<T> {
-    x: Field<T>;
-    y: Field<T>;
-    z: Field<T>;
-    C: Constructor<T>;
-    constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
-    getZero(): ProjectivePoint<T>;
-    equals(other: JacobianPoint<T>): boolean;
-    negative(): JacobianPoint<T>;
-    toString(isAffine?: boolean): string;
-    toAffine(): [Field<T>, Field<T>];
-    double(): JacobianPoint<T>;
-    add(other: JacobianPoint<T>): JacobianPoint<T>;
 }
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
 export declare class PointG1 {
@@ -153,7 +139,7 @@ export declare class PointG1 {
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toCompressedHex(): Uint8Array;
     toFq12(): ProjectivePoint<BigintTwelve>;
-    assertValidity(): true | undefined;
+    assertValidity(): void;
 }
 export declare class PointG2 {
     private jpoint;
@@ -163,10 +149,9 @@ export declare class PointG2 {
     toString(): string;
     static hashToCurve(msg: PublicKey): Promise<ProjectivePoint<BigintTuple>>;
     static fromSignature(hex: Signature): ProjectivePoint<BigintTuple>;
-    compress(): bigint[];
     toSignature(): Uint8Array;
     toFq12(): ProjectivePoint<BigintTwelve>;
-    assertValidity(): true | undefined;
+    assertValidity(): void;
 }
 export declare class PointG12 {
     static B: Fq12;

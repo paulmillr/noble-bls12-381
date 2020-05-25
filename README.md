@@ -206,6 +206,16 @@ aggregateSignatures x 171 ops/sec @ 5ms/op
 pairing x 1 ops/sec @ 891ms/op
 ```
 
+May 25th:
+
+```
+getPublicKey x 1596 ops/sec @ 626μs/op
+sign x 17 ops/sec @ 58ms/op
+verify x 1 ops/sec @ 971ms/op
+aggregateSignatures x 165 ops/sec @ 6ms/op
+pairing x 19 ops/sec @ 52ms/op
+```
+
 ## Security
 
 Noble is production-ready & secure. Our goal is to have it audited by a good security expert.
