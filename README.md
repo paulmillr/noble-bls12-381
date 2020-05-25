@@ -199,21 +199,11 @@ Formulas:
 The library is pretty slow right now, but it's still good enough for many everyday cases. The benchmarks:
 
 ```
-getPublicKey x 1053 ops/sec @ 949μs/op
-sign x 18 ops/sec @ 54ms/op
-verify x 0 ops/sec @ 1374ms/op
-aggregateSignatures x 171 ops/sec @ 5ms/op
-pairing x 1 ops/sec @ 891ms/op
-```
-
-May 25th:
-
-```
-getPublicKey x 1596 ops/sec @ 626μs/op
-sign x 17 ops/sec @ 58ms/op
-verify x 1 ops/sec @ 971ms/op
-aggregateSignatures x 165 ops/sec @ 6ms/op
-pairing x 19 ops/sec @ 52ms/op
+getPublicKey x 273 ops/sec @ 3ms/op
+sign x 13 ops/sec @ 74ms/op
+verify x 1 ops/sec @ 980ms/op
+aggregateSignatures x 164 ops/sec @ 6ms/op
+pairing x 19 ops/sec @ 51ms/op
 ```
 
 ## Security
