@@ -149,6 +149,7 @@ export declare class PointG2 {
     toString(): string;
     static hashToCurve(msg: PublicKey): Promise<ProjectivePoint<BigintTuple>>;
     static fromSignature(hex: Signature): ProjectivePoint<BigintTuple>;
+    static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
     toFq12(): ProjectivePoint<BigintTwelve>;
     assertValidity(): void;

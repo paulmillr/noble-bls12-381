@@ -936,6 +936,9 @@ let PointG2 = (() => {
             point.assertValidity();
             return point.jpoint;
         }
+        static fromPrivateKey(privateKey) {
+            return new PointG2(this.BASE.multiply(normalizePrivKey(privateKey)));
+        }
         toSignature() {
             const { jpoint } = this;
             if (jpoint.equals(PointG2.ZERO)) {
@@ -988,19 +991,22 @@ let PointG12 = (() => {
     return PointG12;
 })();
 exports.PointG12 = PointG12;
-function createLineBetween(p1, p2, n) {
-    let mNumerator = p2.y.multiply(p1.z).subtract(p1.y.multiply(p2.z));
-    let mDenominator = p2.x.multiply(p1.z).subtract(p1.x.multiply(p2.z));
-    if (!mNumerator.isZero() && mDenominator.isZero()) {
-        return [n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)), p1.z.multiply(n.z)];
+function createLineBetween(p1, p2, t) {
+    const [X1, Y1, Z1] = [p1.x, p1.y, p1.z];
+    const [X2, Y2, Z2] = [p2.x, p2.y, p2.z];
+    const [XT, YT, ZT] = [t.x, t.y, t.z];
+    let num = Y2.multiply(Z1).subtract(Y1.multiply(Z2));
+    let den = X2.multiply(Z1).subtract(X1.multiply(Z2));
+    if (!num.isZero() && den.isZero()) {
+        return [XT.multiply(Z1).subtract(X1.multiply(ZT)), Z1.multiply(ZT)];
     }
-    else if (mNumerator.isZero()) {
-        mNumerator = p1.x.square().multiply(3n);
-        mDenominator = p1.y.multiply(p1.z).multiply(2n);
+    else if (num.isZero()) {
+        num = X1.square().multiply(3n);
+        den = Y1.multiply(Z1).multiply(2n);
     }
-    const numeratorLine = mNumerator.multiply(n.x.multiply(p1.z).subtract(p1.x.multiply(n.z)));
-    const denominatorLine = mDenominator.multiply(n.y.multiply(p1.z).subtract(p1.y.multiply(n.z)));
-    const z = mDenominator.multiply(n.z).multiply(p1.z);
+    const numeratorLine = num.multiply(XT.multiply(Z1).subtract(X1.multiply(ZT)));
+    const denominatorLine = den.multiply(YT.multiply(Z1).subtract(Y1.multiply(ZT)));
+    const z = den.multiply(ZT).multiply(Z1);
     return [numeratorLine.subtract(denominatorLine), z];
 }
 const PSEUDO_BINARY_ENCODING = [
@@ -1015,21 +1021,21 @@ function millerLoop(Q, P, withFinalExponent = false) {
         return one;
     }
     let R = Q;
-    let fNumerator = one;
-    let fDenominator = one;
+    let num = one;
+    let den = one;
     for (let i = PSEUDO_BINARY_ENCODING.length - 2; i >= 0n; i--) {
         const [n, d] = createLineBetween(R, R, P);
-        fNumerator = fNumerator.square().multiply(n);
-        fDenominator = fDenominator.square().multiply(d);
+        num = num.square().multiply(n);
+        den = den.square().multiply(d);
         R = R.double();
         if (PSEUDO_BINARY_ENCODING[i] === 1) {
             const [n, d] = createLineBetween(R, Q, P);
-            fNumerator = fNumerator.multiply(n);
-            fDenominator = fDenominator.multiply(d);
+            num = num.multiply(n);
+            den = den.multiply(d);
             R = R.add(Q);
         }
     }
-    const f = fNumerator.div(fDenominator);
+    const f = num.div(den);
     return withFinalExponent ? finalExponentiate(f) : f;
 }
 function pairing(P, Q, withFinalExponent = false) {
@@ -1052,11 +1058,12 @@ async function sign(message, privateKey) {
 }
 exports.sign = sign;
 async function verify(signature, message, publicKey) {
-    const Hm = await PointG2.hashToCurve(message);
     const P = PointG1.fromCompressedHex(publicKey).negate();
+    const Hm = await PointG2.hashToCurve(message);
+    const G = PointG1.BASE;
     const S = PointG2.fromSignature(signature);
     const ePHm = pairing(P, Hm);
-    const eGS = pairing(PointG1.BASE, S);
+    const eGS = pairing(G, S);
     const exp = finalExponentiate(eGS.multiply(ePHm));
     return exp.equals(Fq12.ONE);
 }
