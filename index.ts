@@ -1090,7 +1090,7 @@ export class PointG1 {
     const { x, y, z } = this.jpoint;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq);
-    if (left.equals(right)) throw new Error('Invalid point: not on curve over Fq');
+    if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq');
   }
 }
 

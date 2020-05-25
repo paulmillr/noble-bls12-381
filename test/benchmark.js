@@ -24,8 +24,8 @@ run(async () => {
 
   //await mark('sign', 1, async () => await bls.hashToG2('0abc', '424c53313233383147325f584d443a5348412d3235365f535357555f524f5f5445535447454e'));
 
-  await mark('getPublicKey', 1000, () => bls.getPublicKey(0xdeadbeefn));
-  await mark('sign', 10, async () => await bls.sign('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f2', 12344123n, 1));
+  await mark('getPublicKey', 1000, () => bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c'));
+  await mark('sign', 10, async () => await bls.sign('09', '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c'));
   const pub = bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c');
   await mark('verify', 5, async () => {
     await bls.verify(
