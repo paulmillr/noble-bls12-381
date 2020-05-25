@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG12 = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.ProjectivePoint = exports.Fq12 = exports.Fq2 = exports.Fq = exports.time = exports.DST_LABEL = exports.CURVE = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG12 = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.ProjectivePoint = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -24,11 +24,6 @@ exports.CURVE = {
 };
 const P = exports.CURVE.P;
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-exports.time = 0n;
-function fpToString(num) {
-    const str = num.toString(16).padStart(96, '0');
-    return str.slice(0, 2) + '.' + str.slice(-2);
-}
 let Fq = (() => {
     class Fq {
         constructor(value) {
@@ -79,7 +74,8 @@ let Fq = (() => {
             return this.multiply(other.invert());
         }
         toString() {
-            return fpToString(this.value);
+            const str = this.value.toString(16).padStart(96, '0');
+            return str.slice(0, 2) + '.' + str.slice(-2);
         }
     }
     Fq.ORDER = exports.CURVE.P;
@@ -134,12 +130,13 @@ let Fq2 = (() => {
         }
         multiply(other) {
             if (typeof other === 'bigint') {
-                return new Fq2([this.real.multiply(new Fq(other)), this.imag.multiply(new Fq(other))]);
+                const rhs = new Fq(other);
+                return new Fq2(this.coefficients.map((c) => c.multiply(rhs)));
             }
             if (this.constructor !== other.constructor)
                 throw new TypeError('Types do not match');
-            const a1 = [this.real, this.imag];
-            const b1 = [other.real, other.imag];
+            const a1 = this.coefficients;
+            const b1 = other.coefficients;
             const coeffs = [Fq.ZERO, Fq.ZERO];
             const embedding = 2;
             for (let i = 0; i < embedding; i++) {
@@ -192,16 +189,15 @@ let Fq2 = (() => {
                 return Fq2.ONE;
             if (n === 1n)
                 return this;
-            let result = Fq2.ONE;
-            let value = this;
+            let p = Fq2.ONE;
+            let d = this;
             while (n > 0n) {
-                if ((n & 1n) === 1n) {
-                    result = result.multiply(value);
-                }
+                if (n & 1n)
+                    p = p.multiply(d);
                 n >>= 1n;
-                value = value.square();
+                d = d.square();
             }
-            return result;
+            return p;
         }
         invert() {
             const [a, b] = this.value;
@@ -210,7 +206,7 @@ let Fq2 = (() => {
         }
         div(other) {
             if (typeof other === 'bigint') {
-                return new Fq2([this.real.div(other), this.imag.div(other)]);
+                return new Fq2(this.coefficients.map((c) => c.div(other)));
             }
             return this.multiply(other.invert());
         }
@@ -278,16 +274,16 @@ let Fq12 = (() => {
             if (typeof other === 'bigint') {
                 return new Fq12(this.coefficients.map((a) => a.multiply(new Fq(other))));
             }
-            const LENGTH = this.coefficients.length;
-            const filler = Array(LENGTH * 2 - 1)
+            const degree = this.coefficients.length;
+            const filler = Array(degree * 2 - 1)
                 .fill(null)
                 .map(() => Fq.ZERO);
-            for (let i = 0; i < LENGTH; i++) {
-                for (let j = 0; j < LENGTH; j++) {
+            for (let i = 0; i < degree; i++) {
+                for (let j = 0; j < degree; j++) {
                     filler[i + j] = filler[i + j].add(this.coefficients[i].multiply(other.coefficients[j]));
                 }
             }
-            for (let exp = LENGTH - 2; exp >= 0; exp--) {
+            for (let exp = degree - 2; exp >= 0; exp--) {
                 const top = filler.pop();
                 if (top === undefined) {
                     break;
@@ -302,19 +298,19 @@ let Fq12 = (() => {
             return this.multiply(this);
         }
         pow(n) {
-            if (n === 1n) {
+            if (n === 0n)
+                return Fq12.ONE;
+            if (n === 1n)
                 return this;
-            }
-            let result = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-            let value = this;
+            let p = Fq12.ONE;
+            let d = this;
             while (n > 0n) {
-                if ((n & 1n) === 1n) {
-                    result = result.multiply(value);
-                }
+                if (n & 1n)
+                    p = p.multiply(d);
                 n >>= 1n;
-                value = value.square();
+                d = d.square();
             }
-            return result;
+            return p;
         }
         degree(nums) {
             let degree = nums.length - 1;
@@ -497,9 +493,6 @@ class ProjectivePoint {
     }
 }
 exports.ProjectivePoint = ProjectivePoint;
-function finalExponentiate(p) {
-    return p.pow((exports.CURVE.P ** 12n - 1n) / exports.CURVE.r);
-}
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
@@ -1015,7 +1008,11 @@ const PSEUDO_BINARY_ENCODING = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1
 ];
-function millerLoop(Q, P, withFinalExponent = false) {
+const finalExp = (exports.CURVE.P ** 12n - 1n) / exports.CURVE.r;
+function finalExponentiate(p) {
+    return p.pow(finalExp);
+}
+function millerLoop(Q, P, withFinalExponent) {
     const one = Fq12.ONE;
     if (Q.isZero() || P.isZero()) {
         return one;
@@ -1038,7 +1035,7 @@ function millerLoop(Q, P, withFinalExponent = false) {
     const f = num.div(den);
     return withFinalExponent ? finalExponentiate(f) : f;
 }
-function pairing(P, Q, withFinalExponent = false) {
+function pairing(P, Q, withFinalExponent = true) {
     const p = new PointG1(P);
     const q = new PointG2(Q);
     p.assertValidity();
@@ -1062,8 +1059,8 @@ async function verify(signature, message, publicKey) {
     const Hm = await PointG2.hashToCurve(message);
     const G = PointG1.BASE;
     const S = PointG2.fromSignature(signature);
-    const ePHm = pairing(P, Hm);
-    const eGS = pairing(G, S);
+    const ePHm = pairing(P, Hm, false);
+    const eGS = pairing(G, S, false);
     const exp = finalExponentiate(eGS.multiply(ePHm));
     return exp.equals(Fq12.ONE);
 }
@@ -1094,10 +1091,10 @@ async function verifyBatch(messages, publicKeys, signature) {
                 ? groupPublicKey
                 : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])), PointG1.ZERO);
             const msg = await PointG2.hashToCurve(message);
-            producer = producer.multiply(pairing(groupPublicKey, msg));
+            producer = producer.multiply(pairing(groupPublicKey, msg, false));
         }
         const sig = PointG2.fromSignature(signature);
-        producer = producer.multiply(pairing(PointG1.BASE.negate(), sig));
+        producer = producer.multiply(pairing(PointG1.BASE.negate(), sig, false));
         const finalExponent = finalExponentiate(producer);
         return finalExponent.equals(Fq12.ONE);
     }

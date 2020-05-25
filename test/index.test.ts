@@ -11,8 +11,6 @@ const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten
 
 // @ts-ignore
 const CURVE_ORDER = bls.CURVE.r;
-const G1 = bls.PointG1.BASE;
-const G2 = bls.PointG2.BASE;
 
 function toHex(uint8a: Uint8Array): string {
   // pre-caching chars could speed this up 6x.
@@ -30,13 +28,7 @@ describe("bls12-381", () => {
     const decomp = new bls.PointG1(bls.PointG1.fromCompressedHex(publicKey));
     expect(publicKey).toEqual(decomp.toCompressedHex());
   });
-  // it("should compress and decompress G2 points", async () => {
-  //   const priv = bls.PointG2.fromPrivateKey(42n);
-  //   const publicKey = priv.toCompressedHex();
-  //   const decomp = new bls.PointG1(bls.PointG1.fromCompressedHex(publicKey));
-  //   expect(publicKey).toEqual(decomp.toCompressedHex());
-  // });
-  it.only(`should produce correct signatures (${G2_VECTORS.length} vectors)`, async () => {
+  it(`should produce correct signatures (${G2_VECTORS.length} vectors)`, async () => {
     for (let i = 0; i < G2_VECTORS.length; i++) {
       const [priv, msg, expected] = G2_VECTORS[i];
       const sig = await bls.sign(msg, priv);
@@ -228,43 +220,5 @@ describe("bls12-381", () => {
   //     ),
   //     { numRuns: NUM_RUNS }
   //   );
-  // });
-  // it.only("should create negative G1 pairing", () => {
-	// 	const p1 = bls.pairing(bls.PointG1.BASE, bls.PointG2.BASE);
-	// 	const p2 = bls.pairing(bls.PointG1.BASE.negate(), bls.PointG2.BASE);
-	// 	expect(p1.multiply(p2)).toEqual(bls.Fq12.ONE);
-  // });
-  // it("should create negative G2 pairing", () => {
-	// 	const p2 = bls.pairing(bls.G2, bls.G1.negative());
-	// 	const p3 = bls.pairing(bls.G2.negative(), bls.G1);
-	// 	expect(p2).toEqual(p3);
-  // });
-  // it.only("should create proper pairing output order", () => {
-	// 	const p1 = bls.pairing(G1, G2);
-	// 	const p2 = p1.pow(CURVE_ORDER);
-	// 	expect(p2).toEqual(bls.Fq12.ONE);
-  // });
-  it("should create right pairing with bilinearity on G1", () => {
-		const p1 = bls.pairing(G1, G2);
-		const p2 = bls.pairing(G1.multiply(2n), G2);
-		expect(p1.multiply(p1)).toEqual(p2);
-  });
-  it("pairing should not degenerate", () => {
-		const p1 = bls.pairing(G1, G2);
-		const p2 = bls.pairing(G1.multiply(2n), G2);
-		const p3 = bls.pairing(G1, G2.negate());
-		expect(p1).not.toEqual(p2);
-		expect(p1).not.toEqual(p3);
-		expect(p2).not.toEqual(p3);
-  });
-  // it("should create right pairing with bilinearity on G2", () => {
-	// 	const p1 = bls.pairing(G1, G2);
-	// 	const p2 = bls.pairing(G1, G2.multiply(2n));
-	// 	expect(p1.multiply(p1)).toEqual(p2);
-  // });
-  // it("should create right pairing composite check", () => {
-	// 	const p1 = bls.pairing(G1.multiply(37n), G2.multiply(27n));
-	// 	const p2 = bls.pairing(G1.multiply(999n), G2);
-	// 	expect(p1).toEqual(p2);
   // });
 });

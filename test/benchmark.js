@@ -10,7 +10,10 @@ run(async () => {
   //logMem();
   //console.log();
 
-  const toHex = (n) => Array.from(n).map(i => i.toString(16).padStart(2, '0')).join('');
+  const toHex = (n) =>
+    Array.from(n)
+      .map((i) => i.toString(16).padStart(2, '0'))
+      .join('');
   const msg = new TextEncoder().encode('a');
   // const res = await bls.hash_to_field(MESSAGE, 2);
   // console.log(res.flatMap(toHex));
@@ -24,8 +27,21 @@ run(async () => {
 
   //await mark('sign', 1, async () => await bls.hashToG2('0abc', '424c53313233383147325f584d443a5348412d3235365f535357555f524f5f5445535447454e'));
 
-  await mark('getPublicKey', 1000, () => bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c'));
-  await mark('sign', 10, async () => await bls.sign('09', '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c'));
+  await mark('getPublicKey', 1000, () =>
+    bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')
+  );
+  await mark(
+    'sign',
+    10,
+    async () =>
+      await bls.sign('09', '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')
+  );
+  await mark('aggregateSignatures', 10, () =>
+    bls.aggregateSignatures([
+      'b8acc4040f3ecf49d3b8921c24296cd9330aaa48706690a9f101ec9b94b83f4a2506988d101a32e2b5e1299f3c4d15d80f5d261df3f89e53c5283594c624bf5241745d9b03853f57a0f30f9d3d12009ae4f6e8b2c5ab6872a2216ce3252e3985',
+      '824550360ee39824076558e942725a4da901a49f3214a7bf9e02b86f6f8556899aa835d0fc793288f931af782a31063d09cd002efa15081cb296dc14a6ccab348d6cb371dd8445941d28ce78530ad2d3c50c225b8da3d806141e338c091f9fc0',
+    ])
+  );
   const pub = bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c');
   await mark('verify', 5, async () => {
     await bls.verify(
@@ -34,12 +50,12 @@ run(async () => {
       pub
     );
   });
-  await mark('aggregateSignatures', 10, () =>
-    bls.aggregateSignatures([
-      'b8acc4040f3ecf49d3b8921c24296cd9330aaa48706690a9f101ec9b94b83f4a2506988d101a32e2b5e1299f3c4d15d80f5d261df3f89e53c5283594c624bf5241745d9b03853f57a0f30f9d3d12009ae4f6e8b2c5ab6872a2216ce3252e3985',
-      '824550360ee39824076558e942725a4da901a49f3214a7bf9e02b86f6f8556899aa835d0fc793288f931af782a31063d09cd002efa15081cb296dc14a6ccab348d6cb371dd8445941d28ce78530ad2d3c50c225b8da3d806141e338c091f9fc0',
-    ])
+  const p1 = bls.PointG1.BASE.multiply(
+    0x28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4cn
   );
-  await mark('pairing', 5, () => bls.pairing(bls.PointG1.BASE, bls.PointG2.BASE));
+  const p2 = bls.PointG2.BASE.multiply(
+    0x28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4dn
+  );
+  await mark('pairing', 5, () => bls.pairing(p1, p2));
   //logMem();
 });

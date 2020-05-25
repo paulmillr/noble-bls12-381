@@ -19,7 +19,6 @@ declare type PublicKey = Bytes;
 declare type Signature = Bytes;
 declare type BigintTuple = [bigint, bigint];
 export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-export declare let time: bigint;
 interface Field<T> {
     readonly value: T;
     isZero(): boolean;

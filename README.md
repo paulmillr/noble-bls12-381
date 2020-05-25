@@ -98,6 +98,8 @@ function sign(
 - `domain: Uint8Array | string | bigint` - signature version. Different domains will give different signatures. Setting a new domain in an upgraded system prevents it from being affected by the old messages and signatures.
 - Returns `Uint8Array`: encoded signature
 
+Default domain (DST) is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`, use `bls.DST` to change it.
+
 ##### `verify(hash, publicKey, signature, domain)`
 ```typescript
 function verify(
@@ -199,11 +201,11 @@ Formulas:
 The library is pretty slow right now, but it's still good enough for many everyday cases. The benchmarks:
 
 ```
-getPublicKey x 273 ops/sec @ 3ms/op
-sign x 13 ops/sec @ 74ms/op
-verify x 1 ops/sec @ 980ms/op
-aggregateSignatures x 164 ops/sec @ 6ms/op
-pairing x 19 ops/sec @ 51ms/op
+getPublicKey x 253 ops/sec @ 3ms/op
+sign x 12 ops/sec @ 78ms/op
+aggregateSignatures x 143 ops/sec @ 6ms/op
+verify x 0 ops/sec @ 1025ms/op
+pairing x 1 ops/sec @ 878ms/op
 ```
 
 ## Security

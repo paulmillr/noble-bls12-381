@@ -1,5 +1,5 @@
 module.exports = {
-  testRegex: "/index\.test.ts",
+  testRegex: "/.*\.test.ts",
   transform: {
     "^.+\\.ts$": "ts-jest"
   }

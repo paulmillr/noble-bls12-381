@@ -1,6 +1,6 @@
 // bls12-381 is a construction of two curves.
 // 1. Fq: (x, y) - can be used for private keys
-// 2. Fq2: (x1, x2+i), (y1, y2+i) - can be used for signatures
+// 2. Fq2: (x1, x2+i), (y1, y2+i) - (imaginary numbers) can be used for signatures
 // We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
 
 // To verify curve params, see pairing-friendly-curves spec:
@@ -50,9 +50,6 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint
 ];
 
-// for benchmark purposes
-export let time = 0n;
-
 // Finite field
 interface Field<T> {
   readonly value: T;
@@ -68,12 +65,7 @@ interface Field<T> {
   pow(n: bigint): Field<T>;
 }
 
-function fpToString(num: bigint) {
-  const str = num.toString(16).padStart(96, '0');
-  return str.slice(0, 2) + '.' + str.slice(-2);
-}
-
-// Finite field over P.
+// Finite field over q.
 export class Fq implements Field<bigint> {
   static readonly ORDER = CURVE.P;
   static readonly ZERO = new Fq(0n);
@@ -138,7 +130,8 @@ export class Fq implements Field<bigint> {
   }
 
   toString() {
-    return fpToString(this.value);
+    const str = this.value.toString(16).padStart(96, '0');
+    return str.slice(0, 2) + '.' + str.slice(-2);
   }
 }
 
@@ -148,8 +141,8 @@ const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498
 const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+
 // Finite extension field over irreducible degree-1 polynominal.
-// Fq(u)/(u2 − β) where β = −1
 export class Fq2 implements Field<BigintTuple> {
   static readonly ORDER = CURVE.P2;
   static readonly ROOT = new Fq(-1n);
@@ -187,8 +180,6 @@ export class Fq2 implements Field<BigintTuple> {
   public coefficients: Fq[];
 
   private degree = 2;
-  // private embedding = 2;
-  // private baseField = Fq;
 
   public get real(): Fq {
     return this.coefficients[0];
@@ -239,12 +230,13 @@ export class Fq2 implements Field<BigintTuple> {
 
   multiply(other: Fq2 | bigint) {
     if (typeof other === 'bigint') {
-      return new Fq2([this.real.multiply(new Fq(other)), this.imag.multiply(new Fq(other))]);
+      const rhs = new Fq(other);
+      return new Fq2(this.coefficients.map((c) => c.multiply(rhs)));
     }
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     if (this.constructor !== other.constructor) throw new TypeError('Types do not match');
-    const a1 = [this.real, this.imag];
-    const b1 = [other.real, other.imag];
+    const a1 = this.coefficients;
+    const b1 = other.coefficients;
     const coeffs = [Fq.ZERO, Fq.ZERO];
     const embedding = 2;
 
@@ -296,16 +288,14 @@ export class Fq2 implements Field<BigintTuple> {
   pow(n: bigint): Fq2 {
     if (n === 0n) return Fq2.ONE;
     if (n === 1n) return this;
-    let result = Fq2.ONE;
-    let value: Fq2 = this;
+    let p = Fq2.ONE;
+    let d: Fq2 = this;
     while (n > 0n) {
-      if ((n & 1n) === 1n) {
-        result = result.multiply(value);
-      }
+      if (n & 1n) p = p.multiply(d);
       n >>= 1n;
-      value = value.square();
+      d = d.square();
     }
-    return result;
+    return p;
   }
 
   // We wish to find the multiplicative inverse of a nonzero
@@ -329,7 +319,7 @@ export class Fq2 implements Field<BigintTuple> {
 
   div(other: Fq2) {
     if (typeof other === 'bigint') {
-      return new Fq2([this.real.div(other), this.imag.div(other)]);
+      return new Fq2(this.coefficients.map((c) => c.div(other)));
     }
     return this.multiply(other.invert());
   }
@@ -342,8 +332,7 @@ const FP12_DEFAULT: BigintTwelve = [
   0n, 1n, 0n, 1n
 ];
 type Fq12Coeffs = [Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq, Fq];
-//Finite extension field.
-// This represents an element c0 + c1 * w of Fp12 = Fp6 / w^2 - v.
+// Finite extension field over irreducible degree-12 polynominal.
 export class Fq12 implements Field<BigintTwelve> {
   static readonly ZERO = new Fq12([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
   static readonly ONE = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
@@ -397,19 +386,19 @@ export class Fq12 implements Field<BigintTwelve> {
     if (typeof other === 'bigint') {
       return new Fq12(this.coefficients.map((a) => a.multiply(new Fq(other))));
     }
-    const LENGTH = this.coefficients.length;
+    const degree = this.coefficients.length;
 
-    const filler = Array(LENGTH * 2 - 1)
+    const filler = Array(degree * 2 - 1)
       .fill(null)
       .map(() => Fq.ZERO);
-    for (let i = 0; i < LENGTH; i++) {
-      for (let j = 0; j < LENGTH; j++) {
+    for (let i = 0; i < degree; i++) {
+      for (let j = 0; j < degree; j++) {
         filler[i + j] = filler[i + j].add(
           this.coefficients[i].multiply((other as Fq12).coefficients[j])
         );
       }
     }
-    for (let exp = LENGTH - 2; exp >= 0; exp--) {
+    for (let exp = degree - 2; exp >= 0; exp--) {
       const top = filler.pop();
       if (top === undefined) {
         break;
@@ -426,19 +415,16 @@ export class Fq12 implements Field<BigintTwelve> {
   }
 
   pow(n: bigint): Fq12 {
-    if (n === 1n) {
-      return this;
-    }
-    let result = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    let value: Fq12 = this;
+    if (n === 0n) return Fq12.ONE;
+    if (n === 1n) return this;
+    let p = Fq12.ONE;
+    let d: Fq12 = this;
     while (n > 0n) {
-      if ((n & 1n) === 1n) {
-        result = result.multiply(value);
-      }
+      if (n & 1n) p = p.multiply(d);
       n >>= 1n;
-      value = value.square();
+      d = d.square();
     }
-    return result;
+    return p;
   }
 
   private degree(nums: bigint[]) {
@@ -629,14 +615,6 @@ export class ProjectivePoint<T> {
     }
     return p;
   }
-}
-
-// https://eprint.iacr.org/2019/403.pdf
-// 2.1 The BLS12-381 elliptic curve
-// q =  z**4 − z**2 + 1
-// p = z + (z**4 − z**2 + 1) * (z − 1)**2 / 3
-function finalExponentiate(p: Field<BigintTwelve>) {
-  return p.pow((CURVE.P ** 12n - 1n) / CURVE.r);
 }
 
 const POW_2_381 = 2n ** 381n;
@@ -1232,11 +1210,16 @@ const PSEUDO_BINARY_ENCODING = [
   1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1
 ];
 
-// Main miller loop
+// TODO: very slow. Optimize.
+const finalExp = (CURVE.P ** 12n - 1n) / CURVE.r;
+function finalExponentiate(p: Field<BigintTwelve>) {
+  return p.pow(finalExp);
+}
+
 function millerLoop(
   Q: ProjectivePoint<BigintTwelve>,
   P: ProjectivePoint<BigintTwelve>,
-  withFinalExponent: boolean = false
+  withFinalExponent: boolean
 ) {
   // prettier-ignore
   const one: Field<BigintTwelve> = Fq12.ONE;
@@ -1265,7 +1248,7 @@ function millerLoop(
 export function pairing(
   P: ProjectivePoint<bigint>,
   Q: ProjectivePoint<BigintTuple>,
-  withFinalExponent: boolean = false
+  withFinalExponent: boolean = true
 ) {
   const p = new PointG1(P);
   const q = new PointG2(Q);
@@ -1297,8 +1280,10 @@ export async function verify(
   const Hm = await PointG2.hashToCurve(message);
   const G = PointG1.BASE;
   const S = PointG2.fromSignature(signature);
-  const ePHm = pairing(P, Hm);
-  const eGS = pairing(G, S);
+  // Instead of doing 2 exponentiations, we use property of billinear maps
+  // and do one exp after multiplying 2 points.
+  const ePHm = pairing(P, Hm, false);
+  const eGS = pairing(G, S, false);
   const exp = finalExponentiate(eGS.multiply(ePHm));
   return exp.equals(Fq12.ONE);
 }
@@ -1343,10 +1328,10 @@ export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], sig
         PointG1.ZERO
       );
       const msg = await PointG2.hashToCurve(message);
-      producer = producer.multiply(pairing(groupPublicKey, msg) as Fq12);
+      producer = producer.multiply(pairing(groupPublicKey, msg, false) as Fq12);
     }
     const sig = PointG2.fromSignature(signature);
-    producer = producer.multiply(pairing(PointG1.BASE.negate(), sig) as Fq12);
+    producer = producer.multiply(pairing(PointG1.BASE.negate(), sig, false) as Fq12);
     const finalExponent = finalExponentiate(producer);
     return finalExponent.equals(Fq12.ONE);
   } catch {
