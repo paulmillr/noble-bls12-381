@@ -1,11 +1,25 @@
 //import * as fc from "fast-check";
 import * as bls from "..";
+import {readFileSync} from 'fs';
+import {join} from 'path';
+const G2_VECTORS = readFileSync(join(__dirname, './bls12-381-g2-test-vectors.txt'), 'utf-8')
+  .trim()
+  .split('\n').map(l => l.split(':'));
 
 // @ts-ignore
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
 // @ts-ignore
 const CURVE_ORDER = bls.CURVE.r;
+
+function toHex(uint8a: Uint8Array): string {
+  // pre-caching chars could speed this up 6x.
+  let hex = '';
+  for (let i = 0; i < uint8a.length; i++) {
+    hex += uint8a[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
 
 describe("bls12-381", () => {
   it('test', () => {expect(1).toBe(1)})
@@ -81,12 +95,32 @@ describe("bls12-381", () => {
   //     { numRuns: NUM_RUNS }
   //   );
   // });
+  it("should compress and decompress G1 points", async () => {
+    const priv = bls.PointG1.fromPrivateKey(42n);
+    const publicKey = priv.toCompressedHex();
+    const decomp = new bls.PointG1(bls.PointG1.fromCompressedHex(publicKey));
+    expect(publicKey).toEqual(decomp.toCompressedHex());
+  });
+  it("should produce correct signatures", async () => {
+    for (const [priv, msg, expected] of G2_VECTORS) {
+      const sig = await bls.sign(msg, priv);
+      //console.log('index', i++);
+      expect(toHex(sig)).toEqual(expected);
+    }
+  });
+  it.skip("should verify signed message", async () => {
+    for (const [priv, msg] of G2_VECTORS.slice(0, 5)) {
+      const sig = await bls.sign(msg, priv);
+      const pub = bls.getPublicKey(priv);
+      const res = await bls.verify(sig, msg, pub);
+      expect(res).toBeTruthy()
+    }
+  });
   // it("should verify just signed message", async () => {
   //   await fc.assert(
   //     fc.asyncProperty(
-  //       fc.hexa(),
-  //       fc.bigInt(1n, CURVE_ORDER),
-  //       fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+  //       fc.hexaString(1, 96),
+  //       fc.bigInt(2n, CURVE_ORDER),
   //       async (message, privateKey) => {
   //         const publicKey = await bls.getPublicKey(privateKey);
   //         const signature = await bls.sign(message, privateKey);

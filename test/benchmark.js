@@ -10,8 +10,8 @@ run(async () => {
   //logMem();
   //console.log();
 
-  const toHex = (n) => n.map(i => i.toString(16));
-  const MESSAGE = new TextEncoder().encode('a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  const toHex = (n) => Array.from(n).map(i => i.toString(16).padStart(2, '0')).join('');
+  const msg = new TextEncoder().encode('a');
   // const res = await bls.hash_to_field(MESSAGE, 2);
   // console.log(res.flatMap(toHex));
 
@@ -19,7 +19,9 @@ run(async () => {
   // const aff = po.toAffine();
   // const repo = new bls.Point(aff[0], aff[1], bls.Fp2.ONE, bls.Fp2);
   // console.log(`compo ${po} ${repo} ${po.equals(repo)}`);
-  const curve = await bls.hash_to_curve(MESSAGE);
+  const signed = await bls.sign(MESSAGE, 2);
+  console.log(`signed ${toHex(signed)}`);
+
   // await mark('sign', 1, async () => await bls.hashToG2('0abc', '424c53313233383147325f584d443a5348412d3235365f535357555f524f5f5445535447454e'));
 
   // await mark('getPublicKey', 1000, () => bls.getPublicKey(0xdeadbeefn));

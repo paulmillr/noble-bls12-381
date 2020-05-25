@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { Fq, Fq2, Point, PointG1, PointG2 } from "..";
+import { Fq, Fq2, JacobianPoint, PointG1, PointG2 } from "..";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -11,8 +11,8 @@ describe("bls12-381 Point", () => {
           fc.array(fc.bigInt(1n, Fq.ORDER), 3, 3),
           fc.array(fc.bigInt(1n, Fq.ORDER), 3, 3),
           ([x1, y1, z1], [x2, y2, z2]) => {
-            const p1 = new Point(new Fq(x1), new Fq(y1), new Fq(z1), Fq);
-            const p2 = new Point(new Fq(x2), new Fq(y2), new Fq(z2), Fq);
+            const p1 = new JacobianPoint(new Fq(x1), new Fq(y1), new Fq(z1), Fq);
+            const p2 = new JacobianPoint(new Fq(x2), new Fq(y2), new Fq(z2), Fq);
             expect(p1.equals(p1)).toBe(true);
             expect(p2.equals(p2)).toBe(true);
             expect(p1.equals(p2)).toBe(false);
@@ -25,11 +25,11 @@ describe("bls12-381 Point", () => {
       );
     });
     it("should be placed on curve vector 1", () => {
-      const a = new Point(new Fq(0n), new Fq(1n), new Fq(0n), Fq);
+      const a = new JacobianPoint(new Fq(0n), new Fq(1n), new Fq(0n), Fq);
       new PointG1(a).assertValidity();
     });
     it("should be placed on curve vector 2", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn
         ),
@@ -42,7 +42,7 @@ describe("bls12-381 Point", () => {
       new PointG1(a).assertValidity();
     });
     it.skip("should be placed on curve vector 3", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           3924344720014921989021119511230386772731826098545970939506931087307386672210285223838080721449761235230077903044877n
         ),
@@ -57,11 +57,11 @@ describe("bls12-381 Point", () => {
       new PointG1(a).assertValidity();
     });
     it("should not be placed on curve vector 1", () => {
-      const a = new Point(new Fq(0n), new Fq(1n), new Fq(1n), Fq);
+      const a = new JacobianPoint(new Fq(0n), new Fq(1n), new Fq(1n), Fq);
       expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it("should not be placed on curve vector 2", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6ban
         ),
@@ -74,7 +74,7 @@ describe("bls12-381 Point", () => {
       expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it.skip("should not be placed on curve vector 3", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           0x034a6fce17d489676fb0a38892584cb4720682fe47c6dc2e058811e7ba4454300c078d0d7d8a147a294b8758ef846ccan
         ),
@@ -89,7 +89,7 @@ describe("bls12-381 Point", () => {
       expect(() => new PointG1(a).assertValidity()).toThrowError();
     });
     it.skip("should be doubled and placed on curve vector 1", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn
         ),
@@ -102,7 +102,7 @@ describe("bls12-381 Point", () => {
       const double = a.double();
       new PointG1(double).assertValidity();
       expect(double).toEqual(
-        new Point(
+        new JacobianPoint(
           new Fq(
             0x5dff4ac6726c6cb9b6d4dac3f33e92c062e48a6104cc52f6e7f23d4350c60bd7803e16723f9f1478a13c2b29f4325adn
           ),
@@ -119,7 +119,7 @@ describe("bls12-381 Point", () => {
       expect(double).toEqual(a.add(a));
     });
     it.skip("should be pdoubled and laced on curve vector 2", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq(
           3924344720014921989021119511230386772731826098545970939506931087307386672210285223838080721449761235230077903044877n
         ),
@@ -134,7 +134,7 @@ describe("bls12-381 Point", () => {
       const double = a.double();
       new PointG1(double).assertValidity();
       expect(double).toEqual(
-        new Point(
+        new JacobianPoint(
           new Fq(
             1434314241472461137481482360511979492412320309040868403221478633648864894222507584070840774595331376671376457941809n
           ),
@@ -158,13 +158,13 @@ describe("bls12-381 Point", () => {
           fc.array(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), 3, 3),
           fc.array(fc.array(fc.bigInt(1n, Fq.ORDER), 2, 2), 3, 3),
           ([x1, y1, z1], [x2, y2, z2]) => {
-            const p1 = new Point(
+            const p1 = new JacobianPoint(
               new Fq2(x1),
               new Fq2(y1),
               new Fq2(z1),
               Fq2
             );
-            const p2 = new Point(
+            const p2 = new JacobianPoint(
               new Fq2(x2),
               new Fq2(y2),
               new Fq2(z2),
@@ -182,7 +182,7 @@ describe("bls12-381 Point", () => {
       );
     });
     it("should be placed on curve vector 1", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([0n, 0n]),
         new Fq2([1n, 0n]),
         new Fq2([0n, 0n]),
@@ -191,7 +191,7 @@ describe("bls12-381 Point", () => {
       new PointG2(a).assertValidity();
     });
     it("should be placed on curve vector 2", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([
           0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
           0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en
@@ -206,7 +206,7 @@ describe("bls12-381 Point", () => {
       new PointG2(a).assertValidity();
     });
     it.skip("should be placed on curve vector 3", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([
           1050910533020938551374635094591786195161318899082245208049526631521590440770333461074893697611276887218497078796422n,
           1598996588129879649144273449445099511963892936268948685794588663059536473334389899700849905658337146716739117116278n
@@ -224,7 +224,7 @@ describe("bls12-381 Point", () => {
       new PointG2(a).assertValidity();
     });
     it("should not be placed on curve vector 1", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([0n, 0n]),
         new Fq2([1n, 0n]),
         new Fq2([1n, 0n]),
@@ -233,7 +233,7 @@ describe("bls12-381 Point", () => {
       expect(() => new PointG2(a).assertValidity()).toThrowError();
     });
     it("should not be placed on curve vector 2", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([
           0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4410b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
           0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en
@@ -248,7 +248,7 @@ describe("bls12-381 Point", () => {
       expect(() => new PointG2(a).assertValidity()).toThrowError();
     });
     it.skip("should not be placed on curve vector 3", () => {
-      const a = new Point(
+      const a = new JacobianPoint(
         new Fq2([
           0x877d52dd65245f8908a03288adcd396f489ef87ae23fe110c5aa48bc208fbd1a0ed403df5b1ac137922b915f1f38ec37n,
           0x0cf8158b9e689553d58194f79863fe02902c5f169f0d4ddf46e23f15bb4f24304a8e26f1e5febc57b750d1c3dc4261d8n
@@ -267,7 +267,7 @@ describe("bls12-381 Point", () => {
     });
   });
   it.skip("should be doubled and placed on curve vector 1", () => {
-    const a = new Point(
+    const a = new JacobianPoint(
       new Fq2([
         0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
         0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en
@@ -282,7 +282,7 @@ describe("bls12-381 Point", () => {
     const double = a.double();
     new PointG2(double).assertValidity();
     expect(double).toEqual(
-      new Point(
+      new JacobianPoint(
         new Fq2([
           2004569552561385659566932407633616698939912674197491321901037400001042336021538860336682240104624979660689237563240n,
           3955604752108186662342584665293438104124851975447411601471797343177761394177049673802376047736772242152530202962941n
@@ -302,7 +302,7 @@ describe("bls12-381 Point", () => {
     expect(double).toEqual(a.add(a));
   });
   it.skip("should be doubled and placed on curve vector 2", () => {
-    const a = new Point(
+    const a = new JacobianPoint(
       new Fq2([
         1050910533020938551374635094591786195161318899082245208049526631521590440770333461074893697611276887218497078796422n,
         1598996588129879649144273449445099511963892936268948685794588663059536473334389899700849905658337146716739117116278n
@@ -320,7 +320,7 @@ describe("bls12-381 Point", () => {
     const double = a.double();
     new PointG2(double).assertValidity();
     expect(double).toEqual(
-      new Point(
+      new JacobianPoint(
         new Fq2([
           971534195338026376106694691801988868863420444490100454506033572314651086872437977861235872590578590756720024471469n,
           378014958429131328675394810343769919858050810498061656943526952326849391332443820094459004368687076347500373099156n

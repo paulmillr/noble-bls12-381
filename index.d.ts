@@ -54,11 +54,12 @@ export declare class Fq implements Field<bigint> {
 }
 export declare class Fq2 implements Field<BigintTuple> {
     static readonly ORDER: bigint;
-    static readonly DIV_ORDER: bigint;
     static readonly ROOT: Fq;
     static readonly ZERO: Fq2;
     static readonly ONE: Fq2;
     static readonly COFACTOR: bigint;
+    static readonly PE_ROOTS_OF_UNITY: Fq2[];
+    static readonly ETAs: Fq2[];
     coefficients: Fq[];
     private degree;
     get real(): Fq;
@@ -75,7 +76,7 @@ export declare class Fq2 implements Field<BigintTuple> {
     multiply(other: Fq2 | bigint): Fq2;
     mulByNonresidue(): Fq2;
     square(): Fq2;
-    sqrt(): Fq2 | null;
+    sqrt(): Fq2 | undefined;
     pow(n: bigint): Fq2;
     invert(): Fq2;
     div(other: Fq2): Fq2;
@@ -102,6 +103,7 @@ export declare class Fq12 implements Field<BigintTwelve> {
     private optimizedRoundedDiv;
     invert(): Fq12;
     div(other: Fq12 | bigint): Fq12;
+    toString(): string;
 }
 declare type Constructor<T> = {
     new (...args: any[]): Field<T>;
@@ -109,57 +111,72 @@ declare type Constructor<T> = {
     ZERO: Field<T>;
     ONE: Field<T>;
 };
-export declare class Point<T> {
+export declare class ProjectivePoint<T> {
     x: Field<T>;
     y: Field<T>;
     z: Field<T>;
     C: Constructor<T>;
-    static get W(): Fq12;
-    static get W_SQUARE(): Fq12;
-    static get W_CUBE(): Fq12;
-    static fromAffine(x: Fq2, y: Fq2, C: Constructor<BigintTuple>): Point<BigintTuple>;
+    static fromAffine(x: Fq2, y: Fq2, C: Constructor<BigintTuple>): ProjectivePoint<BigintTuple>;
     constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
     isZero(): boolean;
-    getZero(): Point<T>;
-    equals(other: Point<T>): boolean;
-    negative(): Point<T>;
+    getZero(): ProjectivePoint<T>;
+    equals(other: ProjectivePoint<T>): boolean;
+    negative(): ProjectivePoint<T>;
     toString(isAffine?: boolean): string;
     toAffine(): [Field<T>, Field<T>];
-    double(): Point<T>;
-    add(other: Point<T>): Point<T>;
-    subtract(other: Point<T>): Point<T>;
-    multiply(scalar: number | bigint | Fq): Point<T>;
+    double(): ProjectivePoint<T>;
+    add(other: ProjectivePoint<T>): ProjectivePoint<T>;
+    subtract(other: ProjectivePoint<T>): ProjectivePoint<T>;
+    multiply(scalar: number | bigint | Fq): ProjectivePoint<T>;
+}
+export declare class JacobianPoint<T> {
+    x: Field<T>;
+    y: Field<T>;
+    z: Field<T>;
+    C: Constructor<T>;
+    constructor(x: Field<T>, y: Field<T>, z: Field<T>, C: Constructor<T>);
+    getZero(): ProjectivePoint<T>;
+    equals(other: JacobianPoint<T>): boolean;
+    negative(): JacobianPoint<T>;
+    toString(isAffine?: boolean): string;
+    toAffine(): [Field<T>, Field<T>];
+    double(): JacobianPoint<T>;
+    add(other: JacobianPoint<T>): JacobianPoint<T>;
 }
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
 export declare class PointG1 {
-    point: Point<bigint>;
-    static BASE: Point<bigint>;
-    static ZERO: Point<bigint>;
-    constructor(point: Point<bigint>);
-    static fromHex(hex: PublicKey): Point<bigint>;
-    toHex(): Uint8Array;
-    toFq12(): Point<BigintTwelve>;
+    private jpoint;
+    static BASE: ProjectivePoint<bigint>;
+    static ZERO: ProjectivePoint<bigint>;
+    constructor(jpoint: ProjectivePoint<bigint>);
+    static fromCompressedHex(hex: PublicKey): ProjectivePoint<bigint>;
+    static fromPrivateKey(privateKey: PrivateKey): PointG1;
+    toCompressedHex(): Uint8Array;
+    toFq12(): ProjectivePoint<BigintTwelve>;
     assertValidity(): true | undefined;
 }
 export declare class PointG2 {
-    point: Point<BigintTuple>;
-    static BASE: Point<BigintTuple>;
-    static ZERO: Point<BigintTuple>;
-    constructor(point: Point<BigintTuple>);
-    static fromx1x1(z1: bigint, z2: bigint): Point<BigintTuple>;
-    static fromSignature(hex: Signature): Point<BigintTuple>;
-    toHex(): bigint[];
+    private jpoint;
+    static BASE: ProjectivePoint<BigintTuple>;
+    static ZERO: ProjectivePoint<BigintTuple>;
+    constructor(jpoint: ProjectivePoint<BigintTuple>);
+    toString(): string;
+    static hashToCurve(msg: PublicKey): Promise<ProjectivePoint<BigintTuple>>;
+    static fromSignature(hex: Signature): ProjectivePoint<BigintTuple>;
+    compress(): bigint[];
     toSignature(): Uint8Array;
-    toFq12(): Point<BigintTwelve>;
+    toFq12(): ProjectivePoint<BigintTwelve>;
     assertValidity(): true | undefined;
 }
 export declare class PointG12 {
     static B: Fq12;
+    static W_SQUARE: Fq12;
+    static W_CUBE: Fq12;
 }
-export declare function pairing(Q: Point<BigintTuple>, P: Point<bigint>, withFinalExponent?: boolean): Field<BigintTwelve>;
+export declare function pairing(P: ProjectivePoint<bigint>, Q: ProjectivePoint<BigintTuple>, withFinalExponent?: boolean): Field<BigintTwelve>;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array>;
-export declare function verify(message: Hash, publicKey: PublicKey, signature: Signature): Promise<boolean>;
+export declare function verify(signature: Signature, message: Hash, publicKey: PublicKey): Promise<boolean>;
 export declare function aggregatePublicKeys(publicKeys: PublicKey[]): Uint8Array;
 export declare function aggregateSignatures(signatures: Signature[]): Uint8Array;
 export declare function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature): Promise<boolean>;
