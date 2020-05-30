@@ -7,7 +7,7 @@ run(async () => {
   //   ed.utils.precompute();
   // });
 
-  //logMem();
+  logMem();
   //console.log();
 
   const toHex = (n) =>
@@ -26,8 +26,8 @@ run(async () => {
   // console.log(`signed ${toHex(signed)}`);
 
   //await mark('sign', 1, async () => await bls.hashToG2('0abc', '424c53313233383147325f584d443a5348412d3235365f535357555f524f5f5445535447454e'));
-
-  await mark('getPublicKey', 1000, () =>
+  await mark('getPublicKey(small)', 1000, () => bls.getPublicKey('1'));
+  await mark('getPublicKey(big)', 1000, () =>
     bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')
   );
   await mark(
@@ -43,7 +43,7 @@ run(async () => {
     ])
   );
   const pub = bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c');
-  await mark('verify', 5, async () => {
+  await mark('verify', 20, async () => {
     await bls.verify(
       '8647aa9680cd0cdf065b94e818ff2bb948cc97838bcee987b9bc1b76d0a0a6e0d85db4e9d75aaedfc79d4ea2733a21ae0579014de7636dd2943d45b87c82b1c66a289006b0b9767921bb8edd3f6c5c5dec0d54cd65f61513113c50cc977849e5',
       '09',
@@ -56,6 +56,10 @@ run(async () => {
   const p2 = bls.PointG2.BASE.multiply(
     0x28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4dn
   );
-  await mark('pairing', 5, () => bls.pairing(p1, p2));
-  //logMem();
+  await mark('pairing (batch)', 40, () => bls.pairing(p1, p2));
+  await mark('pairing (single)', 40, () => {
+    p2.clearPairingPrecomputes();
+    bls.pairing(p1, p2)
+  });
+  logMem();
 });

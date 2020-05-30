@@ -1,29 +1,79 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG12 = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.ProjectivePoint = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = exports.CURVE = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
     h: 0x396c8c005555e1568c00aaab0000aaabn,
     Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
-    Gy: 0x8b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+    Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
     b: 4n,
     P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
         2n -
         1n,
     h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
     G2x: [
-        0x24aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
+        0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
         0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en,
     ],
     G2y: [
-        0xce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
-        0x606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
+        0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
+        0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
     ],
     b2: [4n, 4n],
+    BLS_X: 0xd201000000010000n,
 };
 const P = exports.CURVE.P;
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
+function gen_pow(cls, elm, n) {
+    if (n === 0n)
+        return cls.ONE;
+    if (n === 1n)
+        return elm;
+    let p = cls.ONE;
+    let d = elm;
+    while (n > 0n) {
+        if (n & 1n)
+            p = p.multiply(d);
+        n >>= 1n;
+        d = d.square();
+    }
+    return p;
+}
+function gen_div(elm, rhs) {
+    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+    return elm.multiply(inv);
+}
+function gen_inv_batch(cls, nums) {
+    const len = nums.length;
+    const scratch = new Array(len);
+    let acc = cls.ONE;
+    for (let i = 0; i < len; i++) {
+        if (nums[i].isZero())
+            continue;
+        scratch[i] = acc;
+        acc = acc.multiply(nums[i]);
+    }
+    acc = acc.invert();
+    for (let i = len - 1; i >= 0; i--) {
+        if (nums[i].isZero())
+            continue;
+        let tmp = acc.multiply(nums[i]);
+        nums[i] = acc.multiply(scratch[i]);
+        acc = tmp;
+    }
+    return nums;
+}
+function bitLen(n) {
+    let len;
+    for (len = 0; n > 0n; n >>= 1n, len += 1)
+        ;
+    return len;
+}
+function bitGet(n, pos) {
+    return n >> BigInt(pos) & 1n;
+}
+const BLS_X_LEN = bitLen(exports.CURVE.BLS_X);
 let Fq = (() => {
     class Fq {
         constructor(value) {
@@ -35,8 +85,8 @@ let Fq = (() => {
         isZero() {
             return this._value === 0n;
         }
-        equals(other) {
-            return this._value === other._value;
+        equals(rhs) {
+            return this._value === rhs._value;
         }
         negate() {
             return new Fq(-this._value);
@@ -53,8 +103,8 @@ let Fq = (() => {
             }
             return new Fq(x0);
         }
-        add(other) {
-            return new Fq(this._value + other.value);
+        add(rhs) {
+            return new Fq(this._value + rhs.value);
         }
         square() {
             return new Fq(this._value * this._value);
@@ -62,23 +112,22 @@ let Fq = (() => {
         pow(n) {
             return new Fq(powMod(this._value, n, Fq.ORDER));
         }
-        subtract(other) {
-            return new Fq(this._value - other._value);
+        subtract(rhs) {
+            return new Fq(this._value - rhs._value);
         }
-        multiply(other) {
-            if (other instanceof Fq)
-                other = other.value;
-            return new Fq(this._value * other);
+        multiply(rhs) {
+            if (rhs instanceof Fq)
+                rhs = rhs.value;
+            return new Fq(this._value * rhs);
         }
-        div(other) {
-            return this.multiply(other.invert());
-        }
+        div(rhs) { return gen_div(this, rhs); }
         toString() {
             const str = this.value.toString(16).padStart(96, '0');
             return str.slice(0, 2) + '.' + str.slice(-2);
         }
     }
     Fq.ORDER = exports.CURVE.P;
+    Fq.MAX_BITS = bitLen(exports.CURVE.P);
     Fq.ZERO = new Fq(0n);
     Fq.ONE = new Fq(1n);
     return Fq;
@@ -91,73 +140,35 @@ const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247c
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 let Fq2 = (() => {
     class Fq2 {
-        constructor(coefficients) {
-            this.degree = 2;
-            if (coefficients.length !== this.degree) {
-                throw new Error(`Expected array with ${this.degree} elements`);
-            }
-            this.coefficients = coefficients.map((i) => (i instanceof Fq ? i : new Fq(i)));
+        constructor(tuple) {
+            if (tuple.length !== 2)
+                throw new Error(`Expected array with 2 elements`);
+            let [c0, c1] = tuple;
+            this.c0 = typeof c0 === 'bigint' ? new Fq(c0) : c0;
+            this.c1 = typeof c1 === 'bigint' ? new Fq(c1) : c1;
         }
-        get real() {
-            return this.coefficients[0];
-        }
-        get imag() {
-            return this.coefficients[1];
-        }
-        get value() {
-            return this.coefficients.map((c) => c.value);
-        }
-        toString() {
-            return `(${this.real} + ${this.imag}×i)`;
-        }
-        zip(other, mapper) {
-            return this.coefficients.map((c, i) => mapper(c, other.coefficients[i]));
-        }
-        isZero() {
-            return this.coefficients.every((c) => c.isZero());
-        }
-        equals(other) {
-            return this.zip(other, (a, b) => a.equals(b)).every((a) => a);
-        }
-        negate() {
-            return new Fq2(this.coefficients.map((c) => c.negate()));
-        }
-        add(other) {
-            return new Fq2(this.zip(other, (a, b) => a.add(b)));
-        }
-        subtract(other) {
-            return new Fq2(this.zip(other, (a, b) => a.subtract(b)));
-        }
-        multiply(other) {
-            if (typeof other === 'bigint') {
-                const rhs = new Fq(other);
-                return new Fq2(this.coefficients.map((c) => c.multiply(rhs)));
-            }
-            if (this.constructor !== other.constructor)
-                throw new TypeError('Types do not match');
-            const a1 = this.coefficients;
-            const b1 = other.coefficients;
-            const coeffs = [Fq.ZERO, Fq.ZERO];
-            const embedding = 2;
-            for (let i = 0; i < embedding; i++) {
-                const x = a1[i];
-                for (let j = 0; j < embedding; j++) {
-                    const y = b1[j];
-                    if (!x.isZero() && !y.isZero()) {
-                        const degree = i + j;
-                        const md = degree % embedding;
-                        let xy = x.multiply(y);
-                        const root = Fq2.ROOT;
-                        if (degree >= embedding)
-                            xy = xy.multiply(root);
-                        coeffs[md] = coeffs[md].add(xy);
-                    }
-                }
-            }
-            return new Fq2(coeffs);
+        get real() { return this.c0; }
+        get imag() { return this.c1; }
+        get value() { return [this.c0.value, this.c1.value]; }
+        toString() { return `Fq2(${this.c0} + ${this.c1}×i)`; }
+        isZero() { return this.c0.isZero() && this.c1.isZero(); }
+        equals(rhs) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1); }
+        negate() { return new Fq2([this.c0.negate(), this.c1.negate()]); }
+        add(rhs) { return new Fq2([this.c0.add(rhs.c0), this.c1.add(rhs.c1)]); }
+        subtract(rhs) { return new Fq2([this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1)]); }
+        conjugate() { return new Fq2([this.c0, this.c1.negate()]); }
+        pow(n) { return gen_pow(Fq2, this, n); }
+        div(rhs) { return gen_div(this, rhs); }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq2([this.c0.multiply(rhs), this.c1.multiply(rhs)]);
+            const [{ c0, c1 }, { c0: r0, c1: r1 }] = [this, rhs];
+            let t1 = c0.multiply(r0);
+            let t2 = c1.multiply(r1);
+            return new Fq2([t1.subtract(t2), c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2))]);
         }
         mulByNonresidue() {
-            return new Fq2([this.real.subtract(this.imag), this.real.add(this.imag)]);
+            return new Fq2([this.c0.subtract(this.c1), this.c0.add(this.c1)]);
         }
         square() {
             const a = this.real.add(this.imag);
@@ -184,34 +195,23 @@ let Fq2 = (() => {
                 return x1;
             return x2;
         }
-        pow(n) {
-            if (n === 0n)
-                return Fq2.ONE;
-            if (n === 1n)
-                return this;
-            let p = Fq2.ONE;
-            let d = this;
-            while (n > 0n) {
-                if (n & 1n)
-                    p = p.multiply(d);
-                n >>= 1n;
-                d = d.square();
-            }
-            return p;
-        }
         invert() {
             const [a, b] = this.value;
             const factor = new Fq(a * a + b * b).invert();
             return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
         }
-        div(other) {
-            if (typeof other === 'bigint') {
-                return new Fq2(this.coefficients.map((c) => c.div(other)));
-            }
-            return this.multiply(other.invert());
+        frobeniusMap(power) {
+            return new Fq2([this.c0, this.c1.multiply(Fq2.FROBENIUS_COEFFICIENTS[power % 2])]);
+        }
+        multiplyByB() {
+            let { c0, c1 } = this;
+            let t0 = c0.multiply(4n);
+            let t1 = c1.multiply(4n);
+            return new Fq2([t0.subtract(t1), t0.add(t1)]);
         }
     }
     Fq2.ORDER = exports.CURVE.P2;
+    Fq2.MAX_BITS = bitLen(exports.CURVE.P2);
     Fq2.ROOT = new Fq(-1n);
     Fq2.ZERO = new Fq2([0n, 0n]);
     Fq2.ONE = new Fq2([1n, 0n]);
@@ -232,160 +232,218 @@ let Fq2 = (() => {
         new Fq2([ev3, ev4]),
         new Fq2([-ev4, ev3]),
     ];
+    Fq2.FROBENIUS_COEFFICIENTS = [
+        new Fq(0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n),
+        new Fq(0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan),
+    ];
     return Fq2;
 })();
 exports.Fq2 = Fq2;
-const FP12_DEFAULT = [
-    0n, 1n, 0n, 1n,
-    0n, 1n, 0n, 1n,
-    0n, 1n, 0n, 1n
-];
-let Fq12 = (() => {
-    class Fq12 {
-        constructor(args = FP12_DEFAULT) {
-            if (args.length !== 12) {
-                throw new Error(`Invalid number of coefficients. Expected 12, not ${args.length}`);
-            }
-            const coeffs = args.slice().map((c) => (c instanceof Fq ? c : new Fq(c)));
-            this.coefficients = coeffs;
+let Fq6 = (() => {
+    class Fq6 {
+        constructor(c0, c1, c2) {
+            this.c0 = c0;
+            this.c1 = c1;
+            this.c2 = c2;
         }
-        get value() {
-            return this.coefficients.map((c) => c.value);
+        static from_tuple(t) {
+            return new Fq6(new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6)));
         }
-        zip(other, mapper) {
-            return this.coefficients.map((c, i) => mapper(c, other.coefficients[i]));
+        toString() { return `Fq6(${this.c0} + ${this.c1} * v, ${this.c2} * v^2)`; }
+        isZero() { return this.c0.isZero() && this.c1.isZero() && this.c2.isZero(); }
+        negate() { return new Fq6(this.c0.negate(), this.c1.negate(), this.c2.negate()); }
+        equals(rhs) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1) && this.c2.equals(rhs.c2); }
+        add(rhs) { return new Fq6(this.c0.add(rhs.c0), this.c1.add(rhs.c1), this.c2.add(rhs.c2)); }
+        subtract(rhs) { return new Fq6(this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1), this.c2.subtract(rhs.c2)); }
+        div(rhs) { return gen_div(this, rhs); }
+        pow(n) { return gen_pow(Fq6, this, n); }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq6(this.c0.multiply(rhs), this.c1.multiply(rhs), this.c2.multiply(rhs));
+            let [{ c0, c1, c2 }, { c0: r0, c1: r1, c2: r2 }] = [this, rhs];
+            let t0 = c0.multiply(r0);
+            let t1 = c1.multiply(r1);
+            let t2 = c2.multiply(r2);
+            return new Fq6(t0.add(c1.add(c2).multiply(r1.add(r2)).subtract(t1.add(t2)).mulByNonresidue()), c0.add(c1).multiply(r0.add(r1)).subtract(t0.add(t1)).add(t2.mulByNonresidue()), t1.add(c0.add(c2).multiply(r0.add(r2)).subtract(t0.add(t2))));
         }
-        isZero() {
-            return this.coefficients.every((c) => c.isZero());
+        mulByNonresidue() { return new Fq6(this.c2.mulByNonresidue(), this.c0, this.c1); }
+        multiplyBy1(b1) {
+            return new Fq6(this.c2.multiply(b1).mulByNonresidue(), this.c0.multiply(b1), this.c1.multiply(b1));
         }
-        equals(other) {
-            return this.zip(other, (a, b) => a.equals(b)).every((a) => a);
-        }
-        negate() {
-            return new Fq12(this.coefficients.map((c) => c.negate()));
-        }
-        add(other) {
-            return new Fq12(this.zip(other, (a, b) => a.add(b)));
-        }
-        subtract(other) {
-            return new Fq12(this.zip(other, (a, b) => a.subtract(b)));
-        }
-        multiply(other) {
-            if (typeof other === 'bigint') {
-                return new Fq12(this.coefficients.map((a) => a.multiply(new Fq(other))));
-            }
-            const degree = this.coefficients.length;
-            const filler = Array(degree * 2 - 1)
-                .fill(null)
-                .map(() => Fq.ZERO);
-            for (let i = 0; i < degree; i++) {
-                for (let j = 0; j < degree; j++) {
-                    filler[i + j] = filler[i + j].add(this.coefficients[i].multiply(other.coefficients[j]));
-                }
-            }
-            for (let exp = degree - 2; exp >= 0; exp--) {
-                const top = filler.pop();
-                if (top === undefined) {
-                    break;
-                }
-                for (const [i, value] of Fq12.ENTRY_COEFFICIENTS) {
-                    filler[exp + i] = filler[exp + i].subtract(top.multiply(new Fq(value)));
-                }
-            }
-            return new Fq12(filler);
+        multiplyBy01(b0, b1) {
+            let { c0, c1, c2 } = this;
+            let t0 = c0.multiply(b0);
+            let t1 = c1.multiply(b1);
+            return new Fq6(c1.add(c2).multiply(b1).subtract(t1).mulByNonresidue().add(t0), b0.add(b1).multiply(c0.add(c1)).subtract(t0).subtract(t1), c0.add(c2).multiply(b0).subtract(t0).add(t1));
         }
         square() {
-            return this.multiply(this);
-        }
-        pow(n) {
-            if (n === 0n)
-                return Fq12.ONE;
-            if (n === 1n)
-                return this;
-            let p = Fq12.ONE;
-            let d = this;
-            while (n > 0n) {
-                if (n & 1n)
-                    p = p.multiply(d);
-                n >>= 1n;
-                d = d.square();
-            }
-            return p;
-        }
-        degree(nums) {
-            let degree = nums.length - 1;
-            while (nums[degree] === 0n && degree !== 0) {
-                degree--;
-            }
-            return degree;
-        }
-        primeNumberInvariant(num) {
-            return new Fq(num).invert().value;
-        }
-        optimizedRoundedDiv(coefficients, others) {
-            const tmp = [...coefficients];
-            const degreeThis = this.degree(tmp);
-            const degreeOthers = this.degree(others);
-            const zeros = Array.from(tmp).fill(0n);
-            const edgeInvariant = this.primeNumberInvariant(others[degreeOthers]);
-            for (let i = degreeThis - degreeOthers; i >= 0; i--) {
-                zeros[i] = zeros[i] + tmp[degreeOthers + i] * edgeInvariant;
-                for (let c = 0; c < degreeOthers; c++) {
-                    tmp[c + i] = tmp[c + i] - zeros[c];
-                }
-            }
-            return new Fq12(zeros.slice(0, 12));
+            let { c0, c1, c2 } = this;
+            let t0 = c0.square();
+            let t1 = c0.multiply(c1).multiply(2n);
+            let t3 = c1.multiply(c2).multiply(2n);
+            let t4 = c2.square();
+            return new Fq6(t3.mulByNonresidue().add(t0), t4.mulByNonresidue().add(t1), t1.add(c0.subtract(c1).add(c2).square()).add(t3).subtract(t0).subtract(t4));
         }
         invert() {
-            const LENGTH = this.coefficients.length;
-            let lm = [...Fq12.ONE.coefficients.map((a) => a.value), 0n];
-            let hm = [...Fq12.ZERO.coefficients.map((a) => a.value), 0n];
-            let low = [...this.coefficients.map((a) => a.value), 0n];
-            let high = [...Fq12.MODULE_COEFFICIENTS, 1n];
-            while (this.degree(low) !== 0) {
-                const { coefficients } = this.optimizedRoundedDiv(high, low);
-                const zeros = Array(LENGTH + 1 - coefficients.length)
-                    .fill(null)
-                    .map(() => Fq.ZERO);
-                const roundedDiv = coefficients.concat(zeros);
-                let nm = [...hm];
-                let nw = [...high];
-                for (let i = 0; i <= LENGTH; i++) {
-                    for (let j = 0; j <= LENGTH - i; j++) {
-                        nm[i + j] -= lm[i] * roundedDiv[j].value;
-                        nw[i + j] -= low[i] * roundedDiv[j].value;
-                    }
-                }
-                nm = nm.map((a) => new Fq(a).value);
-                nw = nw.map((a) => new Fq(a).value);
-                hm = lm;
-                lm = nm;
-                high = low;
-                low = nw;
-            }
-            const result = new Fq12(lm.slice(0, 12));
-            return result.div(low[0]);
+            let { c0, c1, c2 } = this;
+            let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue());
+            let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1));
+            let t2 = c1.square().subtract(c0.multiply(c2));
+            let t4 = c2.multiply(t1).add(c1.multiply(t2)).mulByNonresidue().add(c0.multiply(t0)).invert();
+            return new Fq6(t4.multiply(t0), t4.multiply(t1), t4.multiply(t2));
         }
-        div(other) {
-            if (typeof other === 'bigint') {
-                const num = new Fq(other);
-                return new Fq12(this.coefficients.map((a) => a.div(num)));
-            }
-            return this.multiply(other.invert());
-        }
-        toString() {
-            const coeffs = this.coefficients.map((c) => c.toString()).join(' + \n');
-            return `Fq12 (${coeffs})`;
+        frobeniusMap(power) {
+            return new Fq6(this.c0.frobeniusMap(power), this.c1.frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_1[power % 6]), this.c2.frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_2[power % 6]));
         }
     }
-    Fq12.ZERO = new Fq12([0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    Fq12.ONE = new Fq12([1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    Fq12.MODULE_COEFFICIENTS = [
-        2n, 0n, 0n, 0n, 0n, 0n, -2n, 0n, 0n, 0n, 0n, 0n
+    Fq6.ZERO = new Fq6(Fq2.ZERO, Fq2.ZERO, Fq2.ZERO);
+    Fq6.ONE = new Fq6(Fq2.ONE, Fq2.ZERO, Fq2.ZERO);
+    Fq6.FROBENIUS_COEFFICIENTS_1 = [
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn]),
+        new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n]),
+        new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen]),
     ];
-    Fq12.ENTRY_COEFFICIENTS = [
-        [0, 2n],
-        [6, -2n],
+    Fq6.FROBENIUS_COEFFICIENTS_2 = [
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+    ];
+    return Fq6;
+})();
+exports.Fq6 = Fq6;
+let Fq12 = (() => {
+    class Fq12 {
+        constructor(c0, c1) {
+            this.c0 = c0;
+            this.c1 = c1;
+        }
+        static from_tuple(t) {
+            return new Fq12(Fq6.from_tuple(t.slice(0, 6)), Fq6.from_tuple(t.slice(6, 12)));
+        }
+        get value() { return [this.c0, this.c1]; }
+        toString() { return `Fq12(${this.c0} + ${this.c1} * w)`; }
+        isZero() { return this.c0.isZero() && this.c1.isZero(); }
+        equals(rhs) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1); }
+        negate() { return new Fq12(this.c0.negate(), this.c1.negate()); }
+        add(rhs) { return new Fq12(this.c0.add(rhs.c0), this.c1.add(rhs.c1)); }
+        subtract(rhs) { return new Fq12(this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1)); }
+        conjugate() { return new Fq12(this.c0, this.c1.negate()); }
+        pow(n) { return gen_pow(Fq12, this, n); }
+        div(rhs) { return gen_div(this, rhs); }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq12(this.c0.multiply(rhs), this.c1.multiply(rhs));
+            let [{ c0, c1 }, { c0: r0, c1: r1 }] = [this, rhs];
+            let t1 = c0.multiply(r0);
+            let t2 = c1.multiply(r1);
+            return new Fq12(t1.add(t2.mulByNonresidue()), c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2)));
+        }
+        multiplyBy014(o0, o1, o4) {
+            let { c0, c1 } = this;
+            let [t0, t1] = [c0.multiplyBy01(o0, o1), c1.multiplyBy1(o4)];
+            return new Fq12(t1.mulByNonresidue().add(t0), c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1));
+        }
+        square() {
+            let { c0, c1 } = this;
+            let ab = c0.multiply(c1);
+            return new Fq12(c1.mulByNonresidue().add(c0).multiply(c0.add(c1)).subtract(ab).subtract(ab.mulByNonresidue()), ab.add(ab));
+        }
+        invert() {
+            let { c0, c1 } = this;
+            let t = c0.square().subtract(c1.square().mulByNonresidue()).invert();
+            return new Fq12(c0.multiply(t), c1.multiply(t).negate());
+        }
+        frobeniusMap(power) {
+            const { c0, c1 } = this;
+            let r0 = c0.frobeniusMap(power);
+            let { c0: c1_0, c1: c1_1, c2: c1_2 } = c1.frobeniusMap(power);
+            return new Fq12(r0, new Fq6(c1_0.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]), c1_1.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]), c1_2.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12])));
+        }
+        Fq4Square(a, b) {
+            const a2 = a.square(), b2 = b.square();
+            return [
+                b2.mulByNonresidue().add(a2),
+                a.add(b).square().subtract(a2).subtract(b2)
+            ];
+        }
+        cyclotomicSquare() {
+            const { c0: { c0: c0c0, c1: c0c1, c2: c0c2 }, c1: { c0: c1c0, c1: c1c1, c2: c1c2 } } = this;
+            let [t3, t4] = this.Fq4Square(c0c0, c1c1);
+            let [t5, t6] = this.Fq4Square(c1c0, c0c2);
+            let [t7, t8] = this.Fq4Square(c0c1, c1c2);
+            let t9 = t8.mulByNonresidue();
+            return new Fq12(new Fq6(t3.subtract(c0c0).multiply(2n).add(t3), t5.subtract(c0c1).multiply(2n).add(t5), t7.subtract(c0c2).multiply(2n).add(t7)), new Fq6(t9.add(c1c0).multiply(2n).add(t9), t4.add(c1c1).multiply(2n).add(t4), t6.add(c1c2).multiply(2n).add(t6)));
+        }
+        cyclotomicExp(n) {
+            let z = Fq12.ONE;
+            for (let i = BLS_X_LEN - 1; i >= 0; i--) {
+                z = z.cyclotomicSquare();
+                if (bitGet(n, i))
+                    z = z.multiply(this);
+            }
+            return z;
+        }
+        finalExponentiate() {
+            let t0 = this.frobeniusMap(6).div(this);
+            let t1 = t0.frobeniusMap(2).multiply(t0);
+            let t2 = t1.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
+            let t4 = t3.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t5 = t4.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t6 = t5.cyclotomicExp(exports.CURVE.BLS_X).conjugate().multiply(t2.cyclotomicSquare());
+            return t2.multiply(t5).frobeniusMap(2)
+                .multiply(t4.multiply(t1).frobeniusMap(3))
+                .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
+                .multiply(t6.cyclotomicExp(exports.CURVE.BLS_X).conjugate())
+                .multiply(t3.conjugate())
+                .multiply(t1);
+        }
+    }
+    Fq12.ZERO = new Fq12(Fq6.ZERO, Fq6.ZERO);
+    Fq12.ONE = new Fq12(Fq6.ONE, Fq6.ZERO);
+    Fq12.FROBENIUS_COEFFICIENTS = [
+        new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+            0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n]),
+        new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+            0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n]),
+        new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+            0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n]),
+        new Fq2([0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+            0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n]),
+        new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+            0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n]),
+        new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+        new Fq2([0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+            0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n]),
     ];
     return Fq12;
 })();
@@ -397,23 +455,26 @@ class ProjectivePoint {
         this.z = z;
         this.C = C;
     }
-    static fromAffine(x, y, C) {
-        return new ProjectivePoint(x, y, C.ONE, C);
-    }
     isZero() {
         return this.z.isZero();
     }
-    getZero() {
-        return new ProjectivePoint(this.C.ONE, this.C.ONE, this.C.ZERO, this.C);
+    getPoint(x, y, z) {
+        return new this.constructor(x, y, z);
     }
-    equals(other) {
+    getZero() {
+        return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
+    }
+    equals(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         const a = this;
-        const b = other;
+        const b = rhs;
         const xe = a.x.multiply(b.z).equals(b.x.multiply(a.z));
-        return xe && a.y.multiply(b.z).equals(b.y.multiply(a.z));
+        const ye = a.y.multiply(b.z).equals(b.y.multiply(a.z));
+        return xe && ye;
     }
     negate() {
-        return new ProjectivePoint(this.x, this.y.negate(), this.z, this.C);
+        return this.getPoint(this.x, this.y.negate(), this.z);
     }
     toString(isAffine = true) {
         if (!isAffine) {
@@ -422,9 +483,18 @@ class ProjectivePoint {
         const [x, y] = this.toAffine();
         return `Point<x=${x}, y=${y}>`;
     }
-    toAffine() {
-        const iz = this.z.invert();
-        return [this.x.multiply(iz), this.y.multiply(iz)];
+    fromAffineTuple(xy) {
+        return this.getPoint(xy[0], xy[1], this.C.ONE);
+    }
+    toAffine(invZ = this.z.invert()) {
+        return [this.x.multiply(invZ), this.y.multiply(invZ)];
+    }
+    toAffineBatch(points) {
+        const toInv = gen_inv_batch(this.C, points.map(p => p.z));
+        return points.map((p, i) => p.toAffine(toInv[i]));
+    }
+    normalizeZ(points) {
+        return this.toAffineBatch(points).map(t => this.fromAffineTuple(t));
     }
     double() {
         const { x, y, z } = this;
@@ -437,11 +507,13 @@ class ProjectivePoint {
         const X3 = H.multiply(S).multiply(2n);
         const Y3 = W.multiply(B.multiply(4n).subtract(H)).subtract(y.multiply(y).multiply(8n).multiply(SS));
         const Z3 = SSS.multiply(8n);
-        return new ProjectivePoint(X3, Y3, Z3, this.C);
+        return this.getPoint(X3, Y3, Z3);
     }
-    add(other) {
+    add(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         const p1 = this;
-        const p2 = other;
+        const p2 = rhs;
         if (p1.isZero())
             return p2;
         if (p2.isZero())
@@ -459,7 +531,7 @@ class ProjectivePoint {
         if (V1.equals(V2) && U1.equals(U2))
             return this.double();
         if (V1.equals(V2))
-            return new ProjectivePoint(this.C.ONE, this.C.ONE, this.C.ZERO, this.C);
+            return this.getZero();
         const U = U1.subtract(U2);
         const V = V1.subtract(V2);
         const VV = V.multiply(V);
@@ -470,17 +542,22 @@ class ProjectivePoint {
         const X3 = V.multiply(A);
         const Y3 = U.multiply(V2VV.subtract(A)).subtract(VVV.multiply(U2));
         const Z3 = VVV.multiply(W);
-        return new ProjectivePoint(X3, Y3, Z3, this.C);
+        return this.getPoint(X3, Y3, Z3);
     }
-    subtract(other) {
-        return this.add(other.negate());
+    subtract(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+        return this.add(rhs.negate());
     }
-    multiply(scalar) {
+    multiplyUnsafe(scalar) {
         let n = scalar;
         if (n instanceof Fq)
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
+        if (n <= 0) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer');
+        }
         let p = this.getZero();
         let d = this;
         while (n > 0n) {
@@ -491,8 +568,80 @@ class ProjectivePoint {
         }
         return p;
     }
+    maxBits() {
+        return this.C.MAX_BITS;
+    }
+    precomputeWindow(W) {
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        let points = [];
+        let p = this;
+        let base = p;
+        for (let window = 0; window < windows; window++) {
+            base = p;
+            points.push(base);
+            for (let i = 1; i < windowSize; i++) {
+                base = base.add(p);
+                points.push(base);
+            }
+            p = base.double();
+        }
+        return points;
+    }
+    calcMultiplyPrecomputes(W) {
+        if (this.multiply_precomputes)
+            throw new Error('This point already has precomputes');
+        this.multiply_precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+    }
+    clearMultiplyPrecomputes() {
+        this.multiply_precomputes = undefined;
+    }
+    wNAF(n) {
+        let W, precomputes;
+        if (this.multiply_precomputes) {
+            [W, precomputes] = this.multiply_precomputes;
+        }
+        else {
+            W = 1;
+            precomputes = this.precomputeWindow(W);
+        }
+        let [p, f] = [this.getZero(), this.getZero()];
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        const mask = BigInt(2 ** W - 1);
+        const maxNumber = 2 ** W;
+        const shiftBy = BigInt(W);
+        for (let window = 0; window < windows; window++) {
+            const offset = window * windowSize;
+            let wbits = Number(n & mask);
+            n >>= shiftBy;
+            if (wbits > windowSize) {
+                wbits -= maxNumber;
+                n += 1n;
+            }
+            if (wbits === 0) {
+                f = f.add(window % 2 ? precomputes[offset].negate() : precomputes[offset]);
+            }
+            else {
+                const cached = precomputes[offset + Math.abs(wbits) - 1];
+                p = p.add(wbits < 0 ? cached.negate() : cached);
+            }
+        }
+        return [p, f];
+    }
+    multiply(scalar) {
+        let n = scalar;
+        if (n instanceof Fq)
+            n = n.value;
+        if (typeof n === 'number')
+            n = BigInt(n);
+        if (n <= 0)
+            throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
+        if (bitLen(n) > this.maxBits())
+            throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
+        return this.wNAF(n)[0];
+    }
 }
-exports.ProjectivePoint = ProjectivePoint;
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
@@ -705,7 +854,7 @@ function isogenyMapG2(xyz) {
     const z2 = mapped[1].multiply(mapped[3]);
     const x2 = mapped[0].multiply(mapped[3]);
     const y2 = mapped[1].multiply(mapped[2]);
-    return new ProjectivePoint(x2, y2, z2, Fq2);
+    return new PointG2(x2, y2, z2);
 }
 async function expand_message_xmd(msg, DST, len_in_bytes) {
     const H = sha256;
@@ -818,11 +967,9 @@ function normalizePrivKey(privateKey) {
     return new Fq(toBigInt(privateKey));
 }
 let PointG1 = (() => {
-    class PointG1 {
-        constructor(jpoint) {
-            this.jpoint = jpoint;
-            if (!jpoint)
-                throw new Error('Expected point');
+    class PointG1 extends ProjectivePoint {
+        constructor(x, y, z) {
+            super(x, y, z, Fq);
         }
         static fromCompressedHex(hex) {
             const compressedValue = fromBytesBE(hex);
@@ -840,70 +987,73 @@ let PointG1 = (() => {
             if ((y * 2n) / P !== aflag) {
                 y = P - y;
             }
-            const p = new ProjectivePoint(new Fq(x), new Fq(y), new Fq(1n), Fq);
+            const p = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
             return p;
         }
         static fromPrivateKey(privateKey) {
-            return new PointG1(this.BASE.multiply(normalizePrivKey(privateKey)));
+            return this.BASE.multiply(normalizePrivKey(privateKey));
         }
         toCompressedHex() {
-            const { jpoint: point } = this;
             let hex;
-            if (point.equals(PointG1.ZERO)) {
+            if (this.equals(PointG1.ZERO)) {
                 hex = POW_2_383 + POW_2_382;
             }
             else {
-                const [x, y] = point.toAffine();
+                const [x, y] = this.toAffine();
                 const flag = (y.value * 2n) / P;
                 hex = x.value + flag * POW_2_381 + POW_2_383;
             }
             return toBytesBE(hex, PUBLIC_KEY_LENGTH);
         }
-        toFq12() {
-            const pt = this.jpoint;
-            if (pt.isZero()) {
-                return new ProjectivePoint(new Fq12(), new Fq12(), new Fq12(), Fq12);
-            }
-            return new ProjectivePoint(new Fq12([pt.x.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), new Fq12([pt.y.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), new Fq12([pt.z.value, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]), Fq12);
-        }
         assertValidity() {
             const b = new Fq(exports.CURVE.b);
-            if (this.jpoint.isZero())
+            if (this.isZero())
                 return;
-            const { x, y, z } = this.jpoint;
+            const { x, y, z } = this;
             const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
             const right = b.multiply(z.pow(3n));
             if (!left.equals(right))
                 throw new Error('Invalid point: not on curve over Fq');
         }
+        millerLoop(P) {
+            const ell = P.pairingPrecomputes();
+            let f12 = Fq12.ONE;
+            let [x, y] = this.toAffine();
+            let [Px, Py] = [x, y];
+            for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
+                f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+                if (bitGet(exports.CURVE.BLS_X, i)) {
+                    j += 1;
+                    f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+                }
+                if (i != 0)
+                    f12 = f12.square();
+            }
+            return f12.conjugate();
+        }
     }
-    PointG1.BASE = new ProjectivePoint(new Fq(exports.CURVE.Gx), new Fq(exports.CURVE.Gy), Fq.ONE, Fq);
-    PointG1.ZERO = new ProjectivePoint(Fq.ONE, Fq.ONE, Fq.ZERO, Fq);
+    PointG1.BASE = new PointG1(new Fq(exports.CURVE.Gx), new Fq(exports.CURVE.Gy), Fq.ONE);
+    PointG1.ZERO = new PointG1(Fq.ONE, Fq.ONE, Fq.ZERO);
     return PointG1;
 })();
 exports.PointG1 = PointG1;
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P) {
-    return P.multiply(H_EFF);
+function clearCofactorG2(P, unsafe = false) {
+    return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
 }
 let PointG2 = (() => {
-    class PointG2 {
-        constructor(jpoint) {
-            this.jpoint = jpoint;
-            if (!jpoint)
-                throw new Error('Expected point');
+    class PointG2 extends ProjectivePoint {
+        constructor(x, y, z) {
+            super(x, y, z, Fq2);
         }
-        toString() {
-            return this.jpoint.toString();
-        }
-        static async hashToCurve(msg) {
+        static async hashToCurve(msg, unsafe = false) {
             if (typeof msg === 'string')
                 msg = hexToArray(msg);
             const u = await hash_to_field(msg, 2);
             const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
             const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
             const R = Q0.add(Q1);
-            const P = clearCofactorG2(R);
+            const P = clearCofactorG2(R, unsafe);
             return P;
         }
         static fromSignature(hex) {
@@ -925,122 +1075,95 @@ let PointG2 = (() => {
             const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
             if (isGreater || isZero)
                 y = y.multiply(-1n);
-            const point = new PointG2(new ProjectivePoint(x, y, Fq2.ONE, Fq2));
+            const point = new PointG2(x, y, Fq2.ONE);
             point.assertValidity();
-            return point.jpoint;
+            return point;
         }
         static fromPrivateKey(privateKey) {
-            return new PointG2(this.BASE.multiply(normalizePrivKey(privateKey)));
+            return this.BASE.multiply(normalizePrivKey(privateKey));
         }
         toSignature() {
-            const { jpoint } = this;
-            if (jpoint.equals(PointG2.ZERO)) {
+            if (this.equals(PointG2.ZERO)) {
                 const sum = POW_2_383 + POW_2_382;
                 return concatTypedArrays(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
             }
             this.assertValidity();
-            const [[x0, x1], [y0, y1]] = jpoint.toAffine().map((a) => a.value);
+            const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.value);
             const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
             const aflag1 = tmp / exports.CURVE.P;
             const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
             const z2 = x0;
             return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
         }
-        toFq12() {
-            const { x, y, z } = this.jpoint;
-            if (!Array.isArray(x.value)) {
-                return new ProjectivePoint(new Fq12(), new Fq12(), new Fq12(), Fq12);
-            }
-            const [cx1, cx2] = [x.value[0] - x.value[1], x.value[1]];
-            const [cy1, cy2] = [y.value[0] - y.value[1], y.value[1]];
-            const [cz1, cz2] = [z.value[0] - z.value[1], z.value[1]];
-            const newX = new Fq12([cx1, 0n, 0n, 0n, 0n, 0n, cx2, 0n, 0n, 0n, 0n, 0n]);
-            const newY = new Fq12([cy1, 0n, 0n, 0n, 0n, 0n, cy2, 0n, 0n, 0n, 0n, 0n]);
-            const newZ = new Fq12([cz1, 0n, 0n, 0n, 0n, 0n, cz2, 0n, 0n, 0n, 0n, 0n]);
-            return new ProjectivePoint(newX.div(PointG12.W_SQUARE), newY.div(PointG12.W_CUBE), newZ, Fq12);
-        }
         assertValidity() {
             const b = new Fq2(exports.CURVE.b2);
-            if (this.jpoint.isZero())
+            if (this.isZero())
                 return;
-            const { x, y, z } = this.jpoint;
+            const { x, y, z } = this;
             const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
             const right = b.multiply(z.pow(3n));
             if (!left.equals(right))
                 throw new Error('Invalid point: not on curve over Fq2');
         }
+        calculatePrecomputes() {
+            const [x, y] = this.toAffine();
+            const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
+            let [Rx, Ry, Rz] = [Qx, Qy, Qz];
+            let ell_coeff = [];
+            for (let i = BLS_X_LEN - 2; i >= 0; i--) {
+                let t0 = Ry.square();
+                let t1 = Rz.square();
+                let t2 = t1.multiply(3n).multiplyByB();
+                let t3 = t2.multiply(3n);
+                let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0);
+                ell_coeff.push([
+                    t2.subtract(t0),
+                    Rx.square().multiply(3n),
+                    t4.negate()
+                ]);
+                Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n);
+                Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n));
+                Rz = t0.multiply(t4);
+                if (bitGet(exports.CURVE.BLS_X, i)) {
+                    let t0 = Ry.subtract(Qy.multiply(Rz));
+                    let t1 = Rx.subtract(Qx.multiply(Rz));
+                    ell_coeff.push([
+                        t0.multiply(Qx).subtract(t1.multiply(Qy)),
+                        t0.negate(),
+                        t1
+                    ]);
+                    let t2 = t1.square();
+                    let t3 = t2.multiply(t1);
+                    let t4 = t2.multiply(Rx);
+                    let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz));
+                    Rx = t1.multiply(t5);
+                    Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry));
+                    Rz = Rz.multiply(t3);
+                }
+            }
+            return ell_coeff;
+        }
+        clearPairingPrecomputes() {
+            this.pair_precomputes = undefined;
+        }
+        pairingPrecomputes() {
+            if (this.pair_precomputes)
+                return this.pair_precomputes;
+            return (this.pair_precomputes = this.calculatePrecomputes());
+        }
     }
-    PointG2.BASE = new ProjectivePoint(new Fq2(exports.CURVE.G2x), new Fq2(exports.CURVE.G2y), Fq2.ONE, Fq2);
-    PointG2.ZERO = new ProjectivePoint(Fq2.ONE, Fq2.ONE, Fq2.ZERO, Fq2);
+    PointG2.BASE = new PointG2(new Fq2(exports.CURVE.G2x), new Fq2(exports.CURVE.G2y), Fq2.ONE);
+    PointG2.ZERO = new PointG2(Fq2.ONE, Fq2.ONE, Fq2.ZERO);
     return PointG2;
 })();
 exports.PointG2 = PointG2;
-let PointG12 = (() => {
-    class PointG12 {
-    }
-    PointG12.B = new Fq12([4n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    PointG12.W_SQUARE = new Fq12([0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    PointG12.W_CUBE = new Fq12([0n, 0n, 0n, 1n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    return PointG12;
-})();
-exports.PointG12 = PointG12;
-function createLineBetween(p1, p2, t) {
-    const [X1, Y1, Z1] = [p1.x, p1.y, p1.z];
-    const [X2, Y2, Z2] = [p2.x, p2.y, p2.z];
-    const [XT, YT, ZT] = [t.x, t.y, t.z];
-    let num = Y2.multiply(Z1).subtract(Y1.multiply(Z2));
-    let den = X2.multiply(Z1).subtract(X1.multiply(Z2));
-    if (!num.isZero() && den.isZero()) {
-        return [XT.multiply(Z1).subtract(X1.multiply(ZT)), Z1.multiply(ZT)];
-    }
-    else if (num.isZero()) {
-        num = X1.square().multiply(3n);
-        den = Y1.multiply(Z1).multiply(2n);
-    }
-    const numeratorLine = num.multiply(XT.multiply(Z1).subtract(X1.multiply(ZT)));
-    const denominatorLine = den.multiply(YT.multiply(Z1).subtract(Y1.multiply(ZT)));
-    const z = den.multiply(ZT).multiply(Z1);
-    return [numeratorLine.subtract(denominatorLine), z];
-}
-const PSEUDO_BINARY_ENCODING = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1
-];
-const finalExp = (exports.CURVE.P ** 12n - 1n) / exports.CURVE.r;
-function finalExponentiate(p) {
-    return p.pow(finalExp);
-}
-function millerLoop(Q, P, withFinalExponent) {
-    const one = Fq12.ONE;
-    if (Q.isZero() || P.isZero()) {
-        return one;
-    }
-    let R = Q;
-    let num = one;
-    let den = one;
-    for (let i = PSEUDO_BINARY_ENCODING.length - 2; i >= 0n; i--) {
-        const [n, d] = createLineBetween(R, R, P);
-        num = num.square().multiply(n);
-        den = den.square().multiply(d);
-        R = R.double();
-        if (PSEUDO_BINARY_ENCODING[i] === 1) {
-            const [n, d] = createLineBetween(R, Q, P);
-            num = num.multiply(n);
-            den = den.multiply(d);
-            R = R.add(Q);
-        }
-    }
-    const f = num.div(den);
-    return withFinalExponent ? finalExponentiate(f) : f;
-}
 function pairing(P, Q, withFinalExponent = true) {
-    const p = new PointG1(P);
-    const q = new PointG2(Q);
-    p.assertValidity();
-    q.assertValidity();
-    return millerLoop(q.toFq12(), p.toFq12(), withFinalExponent);
+    if (P.isZero() || Q.isZero())
+        throw new Error('No pairings at point of Infinity');
+    P.assertValidity();
+    Q.assertValidity();
+    let res = P.millerLoop(Q);
+    return withFinalExponent ? res.finalExponentiate() : res;
 }
 exports.pairing = pairing;
 function getPublicKey(privateKey) {
@@ -1050,33 +1173,31 @@ exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
     const msgPoint = await PointG2.hashToCurve(message);
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-    const S = new PointG2(sigPoint);
-    return S.toSignature();
+    return sigPoint.toSignature();
 }
 exports.sign = sign;
 async function verify(signature, message, publicKey) {
     const P = PointG1.fromCompressedHex(publicKey).negate();
-    const Hm = await PointG2.hashToCurve(message);
+    const Hm = await PointG2.hashToCurve(message, true);
     const G = PointG1.BASE;
     const S = PointG2.fromSignature(signature);
     const ePHm = pairing(P, Hm, false);
     const eGS = pairing(G, S, false);
-    const exp = finalExponentiate(eGS.multiply(ePHm));
+    const exp = eGS.multiply(ePHm).finalExponentiate();
     return exp.equals(Fq12.ONE);
 }
 exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
-    const aggregatedPublicKey = publicKeys.reduce((sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)), PointG1.ZERO);
-    return new PointG1(aggregatedPublicKey).toCompressedHex();
+    return publicKeys.reduce((sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)), PointG1.ZERO);
 }
 exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
     if (!signatures.length)
         throw new Error('Expected non-empty array');
     const aggregatedSignature = signatures.reduce((sum, signature) => sum.add(PointG2.fromSignature(signature)), PointG2.ZERO);
-    return new PointG2(aggregatedSignature).toSignature();
+    return aggregatedSignature.toSignature();
 }
 exports.aggregateSignatures = aggregateSignatures;
 async function verifyBatch(messages, publicKeys, signature) {
@@ -1090,12 +1211,12 @@ async function verifyBatch(messages, publicKeys, signature) {
             const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message
                 ? groupPublicKey
                 : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])), PointG1.ZERO);
-            const msg = await PointG2.hashToCurve(message);
+            const msg = await PointG2.hashToCurve(message, true);
             producer = producer.multiply(pairing(groupPublicKey, msg, false));
         }
         const sig = PointG2.fromSignature(signature);
         producer = producer.multiply(pairing(PointG1.BASE.negate(), sig, false));
-        const finalExponent = finalExponentiate(producer);
+        const finalExponent = producer.finalExponentiate();
         return finalExponent.equals(Fq12.ONE);
     }
     catch {

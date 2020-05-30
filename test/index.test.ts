@@ -1,7 +1,7 @@
 import * as fc from "fast-check";
 import * as bls from "..";
-import {readFileSync} from 'fs';
-import {join} from 'path';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 const G2_VECTORS = readFileSync(join(__dirname, './bls12-381-g2-test-vectors.txt'), 'utf-8')
   .trim()
   .split('\n').map(l => l.split(':'));
@@ -25,7 +25,7 @@ describe("bls12-381", () => {
   it("should compress and decompress G1 points", async () => {
     const priv = bls.PointG1.fromPrivateKey(42n);
     const publicKey = priv.toCompressedHex();
-    const decomp = new bls.PointG1(bls.PointG1.fromCompressedHex(publicKey));
+    const decomp = bls.PointG1.fromCompressedHex(publicKey);
     expect(publicKey).toEqual(decomp.toCompressedHex());
   });
   it(`should produce correct signatures (${G2_VECTORS.length} vectors)`, async () => {
