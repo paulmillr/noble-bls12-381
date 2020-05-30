@@ -39,6 +39,7 @@ declare type FieldStatic<T extends Field<T>> = {
 };
 export declare class Fq implements Field<Fq> {
     static readonly ORDER: bigint;
+    static readonly MAX_BITS: number;
     static readonly ZERO: Fq;
     static readonly ONE: Fq;
     private _value;
@@ -58,6 +59,7 @@ export declare class Fq implements Field<Fq> {
 }
 export declare class Fq2 implements Field<Fq2> {
     static readonly ORDER: bigint;
+    static readonly MAX_BITS: number;
     static readonly ROOT: Fq;
     static readonly ZERO: Fq2;
     static readonly ONE: Fq2;
@@ -144,12 +146,15 @@ export declare class Fq12 implements Field<Fq12> {
 }
 declare type Constructor<T extends Field<T>> = {
     new (...args: any[]): T;
-} & FieldStatic<T>;
+} & FieldStatic<T> & {
+    MAX_BITS: number;
+};
 export declare class ProjectivePoint<T extends Field<T>> {
     readonly x: T;
     readonly y: T;
     readonly z: T;
     private readonly C;
+    private precomputes;
     static fromAffine(x: Fq2, y: Fq2, C: Constructor<Fq2>): ProjectivePoint<Fq2>;
     constructor(x: T, y: T, z: T, C: Constructor<T>);
     isZero(): boolean;
@@ -157,10 +162,18 @@ export declare class ProjectivePoint<T extends Field<T>> {
     equals(other: ProjectivePoint<T>): boolean;
     negate(): ProjectivePoint<T>;
     toString(isAffine?: boolean): string;
-    toAffine(): [T, T];
+    fromAffineTuple(xy: [T, T]): ProjectivePoint<T>;
+    toAffine(invZ?: T): [T, T];
+    toAffineBatch(points: ProjectivePoint<T>[]): [T, T][];
+    normalizeZ(points: ProjectivePoint<T>[]): ProjectivePoint<T>[];
     double(): ProjectivePoint<T>;
     add(other: ProjectivePoint<T>): ProjectivePoint<T>;
     subtract(other: ProjectivePoint<T>): ProjectivePoint<T>;
+    multiplyUnsafe(scalar: number | bigint | Fq): ProjectivePoint<T>;
+    private maxBits;
+    private precomputeWindow;
+    calcPrecomputes(W: number): void;
+    private wNAF;
     multiply(scalar: number | bigint | Fq): ProjectivePoint<T>;
 }
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
@@ -183,7 +196,7 @@ export declare class PointG2 {
     private pair_precomputes;
     constructor(jpoint: ProjectivePoint<Fq2>);
     toString(): string;
-    static hashToCurve(msg: PublicKey): Promise<ProjectivePoint<Fq2>>;
+    static hashToCurve(msg: PublicKey, unsafe?: boolean): Promise<ProjectivePoint<Fq2>>;
     static fromSignature(hex: Signature): ProjectivePoint<Fq2>;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;

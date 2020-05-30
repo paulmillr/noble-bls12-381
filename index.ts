@@ -95,6 +95,26 @@ function gen_div<T extends Field<T>>(elm: T, rhs: T | bigint): T {
   return elm.multiply(inv);
 }
 
+function gen_inv_batch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] {
+  const len = nums.length;
+  const scratch = new Array(len);
+  let acc = cls.ONE;
+  for (let i = 0; i < len; i++) {
+    if (nums[i].isZero()) continue;
+    scratch[i] = acc;
+    acc = acc.multiply(nums[i]);
+  }
+  acc = acc.invert();
+  for (let i = len - 1; i >= 0; i--) {
+    if (nums[i].isZero()) continue;
+    let tmp = acc.multiply(nums[i]);
+    nums[i] = acc.multiply(scratch[i]);
+    acc = tmp;
+  }
+  return nums;
+}
+
+
 // Amount of bits inside bigint
 function bitLen(n: bigint) {
   let len;
@@ -112,6 +132,7 @@ const BLS_X_LEN = bitLen(CURVE.BLS_X);
 // Finite field over q.
 export class Fq implements Field<Fq> {
   static readonly ORDER = CURVE.P;
+  static readonly MAX_BITS = bitLen(CURVE.P);
   static readonly ZERO = new Fq(0n);
   static readonly ONE = new Fq(1n);
 
@@ -187,6 +208,7 @@ const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006d
 // Finite extension field over irreducible degree-1 polynominal represented by c0 + c1 * u.
 export class Fq2 implements Field<Fq2> {
   static readonly ORDER = CURVE.P2;
+  static readonly MAX_BITS = bitLen(CURVE.P2);
   static readonly ROOT = new Fq(-1n);
   static readonly ZERO = new Fq2([0n, 0n]);
   static readonly ONE = new Fq2([1n, 0n]);
@@ -569,14 +591,14 @@ export class Fq12 implements Field<Fq12> {
   }
 }
 
-type Constructor<T extends Field<T>> = { new(...args: any[]): T } & FieldStatic<T>;
+type Constructor<T extends Field<T>> = { new(...args: any[]): T } & FieldStatic<T> & { MAX_BITS: number };
 
 // x=X/Z, y=Y/Z
 export class ProjectivePoint<T extends Field<T>> {
+  private precomputes: undefined | [number, ProjectivePoint<T>[]];
   static fromAffine(x: Fq2, y: Fq2, C: Constructor<Fq2>) {
     return new ProjectivePoint(x, y, C.ONE, C);
   }
-
   constructor(
     public readonly x: T,
     public readonly y: T,
@@ -615,9 +637,22 @@ export class ProjectivePoint<T extends Field<T>> {
     return `Point<x=${x}, y=${y}>`;
   }
 
-  toAffine(): [T, T] {
-    const iz = this.z.invert();
-    return [this.x.multiply(iz), this.y.multiply(iz)];
+  fromAffineTuple(xy: [T, T]): ProjectivePoint<T> {
+    return new ProjectivePoint(xy[0], xy[1], this.C.ONE, this.C);
+  }
+  // Converts Projective point to default (x, y) coordinates.
+  // Can accept precomputed Z^-1 - for example, from invertBatch.
+  toAffine(invZ: T = this.z.invert()): [T, T] {
+    return [this.x.multiply(invZ), this.y.multiply(invZ)];
+  }
+
+  toAffineBatch(points: ProjectivePoint<T>[]): [T, T][] {
+    const toInv = gen_inv_batch(this.C, points.map(p => p.z));
+    return points.map((p, i) => p.toAffine(toInv[i]));
+  }
+
+  normalizeZ(points: ProjectivePoint<T>[]): ProjectivePoint<T>[] {
+    return this.toAffineBatch(points).map(t => this.fromAffineTuple(t));
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-1998-cmo-2
@@ -674,11 +709,16 @@ export class ProjectivePoint<T extends Field<T>> {
   subtract(other: ProjectivePoint<T>): ProjectivePoint<T> {
     return this.add(other.negate());
   }
-
-  multiply(scalar: number | bigint | Fq): ProjectivePoint<T> {
+  // Non-constant-time multiplication. Uses double-and-add algorithm.
+  // It's faster, but should only be used when you don't care about
+  // an exposed private key e.g. sig verification.
+  multiplyUnsafe(scalar: number | bigint | Fq): ProjectivePoint<T> {
     let n = scalar;
     if (n instanceof Fq) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
+    if (n <= 0) {
+      throw new Error('Point#multiply: invalid scalar, expected positive integer');
+    }
     let p = this.getZero();
     let d: ProjectivePoint<T> = this;
     while (n > 0n) {
@@ -687,6 +727,96 @@ export class ProjectivePoint<T extends Field<T>> {
       n >>= 1n;
     }
     return p;
+  }
+
+  // Should be not more than curve order, but I cannot find it. 
+  // Curve order cannot be more than Group/Field order, so let's use it.
+  private maxBits() {
+    return this.C.MAX_BITS;
+  }
+
+  private precomputeWindow(W: number): ProjectivePoint<T>[] {
+    // Split scalar by W bits, last window can be smaller
+    const windows = Math.ceil(this.maxBits() / W);
+    // 2^(W-1), since we use wNAF, we only need W-1 bits
+    const windowSize = 2 ** (W - 1);
+
+    let points: ProjectivePoint<T>[] = [];
+    let p: ProjectivePoint<T> = this;
+    let base = p;
+    for (let window = 0; window < windows; window++) {
+      base = p;
+      points.push(base);
+      for (let i = 1; i < windowSize; i++) {
+        base = base.add(p);
+        points.push(base);
+      }
+      p = base.double();
+    }
+    return points;
+  }
+
+  calcPrecomputes(W: number) {
+    if (this.precomputes) throw new Error('This point already has precomputes');
+    this.precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+  }
+
+  private wNAF(n: bigint): [ProjectivePoint<T>, ProjectivePoint<T>] {
+    let W, precomputes;
+    if (this.precomputes) {
+      [W, precomputes] = this.precomputes;
+    } else {
+      W = 1;
+      precomputes = this.precomputeWindow(W);
+    }
+
+    let [p, f] = [this.getZero(), this.getZero()];
+    // Split scalar by W bits, last window can be smaller
+    const windows = Math.ceil(this.maxBits() / W);
+    // 2^(W-1), since we use wNAF, we only need W-1 bits
+    const windowSize = 2 ** (W - 1);
+    const mask = BigInt(2 ** W - 1); // Create mask with W ones: 0b1111 for W=4 etc.
+    const maxNumber = 2 ** W;
+    const shiftBy = BigInt(W);
+
+    for (let window = 0; window < windows; window++) {
+      const offset = window * windowSize;
+      // Extract W bits.
+      let wbits = Number(n & mask);
+      // Shift number by W bits.
+      n >>= shiftBy;
+
+      // If the bits are bigger than max size, we'll split those.
+      // +224 => 256 - 32
+      if (wbits > windowSize) {
+        wbits -= maxNumber;
+        n += 1n;
+      }
+
+      // Check if we're onto Zero point.
+      // Add random point inside current window to f.
+      if (wbits === 0) {
+        f = f.add(window % 2 ? precomputes[offset].negate() : precomputes[offset]);
+      } else {
+        const cached = precomputes[offset + Math.abs(wbits) - 1];
+        p = p.add(wbits < 0 ? cached.negate() : cached);
+      }
+    }
+    return [p, f];
+  }
+
+  // Constant time multiplication.
+  // Uses wNAF method. Windowed method may be 10% faster,
+  // but takes 2x longer to generate and consumes 2x memory.
+  multiply(scalar: number | bigint | Fq): ProjectivePoint<T> {
+    let n = scalar;
+    if (n instanceof Fq) n = n.value;
+    if (typeof n === 'number') n = BigInt(n);
+    if (n <= 0)
+      throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
+    if (bitLen(n) > this.maxBits())
+      throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
+    return this.wNAF(n)[0];
   }
 }
 
@@ -1151,8 +1281,8 @@ export class PointG1 {
 
 // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P: ProjectivePoint<Fq2>) {
-  return P.multiply(H_EFF);
+function clearCofactorG2(P: ProjectivePoint<Fq2>, unsafe: boolean = false) {
+  return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
 }
 
 type EllCoefficients = [Fq2, Fq2, Fq2];
@@ -1169,14 +1299,14 @@ export class PointG2 {
   toString() {
     return this.jpoint.toString();
   }
-  static async hashToCurve(msg: PublicKey) {
+  static async hashToCurve(msg: PublicKey, unsafe: boolean = false) {
     if (typeof msg === 'string') msg = hexToArray(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
     const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
     const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
     const R = Q0.add(Q1);
-    const P = clearCofactorG2(R);
+    const P = clearCofactorG2(R, unsafe);
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
     return P;
   }
@@ -1295,6 +1425,7 @@ export function pairing(
   const q = new PointG2(Q);
   p.assertValidity();
   q.assertValidity();
+  // Performance: 9ms for millerLoop and ~14ms for exp.
   let res = p.millerLoop(q);
   return withFinalExponent ? res.finalExponentiate() : res;
 }
@@ -1319,7 +1450,7 @@ export async function verify(
   publicKey: PublicKey
 ): Promise<boolean> {
   const P = PointG1.fromCompressedHex(publicKey).negate();
-  const Hm = await PointG2.hashToCurve(message);
+  const Hm = await PointG2.hashToCurve(message, true);
   const G = PointG1.BASE;
   const S = PointG2.fromSignature(signature);
   // Instead of doing 2 exponentiations, we use property of billinear maps
@@ -1369,7 +1500,7 @@ export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], sig
             : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])),
         PointG1.ZERO
       );
-      const msg = await PointG2.hashToCurve(message);
+      const msg = await PointG2.hashToCurve(message, true);
       producer = producer.multiply(pairing(groupPublicKey, msg, false) as Fq12);
     }
     const sig = PointG2.fromSignature(signature);

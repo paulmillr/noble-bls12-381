@@ -44,6 +44,26 @@ function gen_div(elm, rhs) {
     const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
     return elm.multiply(inv);
 }
+function gen_inv_batch(cls, nums) {
+    const len = nums.length;
+    const scratch = new Array(len);
+    let acc = cls.ONE;
+    for (let i = 0; i < len; i++) {
+        if (nums[i].isZero())
+            continue;
+        scratch[i] = acc;
+        acc = acc.multiply(nums[i]);
+    }
+    acc = acc.invert();
+    for (let i = len - 1; i >= 0; i--) {
+        if (nums[i].isZero())
+            continue;
+        let tmp = acc.multiply(nums[i]);
+        nums[i] = acc.multiply(scratch[i]);
+        acc = tmp;
+    }
+    return nums;
+}
 function bitLen(n) {
     let len;
     for (len = 0; n > 0n; n >>= 1n, len += 1)
@@ -107,6 +127,7 @@ let Fq = (() => {
         }
     }
     Fq.ORDER = exports.CURVE.P;
+    Fq.MAX_BITS = bitLen(exports.CURVE.P);
     Fq.ZERO = new Fq(0n);
     Fq.ONE = new Fq(1n);
     return Fq;
@@ -190,6 +211,7 @@ let Fq2 = (() => {
         }
     }
     Fq2.ORDER = exports.CURVE.P2;
+    Fq2.MAX_BITS = bitLen(exports.CURVE.P2);
     Fq2.ROOT = new Fq(-1n);
     Fq2.ZERO = new Fq2([0n, 0n]);
     Fq2.ONE = new Fq2([1n, 0n]);
@@ -459,9 +481,18 @@ class ProjectivePoint {
         const [x, y] = this.toAffine();
         return `Point<x=${x}, y=${y}>`;
     }
-    toAffine() {
-        const iz = this.z.invert();
-        return [this.x.multiply(iz), this.y.multiply(iz)];
+    fromAffineTuple(xy) {
+        return new ProjectivePoint(xy[0], xy[1], this.C.ONE, this.C);
+    }
+    toAffine(invZ = this.z.invert()) {
+        return [this.x.multiply(invZ), this.y.multiply(invZ)];
+    }
+    toAffineBatch(points) {
+        const toInv = gen_inv_batch(this.C, points.map(p => p.z));
+        return points.map((p, i) => p.toAffine(toInv[i]));
+    }
+    normalizeZ(points) {
+        return this.toAffineBatch(points).map(t => this.fromAffineTuple(t));
     }
     double() {
         const { x, y, z } = this;
@@ -512,12 +543,15 @@ class ProjectivePoint {
     subtract(other) {
         return this.add(other.negate());
     }
-    multiply(scalar) {
+    multiplyUnsafe(scalar) {
         let n = scalar;
         if (n instanceof Fq)
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
+        if (n <= 0) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer');
+        }
         let p = this.getZero();
         let d = this;
         while (n > 0n) {
@@ -527,6 +561,76 @@ class ProjectivePoint {
             n >>= 1n;
         }
         return p;
+    }
+    maxBits() {
+        return this.C.MAX_BITS;
+    }
+    precomputeWindow(W) {
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        let points = [];
+        let p = this;
+        let base = p;
+        for (let window = 0; window < windows; window++) {
+            base = p;
+            points.push(base);
+            for (let i = 1; i < windowSize; i++) {
+                base = base.add(p);
+                points.push(base);
+            }
+            p = base.double();
+        }
+        return points;
+    }
+    calcPrecomputes(W) {
+        if (this.precomputes)
+            throw new Error('This point already has precomputes');
+        this.precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+    }
+    wNAF(n) {
+        let W, precomputes;
+        if (this.precomputes) {
+            [W, precomputes] = this.precomputes;
+        }
+        else {
+            W = 1;
+            precomputes = this.precomputeWindow(W);
+        }
+        let [p, f] = [this.getZero(), this.getZero()];
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        const mask = BigInt(2 ** W - 1);
+        const maxNumber = 2 ** W;
+        const shiftBy = BigInt(W);
+        for (let window = 0; window < windows; window++) {
+            const offset = window * windowSize;
+            let wbits = Number(n & mask);
+            n >>= shiftBy;
+            if (wbits > windowSize) {
+                wbits -= maxNumber;
+                n += 1n;
+            }
+            if (wbits === 0) {
+                f = f.add(window % 2 ? precomputes[offset].negate() : precomputes[offset]);
+            }
+            else {
+                const cached = precomputes[offset + Math.abs(wbits) - 1];
+                p = p.add(wbits < 0 ? cached.negate() : cached);
+            }
+        }
+        return [p, f];
+    }
+    multiply(scalar) {
+        let n = scalar;
+        if (n instanceof Fq)
+            n = n.value;
+        if (typeof n === 'number')
+            n = BigInt(n);
+        if (n <= 0)
+            throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
+        if (bitLen(n) > this.maxBits())
+            throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
+        return this.wNAF(n)[0];
     }
 }
 exports.ProjectivePoint = ProjectivePoint;
@@ -929,8 +1033,8 @@ let PointG1 = (() => {
 })();
 exports.PointG1 = PointG1;
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P) {
-    return P.multiply(H_EFF);
+function clearCofactorG2(P, unsafe = false) {
+    return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
 }
 let PointG2 = (() => {
     class PointG2 {
@@ -942,14 +1046,14 @@ let PointG2 = (() => {
         toString() {
             return this.jpoint.toString();
         }
-        static async hashToCurve(msg) {
+        static async hashToCurve(msg, unsafe = false) {
             if (typeof msg === 'string')
                 msg = hexToArray(msg);
             const u = await hash_to_field(msg, 2);
             const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
             const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
             const R = Q0.add(Q1);
-            const P = clearCofactorG2(R);
+            const P = clearCofactorG2(R, unsafe);
             return P;
         }
         static fromSignature(hex) {
@@ -1075,7 +1179,7 @@ async function sign(message, privateKey) {
 exports.sign = sign;
 async function verify(signature, message, publicKey) {
     const P = PointG1.fromCompressedHex(publicKey).negate();
-    const Hm = await PointG2.hashToCurve(message);
+    const Hm = await PointG2.hashToCurve(message, true);
     const G = PointG1.BASE;
     const S = PointG2.fromSignature(signature);
     const ePHm = pairing(P, Hm, false);
@@ -1109,7 +1213,7 @@ async function verifyBatch(messages, publicKeys, signature) {
             const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message
                 ? groupPublicKey
                 : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])), PointG1.ZERO);
-            const msg = await PointG2.hashToCurve(message);
+            const msg = await PointG2.hashToCurve(message, true);
             producer = producer.multiply(pairing(groupPublicKey, msg, false));
         }
         const sig = PointG2.fromSignature(signature);
