@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { Fq, Fq12 } from "..";
+import { Fq, Fq12, BigintTwelve } from "..";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -7,8 +7,8 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
-        const b = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
+        const b = Fq12.from_tuple(num as BigintTwelve);
         expect(a.equals(b)).toBe(true);
         expect(b.equals(a)).toBe(true);
       }),
@@ -23,8 +23,8 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
           expect(a.equals(b)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
           expect(b.equals(a)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
         }
@@ -37,7 +37,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 square and multiplication equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.square()).toEqual(a.multiply(a));
       }),
       {
@@ -48,7 +48,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 multiplication and add equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.multiply(0n)).toEqual(Fq12.ZERO);
         expect(a.multiply(Fq12.ZERO)).toEqual(Fq12.ZERO);
         expect(a.multiply(1n)).toEqual(a);
@@ -73,8 +73,8 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
           expect(a.multiply(b)).toEqual(b.multiply(a));
         }
       ),
@@ -90,9 +90,9 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2, num3) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
-          const c = new Fq12(num3);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
+          const c = Fq12.from_tuple(num3 as BigintTwelve);
           expect(a.multiply(b.multiply(c))).toEqual(a.multiply(b).multiply(c));
         }
       ),
@@ -108,9 +108,9 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2, num3) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
-          const c = new Fq12(num3);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
+          const c = Fq12.from_tuple(num3 as BigintTwelve);
           expect(a.multiply(b.add(c))).toEqual(
             b.multiply(a).add(c.multiply(a))
           );
@@ -124,7 +124,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 division with one equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.div(1n)).toEqual(a);
         expect(a.div(Fq12.ONE)).toEqual(a);
         expect(a.div(a)).toEqual(Fq12.ONE);
@@ -137,7 +137,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 division with zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(Fq12.ZERO.div(a)).toEqual(Fq12.ZERO);
       }),
       {
@@ -152,9 +152,9 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2, num3) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
-          const c = new Fq12(num3);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
+          const c = Fq12.from_tuple(num3 as BigintTwelve);
           expect(a.add(b).div(c)).toEqual(a.div(c).add(b.div(c)));
         }
       ),
@@ -166,7 +166,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 addition with zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.add(Fq12.ZERO)).toEqual(a);
       }),
       {
@@ -180,8 +180,8 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
           expect(a.add(b)).toEqual(b.add(a));
         }
       ),
@@ -197,9 +197,9 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2, num3) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
-          const c = new Fq12(num3);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
+          const c = Fq12.from_tuple(num3 as BigintTwelve);
           expect(a.add(b.add(c))).toEqual(a.add(b).add(c));
         }
       ),
@@ -211,7 +211,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 minus zero equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.subtract(Fq12.ZERO)).toEqual(a);
         expect(a.subtract(a)).toEqual(Fq12.ZERO);
       }),
@@ -226,8 +226,8 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num1);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num1 as BigintTwelve);
           expect(Fq12.ZERO.subtract(a)).toEqual(a.negate());
           expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
@@ -241,7 +241,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 negative equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.negate()).toEqual(Fq12.ZERO.subtract(a));
         expect(a.negate()).toEqual(a.multiply(-1n));
       }),
@@ -256,8 +256,8 @@ describe("bls12-381 Fp12", () => {
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12),
         (num1, num2) => {
-          const a = new Fq12(num1);
-          const b = new Fq12(num2);
+          const a = Fq12.from_tuple(num1 as BigintTwelve);
+          const b = Fq12.from_tuple(num2 as BigintTwelve);
           expect(a.div(b)).toEqual(a.multiply(b.invert()));
         }
       ),
@@ -269,7 +269,7 @@ describe("bls12-381 Fp12", () => {
   it("Fp12 pow and multiplitaction equality", () => {
     fc.assert(
       fc.property(fc.array(fc.bigInt(1n, Fq.ORDER), 12, 12), num => {
-        const a = new Fq12(num);
+        const a = Fq12.from_tuple(num as BigintTwelve);
         expect(a.pow(0n)).toEqual(Fq12.ONE);
         expect(a.pow(1n)).toEqual(a);
         expect(a.pow(2n)).toEqual(a.multiply(a));
