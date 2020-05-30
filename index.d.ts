@@ -46,15 +46,15 @@ export declare class Fq implements Field<Fq> {
     get value(): bigint;
     constructor(value: bigint);
     isZero(): boolean;
-    equals(other: Fq): boolean;
+    equals(rhs: Fq): boolean;
     negate(): Fq;
     invert(): Fq;
-    add(other: Fq): Fq;
+    add(rhs: Fq): Fq;
     square(): Fq;
     pow(n: bigint): Fq;
-    subtract(other: Fq): Fq;
-    multiply(other: bigint | Fq): Fq;
-    div(other: Fq | bigint): Fq;
+    subtract(rhs: Fq): Fq;
+    multiply(rhs: bigint | Fq): Fq;
+    div(rhs: Fq | bigint): Fq;
     toString(): string;
 }
 export declare class Fq2 implements Field<Fq2> {
@@ -149,66 +149,65 @@ declare type Constructor<T extends Field<T>> = {
 } & FieldStatic<T> & {
     MAX_BITS: number;
 };
-export declare class ProjectivePoint<T extends Field<T>> {
+declare abstract class ProjectivePoint<T extends Field<T>> {
     readonly x: T;
     readonly y: T;
     readonly z: T;
     private readonly C;
-    private precomputes;
-    static fromAffine(x: Fq2, y: Fq2, C: Constructor<Fq2>): ProjectivePoint<Fq2>;
+    private multiply_precomputes;
     constructor(x: T, y: T, z: T, C: Constructor<T>);
     isZero(): boolean;
-    getZero(): ProjectivePoint<T>;
-    equals(other: ProjectivePoint<T>): boolean;
-    negate(): ProjectivePoint<T>;
+    getPoint<TT extends this>(x: T, y: T, z: T): TT;
+    getZero(): this;
+    equals(rhs: ProjectivePoint<T>): boolean;
+    negate(): this;
     toString(isAffine?: boolean): string;
-    fromAffineTuple(xy: [T, T]): ProjectivePoint<T>;
+    fromAffineTuple(xy: [T, T]): this;
     toAffine(invZ?: T): [T, T];
     toAffineBatch(points: ProjectivePoint<T>[]): [T, T][];
-    normalizeZ(points: ProjectivePoint<T>[]): ProjectivePoint<T>[];
-    double(): ProjectivePoint<T>;
-    add(other: ProjectivePoint<T>): ProjectivePoint<T>;
-    subtract(other: ProjectivePoint<T>): ProjectivePoint<T>;
-    multiplyUnsafe(scalar: number | bigint | Fq): ProjectivePoint<T>;
+    normalizeZ(points: this[]): this[];
+    double(): this;
+    add(rhs: this): this;
+    subtract(rhs: this): this;
+    multiplyUnsafe(scalar: number | bigint | Fq): this;
     private maxBits;
     private precomputeWindow;
-    calcPrecomputes(W: number): void;
+    calcMultiplyPrecomputes(W: number): void;
+    clearMultiplyPrecomputes(): void;
     private wNAF;
-    multiply(scalar: number | bigint | Fq): ProjectivePoint<T>;
+    multiply(scalar: number | bigint | Fq): this;
 }
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
-export declare class PointG1 {
-    private jpoint;
-    static BASE: ProjectivePoint<Fq>;
-    static ZERO: ProjectivePoint<Fq>;
-    constructor(jpoint: ProjectivePoint<Fq>);
-    static fromCompressedHex(hex: PublicKey): ProjectivePoint<Fq>;
+export declare class PointG1 extends ProjectivePoint<Fq> {
+    static BASE: PointG1;
+    static ZERO: PointG1;
+    constructor(x: Fq, y: Fq, z: Fq);
+    static fromCompressedHex(hex: PublicKey): PointG1;
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toCompressedHex(): Uint8Array;
     assertValidity(): void;
     millerLoop(P: PointG2): Fq12;
 }
 declare type EllCoefficients = [Fq2, Fq2, Fq2];
-export declare class PointG2 {
-    private jpoint;
-    static BASE: ProjectivePoint<Fq2>;
-    static ZERO: ProjectivePoint<Fq2>;
+export declare class PointG2 extends ProjectivePoint<Fq2> {
+    static BASE: PointG2;
+    static ZERO: PointG2;
     private pair_precomputes;
-    constructor(jpoint: ProjectivePoint<Fq2>);
-    toString(): string;
-    static hashToCurve(msg: PublicKey, unsafe?: boolean): Promise<ProjectivePoint<Fq2>>;
-    static fromSignature(hex: Signature): ProjectivePoint<Fq2>;
+    constructor(x: Fq2, y: Fq2, z: Fq2);
+    static hashToCurve(msg: PublicKey, unsafe?: boolean): Promise<PointG2>;
+    static fromSignature(hex: Signature): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
     assertValidity(): void;
     calculatePrecomputes(): EllCoefficients[];
+    clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];
 }
-export declare function pairing(P: ProjectivePoint<Fq>, Q: ProjectivePoint<Fq2>, withFinalExponent?: boolean): Fq12;
+export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fq12;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array>;
 export declare function verify(signature: Signature, message: Hash, publicKey: PublicKey): Promise<boolean>;
-export declare function aggregatePublicKeys(publicKeys: PublicKey[]): Uint8Array;
+export declare function aggregatePublicKeys(publicKeys: PublicKey[]): PointG1;
 export declare function aggregateSignatures(signatures: Signature[]): Uint8Array;
 export declare function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature): Promise<boolean>;
 export {};

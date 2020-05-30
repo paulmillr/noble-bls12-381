@@ -148,8 +148,8 @@ export class Fq implements Field<Fq> {
     return this._value === 0n;
   }
 
-  equals(other: Fq): boolean {
-    return this._value === other._value;
+  equals(rhs: Fq): boolean {
+    return this._value === rhs._value;
   }
 
   negate(): Fq {
@@ -169,8 +169,8 @@ export class Fq implements Field<Fq> {
     return new Fq(x0);
   }
 
-  add(other: Fq): Fq {
-    return new Fq(this._value + other.value);
+  add(rhs: Fq): Fq {
+    return new Fq(this._value + rhs.value);
   }
 
   square(): Fq {
@@ -181,16 +181,16 @@ export class Fq implements Field<Fq> {
     return new Fq(powMod(this._value, n, Fq.ORDER));
   }
 
-  subtract(other: Fq): Fq {
-    return new Fq(this._value - other._value);
+  subtract(rhs: Fq): Fq {
+    return new Fq(this._value - rhs._value);
   }
 
-  multiply(other: bigint | Fq): Fq {
-    if (other instanceof Fq) other = other.value;
-    return new Fq(this._value * other);
+  multiply(rhs: bigint | Fq): Fq {
+    if (rhs instanceof Fq) rhs = rhs.value;
+    return new Fq(this._value * rhs);
   }
 
-  div(other: Fq | bigint): Fq { return gen_div(this, other); }
+  div(rhs: Fq | bigint): Fq { return gen_div(this, rhs); }
 
   toString() {
     const str = this.value.toString(16).padStart(96, '0');
@@ -592,32 +592,36 @@ export class Fq12 implements Field<Fq12> {
 }
 
 type Constructor<T extends Field<T>> = { new(...args: any[]): T } & FieldStatic<T> & { MAX_BITS: number };
+//type PointConstructor<TT extends Field<T>, T extends ProjectivePoint<TT>> = { new(...args: any[]): T };
 
 // x=X/Z, y=Y/Z
-export class ProjectivePoint<T extends Field<T>> {
-  private precomputes: undefined | [number, ProjectivePoint<T>[]];
-  static fromAffine(x: Fq2, y: Fq2, C: Constructor<Fq2>) {
-    return new ProjectivePoint(x, y, C.ONE, C);
-  }
+abstract class ProjectivePoint<T extends Field<T>> {
+  private multiply_precomputes: undefined | [number, this[]];
+
   constructor(
     public readonly x: T,
     public readonly y: T,
     public readonly z: T,
-    private readonly C: Constructor<T>
+    private readonly C: Constructor<T>,
   ) { }
 
   isZero() {
     return this.z.isZero();
   }
+  getPoint<TT extends this>(x: T, y: T, z: T): TT {
+    return new (<any>this.constructor)(x, y, z);
+  }
 
-  getZero(): ProjectivePoint<T> {
-    return new ProjectivePoint(this.C.ONE, this.C.ONE, this.C.ZERO, this.C) as ProjectivePoint<T>;
+  getZero(): this {
+    return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
   }
 
   // Compare one point to another.
-  equals(other: ProjectivePoint<T>) {
+  equals(rhs: ProjectivePoint<T>) {
+    if (this.constructor != rhs.constructor)
+      throw new Error(`ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
     const a = this;
-    const b = other;
+    const b = rhs;
     // Ax * Bz == Bx * Az
     const xe = a.x.multiply(b.z).equals(b.x.multiply(a.z));
     // Ay * Bz == By * Az
@@ -625,8 +629,8 @@ export class ProjectivePoint<T extends Field<T>> {
     return xe && ye;
   }
 
-  negate(): ProjectivePoint<T> {
-    return new ProjectivePoint(this.x, this.y.negate(), this.z, this.C);
+  negate(): this {
+    return this.getPoint(this.x, this.y.negate(), this.z);
   }
 
   toString(isAffine = true) {
@@ -637,8 +641,8 @@ export class ProjectivePoint<T extends Field<T>> {
     return `Point<x=${x}, y=${y}>`;
   }
 
-  fromAffineTuple(xy: [T, T]): ProjectivePoint<T> {
-    return new ProjectivePoint(xy[0], xy[1], this.C.ONE, this.C);
+  fromAffineTuple(xy: [T, T]): this {
+    return this.getPoint(xy[0], xy[1], this.C.ONE);
   }
   // Converts Projective point to default (x, y) coordinates.
   // Can accept precomputed Z^-1 - for example, from invertBatch.
@@ -651,13 +655,13 @@ export class ProjectivePoint<T extends Field<T>> {
     return points.map((p, i) => p.toAffine(toInv[i]));
   }
 
-  normalizeZ(points: ProjectivePoint<T>[]): ProjectivePoint<T>[] {
+  normalizeZ(points: this[]): this[] {
     return this.toAffineBatch(points).map(t => this.fromAffineTuple(t));
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-1998-cmo-2
   // Cost: 6M + 5S + 1*a + 4add + 1*2 + 1*3 + 1*4 + 3*8.
-  double(): ProjectivePoint<T> {
+  double(): this {
     const { x, y, z } = this;
     const W = x.multiply(x).multiply(3n);
     const S = y.multiply(z);
@@ -671,14 +675,16 @@ export class ProjectivePoint<T extends Field<T>> {
       y.multiply(y).multiply(8n).multiply(SS)
     );
     const Z3 = SSS.multiply(8n);
-    return new ProjectivePoint(X3, Y3, Z3, this.C);
+    return this.getPoint(X3, Y3, Z3);
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-1998-cmo-2
   // Cost: 12M + 2S + 6add + 1*2.
-  add(other: ProjectivePoint<T>): ProjectivePoint<T> {
+  add(rhs: this): this {
+    if (this.constructor != rhs.constructor)
+      throw new Error(`ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
     const p1 = this;
-    const p2 = other;
+    const p2 = rhs;
     if (p1.isZero()) return p2;
     if (p2.isZero()) return p1;
     const X1 = p1.x;
@@ -703,16 +709,18 @@ export class ProjectivePoint<T extends Field<T>> {
     const X3 = V.multiply(A);
     const Y3 = U.multiply(V2VV.subtract(A)).subtract(VVV.multiply(U2));
     const Z3 = VVV.multiply(W);
-    return new ProjectivePoint(X3, Y3, Z3, this.C);
+    return this.getPoint(X3, Y3, Z3);
   }
 
-  subtract(other: ProjectivePoint<T>): ProjectivePoint<T> {
-    return this.add(other.negate());
+  subtract(rhs: this): this {
+    if (this.constructor != rhs.constructor)
+      throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+    return this.add(rhs.negate());
   }
   // Non-constant-time multiplication. Uses double-and-add algorithm.
   // It's faster, but should only be used when you don't care about
   // an exposed private key e.g. sig verification.
-  multiplyUnsafe(scalar: number | bigint | Fq): ProjectivePoint<T> {
+  multiplyUnsafe(scalar: number | bigint | Fq): this {
     let n = scalar;
     if (n instanceof Fq) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
@@ -720,7 +728,7 @@ export class ProjectivePoint<T extends Field<T>> {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
     let p = this.getZero();
-    let d: ProjectivePoint<T> = this;
+    let d: this = this;
     while (n > 0n) {
       if (n & 1n) p = p.add(d);
       d = d.double();
@@ -735,14 +743,14 @@ export class ProjectivePoint<T extends Field<T>> {
     return this.C.MAX_BITS;
   }
 
-  private precomputeWindow(W: number): ProjectivePoint<T>[] {
+  private precomputeWindow(W: number): this[] {
     // Split scalar by W bits, last window can be smaller
     const windows = Math.ceil(this.maxBits() / W);
     // 2^(W-1), since we use wNAF, we only need W-1 bits
     const windowSize = 2 ** (W - 1);
 
-    let points: ProjectivePoint<T>[] = [];
-    let p: ProjectivePoint<T> = this;
+    let points: this[] = [];
+    let p: this = this;
     let base = p;
     for (let window = 0; window < windows; window++) {
       base = p;
@@ -756,15 +764,19 @@ export class ProjectivePoint<T extends Field<T>> {
     return points;
   }
 
-  calcPrecomputes(W: number) {
-    if (this.precomputes) throw new Error('This point already has precomputes');
-    this.precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+  calcMultiplyPrecomputes(W: number) {
+    if (this.multiply_precomputes) throw new Error('This point already has precomputes');
+    this.multiply_precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
   }
 
-  private wNAF(n: bigint): [ProjectivePoint<T>, ProjectivePoint<T>] {
+  clearMultiplyPrecomputes() {
+    this.multiply_precomputes = undefined;
+  }
+
+  private wNAF(n: bigint): [this, this] {
     let W, precomputes;
-    if (this.precomputes) {
-      [W, precomputes] = this.precomputes;
+    if (this.multiply_precomputes) {
+      [W, precomputes] = this.multiply_precomputes;
     } else {
       W = 1;
       precomputes = this.precomputeWindow(W);
@@ -805,10 +817,8 @@ export class ProjectivePoint<T extends Field<T>> {
     return [p, f];
   }
 
-  // Constant time multiplication.
-  // Uses wNAF method. Windowed method may be 10% faster,
-  // but takes 2x longer to generate and consumes 2x memory.
-  multiply(scalar: number | bigint | Fq): ProjectivePoint<T> {
+  // Constant time multiplication. Uses wNAF. 
+  multiply(scalar: number | bigint | Fq): this {
     let n = scalar;
     if (n instanceof Fq) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
@@ -1064,8 +1074,9 @@ function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]) {
   const z2 = mapped[1].multiply(mapped[3]);
   const x2 = mapped[0].multiply(mapped[3]);
   const y2 = mapped[1].multiply(mapped[2]);
-  return new ProjectivePoint(x2, y2, z2, Fq2);
+  return new PointG2(x2, y2, z2);
 }
+
 
 async function expand_message_xmd(
   msg: Uint8Array,
@@ -1208,13 +1219,14 @@ function normalizePrivKey(privateKey: PrivateKey): Fq {
   return new Fq(toBigInt(privateKey));
 }
 
-export class PointG1 {
-  static BASE = new ProjectivePoint(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE, Fq);
-  static ZERO = new ProjectivePoint(Fq.ONE, Fq.ONE, Fq.ZERO, Fq);
+export class PointG1 extends ProjectivePoint<Fq> {
+  static BASE = new PointG1(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE);
+  static ZERO = new PointG1(Fq.ONE, Fq.ONE, Fq.ZERO);
 
-  constructor(private jpoint: ProjectivePoint<Fq>) {
-    if (!jpoint) throw new Error('Expected point');
+  constructor(x: Fq, y: Fq, z: Fq) {
+    super(x, y, z, Fq);
   }
+
   static fromCompressedHex(hex: PublicKey) {
     const compressedValue = fromBytesBE(hex);
     const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
@@ -1231,21 +1243,20 @@ export class PointG1 {
     if ((y * 2n) / P !== aflag) {
       y = P - y;
     }
-    const p = new ProjectivePoint(new Fq(x), new Fq(y), new Fq(1n), Fq);
+    const p = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
     return p;
   }
 
   static fromPrivateKey(privateKey: PrivateKey) {
-    return new PointG1(this.BASE.multiply(normalizePrivKey(privateKey)));
+    return this.BASE.multiply(normalizePrivKey(privateKey));
   }
 
   toCompressedHex() {
-    const { jpoint: point } = this;
     let hex;
-    if (point.equals(PointG1.ZERO)) {
+    if (this.equals(PointG1.ZERO)) {
       hex = POW_2_383 + POW_2_382;
     } else {
-      const [x, y] = point.toAffine();
+      const [x, y] = this.toAffine();
       const flag = (y.value * 2n) / P;
       hex = x.value + flag * POW_2_381 + POW_2_383;
     }
@@ -1254,8 +1265,8 @@ export class PointG1 {
 
   assertValidity() {
     const b = new Fq(CURVE.b);
-    if (this.jpoint.isZero()) return;
-    const { x, y, z } = this.jpoint;
+    if (this.isZero()) return;
+    const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq);
     if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq');
@@ -1264,7 +1275,7 @@ export class PointG1 {
   millerLoop(P: PointG2): Fq12 {
     const ell = P.pairingPrecomputes();
     let f12 = Fq12.ONE;
-    let [x, y] = this.jpoint.toAffine();
+    let [x, y] = this.toAffine();
     let [Px, Py] = [x as Fq, y as Fq];
 
     for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i-- , j++) {
@@ -1281,24 +1292,22 @@ export class PointG1 {
 
 // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P: ProjectivePoint<Fq2>, unsafe: boolean = false) {
+function clearCofactorG2(P: PointG2, unsafe: boolean = false) {
   return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
 }
 
 type EllCoefficients = [Fq2, Fq2, Fq2];
 
-export class PointG2 {
-  static BASE = new ProjectivePoint(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE, Fq2);
-  static ZERO = new ProjectivePoint(Fq2.ONE, Fq2.ONE, Fq2.ZERO, Fq2);
+export class PointG2 extends ProjectivePoint<Fq2> {
+  static BASE = new PointG2(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE);
+  static ZERO = new PointG2(Fq2.ONE, Fq2.ONE, Fq2.ZERO);
 
   private pair_precomputes: EllCoefficients[] | undefined;
 
-  constructor(private jpoint: ProjectivePoint<Fq2>) {
-    if (!jpoint) throw new Error('Expected point');
+  constructor(x: Fq2, y: Fq2, z: Fq2) {
+    super(x, y, z, Fq2);
   }
-  toString() {
-    return this.jpoint.toString();
-  }
+
   static async hashToCurve(msg: PublicKey, unsafe: boolean = false) {
     if (typeof msg === 'string') msg = hexToArray(msg);
     const u = await hash_to_field(msg, 2);
@@ -1310,7 +1319,7 @@ export class PointG2 {
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
     return P;
   }
-  static fromSignature(hex: Signature) {
+  static fromSignature(hex: Signature): PointG2 {
     const half = hex.length / 2;
     const z1 = fromBytesBE(hex.slice(0, half));
     const z2 = fromBytesBE(hex.slice(half));
@@ -1332,23 +1341,22 @@ export class PointG2 {
     const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
     const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
     if (isGreater || isZero) y = y.multiply(-1n);
-    const point = new PointG2(new ProjectivePoint(x, y, Fq2.ONE, Fq2));
+    const point = new PointG2(x, y, Fq2.ONE);
     point.assertValidity();
-    return point.jpoint;
+    return point;
   }
 
   static fromPrivateKey(privateKey: PrivateKey) {
-    return new PointG2(this.BASE.multiply(normalizePrivKey(privateKey)));
+    return this.BASE.multiply(normalizePrivKey(privateKey));
   }
 
   toSignature() {
-    const { jpoint } = this;
-    if (jpoint.equals(PointG2.ZERO)) {
+    if (this.equals(PointG2.ZERO)) {
       const sum = POW_2_383 + POW_2_382;
       return concatTypedArrays(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
     }
     this.assertValidity();
-    const [[x0, x1], [y0, y1]] = jpoint.toAffine().map((a) => a.value);
+    const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.value);
     const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
@@ -1358,8 +1366,8 @@ export class PointG2 {
 
   assertValidity() {
     const b = new Fq2(CURVE.b2);
-    if (this.jpoint.isZero()) return;
-    const { x, y, z } = this.jpoint;
+    if (this.isZero()) return;
+    const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq2);
     if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq2');
@@ -1368,7 +1376,7 @@ export class PointG2 {
   // Pre-compute coefficients for sparse multiplication
   // Point addition and point double calculations is reused for coefficients
   calculatePrecomputes() {
-    const [x, y] = this.jpoint.toAffine();
+    const [x, y] = this.toAffine();
     const [Qx, Qy, Qz] = [x as Fq2, y as Fq2, Fq2.ONE];
     let [Rx, Ry, Rz] = [Qx, Qy, Qz];
     let ell_coeff: EllCoefficients[] = [];
@@ -1408,6 +1416,10 @@ export class PointG2 {
     return ell_coeff;
   }
 
+  clearPairingPrecomputes() {
+    this.pair_precomputes = undefined;
+  }
+
   pairingPrecomputes(): EllCoefficients[] {
     if (this.pair_precomputes)
       return this.pair_precomputes;
@@ -1416,17 +1428,15 @@ export class PointG2 {
 }
 
 export function pairing(
-  P: ProjectivePoint<Fq>,
-  Q: ProjectivePoint<Fq2>,
+  P: PointG1,
+  Q: PointG2,
   withFinalExponent: boolean = true
 ): Fq12 {
   if (P.isZero() || Q.isZero()) throw new Error('No pairings at point of Infinity');
-  const p = new PointG1(P);
-  const q = new PointG2(Q);
-  p.assertValidity();
-  q.assertValidity();
+  P.assertValidity();
+  Q.assertValidity();
   // Performance: 9ms for millerLoop and ~14ms for exp.
-  let res = p.millerLoop(q);
+  let res = P.millerLoop(Q);
   return withFinalExponent ? res.finalExponentiate() : res;
 }
 
@@ -1439,8 +1449,7 @@ export function getPublicKey(privateKey: PrivateKey) {
 export async function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array> {
   const msgPoint = await PointG2.hashToCurve(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-  const S = new PointG2(sigPoint);
-  return S.toSignature();
+  return sigPoint.toSignature();
 }
 
 // e(P, H(m)) == e(G,S)
@@ -1470,11 +1479,10 @@ export async function verify(
 
 export function aggregatePublicKeys(publicKeys: PublicKey[]) {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
-  const aggregatedPublicKey = publicKeys.reduce(
+  return publicKeys.reduce(
     (sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)),
     PointG1.ZERO
   );
-  return new PointG1(aggregatedPublicKey).toCompressedHex();
 }
 
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
@@ -1484,7 +1492,7 @@ export function aggregateSignatures(signatures: Signature[]) {
     (sum, signature) => sum.add(PointG2.fromSignature(signature)),
     PointG2.ZERO
   );
-  return new PointG2(aggregatedSignature).toSignature();
+  return aggregatedSignature.toSignature();
 }
 
 export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature) {
@@ -1501,6 +1509,7 @@ export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], sig
         PointG1.ZERO
       );
       const msg = await PointG2.hashToCurve(message, true);
+      // Possible to batch pairing for same msg with different groupPublicKey here
       producer = producer.multiply(pairing(groupPublicKey, msg, false) as Fq12);
     }
     const sig = PointG2.fromSignature(signature);
