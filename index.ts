@@ -1292,8 +1292,8 @@ export class PointG1 extends ProjectivePoint<Fq> {
 
 // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P: PointG2, unsafe: boolean = false) {
-  return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
+function clearCofactorG2(P: PointG2) {
+  return P.multiplyUnsafe(H_EFF);
 }
 
 type EllCoefficients = [Fq2, Fq2, Fq2];
@@ -1308,14 +1308,14 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     super(x, y, z, Fq2);
   }
 
-  static async hashToCurve(msg: PublicKey, unsafe: boolean = false) {
+  static async hashToCurve(msg: PublicKey) {
     if (typeof msg === 'string') msg = hexToArray(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
     const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
     const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
     const R = Q0.add(Q1);
-    const P = clearCofactorG2(R, unsafe);
+    const P = clearCofactorG2(R);
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
     return P;
   }
@@ -1447,7 +1447,7 @@ export function getPublicKey(privateKey: PrivateKey) {
 
 // S = pk x H(m)
 export async function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array> {
-  const msgPoint = await PointG2.hashToCurve(message, true);
+  const msgPoint = await PointG2.hashToCurve(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   return sigPoint.toSignature();
 }
@@ -1459,7 +1459,7 @@ export async function verify(
   publicKey: PublicKey
 ): Promise<boolean> {
   const P = PointG1.fromCompressedHex(publicKey).negate();
-  const Hm = await PointG2.hashToCurve(message, true);
+  const Hm = await PointG2.hashToCurve(message);
   const G = PointG1.BASE;
   const S = PointG2.fromSignature(signature);
   // Instead of doing 2 exponentiations, we use property of billinear maps
@@ -1508,7 +1508,7 @@ export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], sig
             : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])),
         PointG1.ZERO
       );
-      const msg = await PointG2.hashToCurve(message, true);
+      const msg = await PointG2.hashToCurve(message);
       // Possible to batch pairing for same msg with different groupPublicKey here
       producer = producer.multiply(pairing(groupPublicKey, msg, false) as Fq12);
     }
