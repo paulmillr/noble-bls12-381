@@ -42,6 +42,7 @@
     "zk-snark",
     "barreto-lynn-scott",
     "barreto-naehrig",
+    "snark",
     "pairing",
     "cryptography",
     "security"
