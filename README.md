@@ -197,7 +197,11 @@ Formulas:
 
 ## Speed
 
-Pairing performance is the fastest of all pure-scripting-language implementations. That includes js, python, etc.
+**The fastest implementation written in a scripting language** (js, python etc). Has all possible optimizations, like:
+
+- cyclotomatic exponentation
+- frobenius coefficients
+- endomorphism for clearing cofactor
 
 ```
 getPublicKey x 1080 ops/sec @ 925μs/op
