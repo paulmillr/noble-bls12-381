@@ -55,7 +55,25 @@ export declare class Fq implements Field<Fq> {
     div(rhs: Fq | bigint): Fq;
     toString(): string;
 }
-export declare class Fq2 implements Field<Fq2> {
+declare abstract class FieldExt<TT extends {
+    c: TTT;
+} & Field<TT>, CT extends Field<CT>, TTT extends CT[]> implements Field<TT> {
+    abstract readonly c: CT[];
+    abstract init(c: TTT): TT;
+    abstract multiply(rhs: TT | bigint): TT;
+    abstract invert(): TT;
+    abstract square(): TT;
+    abstract pow(n: bigint): TT;
+    abstract div(n: bigint): TT;
+    zip<T, RT extends T[]>(rhs: TT, mapper: (left: CT, right: CT) => T): RT;
+    map<T, RT extends T[]>(callbackfn: (value: CT) => T): RT;
+    isZero(): boolean;
+    equals(rhs: TT): boolean;
+    negate(): TT;
+    add(rhs: TT): TT;
+    subtract(rhs: TT): TT;
+}
+export declare class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
     static readonly ROOT: Fq;
@@ -70,13 +88,6 @@ export declare class Fq2 implements Field<Fq2> {
     init(tuple: [Fq, Fq]): Fq2;
     toString(): string;
     get value(): BigintTuple;
-    private zip;
-    private map;
-    isZero(): boolean;
-    equals(rhs: Fq2): boolean;
-    negate(): Fq2;
-    add(rhs: Fq2): Fq2;
-    subtract(rhs: Fq2): Fq2;
     conjugate(): Fq2;
     pow(n: bigint): Fq2;
     div(rhs: Fq2 | bigint): Fq2;
@@ -88,7 +99,7 @@ export declare class Fq2 implements Field<Fq2> {
     frobeniusMap(power: number): Fq2;
     multiplyByB(): Fq2;
 }
-export declare class Fq6 implements Field<Fq6> {
+export declare class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     readonly c: [Fq2, Fq2, Fq2];
     static readonly ZERO: Fq6;
     static readonly ONE: Fq6;
@@ -98,13 +109,6 @@ export declare class Fq6 implements Field<Fq6> {
     constructor(c: [Fq2, Fq2, Fq2]);
     init(triple: [Fq2, Fq2, Fq2]): Fq6;
     toString(): string;
-    private zip;
-    private map;
-    isZero(): boolean;
-    equals(rhs: Fq6): boolean;
-    negate(): Fq6;
-    add(rhs: Fq6): Fq6;
-    subtract(rhs: Fq6): Fq6;
     div(rhs: Fq6 | bigint): Fq6;
     pow(n: bigint): Fq6;
     multiply(rhs: Fq6 | bigint): Fq6;
@@ -116,7 +120,7 @@ export declare class Fq6 implements Field<Fq6> {
     invert(): Fq6;
     frobeniusMap(power: number): Fq6;
 }
-export declare class Fq12 implements Field<Fq12> {
+export declare class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
     readonly c: [Fq6, Fq6];
     static readonly ZERO: Fq12;
     static readonly ONE: Fq12;
@@ -126,13 +130,6 @@ export declare class Fq12 implements Field<Fq12> {
     init(c: [Fq6, Fq6]): Fq12;
     toString(): string;
     get value(): [Fq6, Fq6];
-    private zip;
-    private map;
-    isZero(): boolean;
-    equals(rhs: Fq12): boolean;
-    negate(): Fq12;
-    add(rhs: Fq12): Fq12;
-    subtract(rhs: Fq12): Fq12;
     conjugate(): Fq12;
     pow(n: bigint): Fq12;
     div(rhs: Fq12 | bigint): Fq12;

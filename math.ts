@@ -203,6 +203,44 @@ export class Fq implements Field<Fq> {
     return str.slice(0, 2) + '.' + str.slice(-2);
   }
 }
+// TT - ThisType, CT - ChildType, TTT - Tuple Type
+abstract class FieldExt<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT extends CT[]> implements Field<TT> {
+  public abstract readonly c: CT[];
+  abstract init(c: TTT): TT;
+  abstract multiply(rhs: TT | bigint): TT;
+  abstract invert(): TT;
+  abstract square(): TT;
+  abstract pow(n: bigint): TT;
+  abstract div(n: bigint): TT;
+
+  zip<T, RT extends T[]>(rhs: TT, mapper: (left: CT, right: CT) => T): RT {
+    const c0 = this.c;
+    const c1 = rhs.c;
+    const res: T[] = [];
+    for (let i = 0; i < c0.length; i++) {
+      res.push(mapper(c0[i], c1[i]));
+    }
+    return res as RT;
+  }
+  map<T, RT extends T[]>(callbackfn: (value: CT) => T): RT {
+    return this.c.map(callbackfn) as RT;
+  }
+  isZero(): boolean {
+    return this.c.every((c) => c.isZero());
+  }
+  equals(rhs: TT): boolean {
+    return this.zip(rhs, (left: CT, right: CT) => left.equals(right)).every((r: boolean) => r);
+  }
+  negate(): TT {
+    return this.init(this.map((c) => c.negate()));
+  }
+  add(rhs: TT): TT {
+    return this.init(this.zip(rhs, (left, right) => left.add(right)));
+  }
+  subtract(rhs: TT) {
+    return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+  }
+}
 
 // For Fq2 roots of unity.
 const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
@@ -247,7 +285,7 @@ const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006d
 // }
 
 // Finite extension field over irreducible degree-1 polynominal represented by c0 + c1 * u.
-export class Fq2 implements Field<Fq2> {
+export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
   static readonly ROOT = new Fq(-1n);
@@ -292,6 +330,7 @@ export class Fq2 implements Field<Fq2> {
 
   public readonly c: [Fq, Fq];
   constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]) {
+    super();
     if (coeffs.length !== 2) throw new Error(`Expected array with 2 elements`);
     coeffs.forEach((c: any, i: any) => {
       if (typeof c === 'bigint') coeffs[i] = new Fq(c);
@@ -307,33 +346,6 @@ export class Fq2 implements Field<Fq2> {
   get value(): BigintTuple {
     return this.c.map((c) => c.value) as BigintTuple;
   }
-  private zip<T>(rhs: Fq2, mapper: (left: Fq, right: Fq) => T): [T, T] {
-    const c0 = this.c;
-    const c1 = rhs.c;
-    const res: T[] = [];
-    for (let i = 0; i < c0.length; i++) {
-      res.push(mapper(c0[i], c1[i]));
-    }
-    return res as [T, T];
-  }
-  private map<T>(callbackfn: (value: Fq) => T): [T, T] {
-    return this.c.map(callbackfn) as [T, T];
-  }
-  isZero() {
-    return this.c.every((c) => c.isZero());
-  }
-  equals(rhs: Fq2) {
-    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-  }
-  negate() {
-    return this.init(this.map((c) => c.negate()));
-  }
-  add(rhs: Fq2) {
-    return this.init(this.zip(rhs, (left, right) => left.add(right)));
-  }
-  subtract(rhs: Fq2) {
-    return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
-  }
   conjugate() {
     return this.init([this.c[0], this.c[1].negate()]);
   }
@@ -344,8 +356,8 @@ export class Fq2 implements Field<Fq2> {
     return genDiv(this, rhs);
   }
 
-  multiply(rhs: Fq2 | bigint) {
-    if (typeof rhs === 'bigint') return new Fq2(this.map((c) => c.multiply(rhs)));
+  multiply(rhs: Fq2 | bigint): Fq2 {
+    if (typeof rhs === 'bigint') return new Fq2(this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs)));
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     const [c0, c1] = this.c;
     const [r0, r1] = rhs.c;
@@ -420,7 +432,7 @@ export class Fq2 implements Field<Fq2> {
 }
 
 // Finite extension field represented by c0 + c1 * v + c2 * v^(2).
-export class Fq6 implements Field<Fq6> {
+export class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS_1 = [
@@ -480,6 +492,7 @@ export class Fq6 implements Field<Fq6> {
   }
 
   constructor(public readonly c: [Fq2, Fq2, Fq2]) {
+    super();
     if (c.length !== 3) throw new Error(`Expected array with 2 elements`);
   }
   init(triple: [Fq2, Fq2, Fq2]) {
@@ -487,33 +500,6 @@ export class Fq6 implements Field<Fq6> {
   }
   toString() {
     return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
-  }
-  private zip<T>(rhs: Fq6, mapper: (left: Fq2, right: Fq2) => T): [T, T, T] {
-    const c0 = this.c;
-    const c1 = rhs.c;
-    const res: T[] = [];
-    for (let i = 0; i < c0.length; i++) {
-      res.push(mapper(c0[i], c1[i]));
-    }
-    return res as [T, T, T];
-  }
-  private map<T>(callbackfn: (value: Fq2) => T): [T, T, T] {
-    return this.c.map(callbackfn) as [T, T, T];
-  }
-  isZero() {
-    return this.c.every((c) => c.isZero());
-  }
-  equals(rhs: Fq6) {
-    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-  }
-  negate() {
-    return new Fq6(this.map((c) => c.negate()));
-  }
-  add(rhs: Fq6) {
-    return new Fq6(this.zip(rhs, (left, right) => left.add(right)));
-  }
-  subtract(rhs: Fq6) {
-    return new Fq6(this.zip(rhs, (left, right) => left.subtract(right)));
   }
   div(rhs: Fq6 | bigint): Fq6 {
     return genDiv(this, rhs);
@@ -604,7 +590,7 @@ export class Fq6 implements Field<Fq6> {
 }
 
 // Finite extension field represented by c0 + c1 * w.
-export class Fq12 implements Field<Fq12> {
+export class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
   static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
   static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS = [
@@ -664,6 +650,7 @@ export class Fq12 implements Field<Fq12> {
     ]);
   }
   constructor(public readonly c: [Fq6, Fq6]) {
+    super();
     if (c.length !== 2) throw new Error(`Expected array with 2 elements`);
   }
   init(c: [Fq6, Fq6]) {
@@ -674,33 +661,6 @@ export class Fq12 implements Field<Fq12> {
   }
   get value(): [Fq6, Fq6] {
     return this.c;
-  }
-  private zip<T>(rhs: Fq12, mapper: (left: Fq6, right: Fq6) => T): [T, T] {
-    const c0 = this.c;
-    const c1 = rhs.c;
-    const res: T[] = [];
-    for (let i = 0; i < c0.length; i++) {
-      res.push(mapper(c0[i], c1[i]));
-    }
-    return res as [T, T];
-  }
-  private map<T>(callbackfn: (value: Fq6) => T): [T, T] {
-    return this.c.map(callbackfn) as [T, T];
-  }
-  isZero() {
-    return this.c.every((c) => c.isZero());
-  }
-  equals(rhs: Fq12) {
-    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-  }
-  negate() {
-    return this.init(this.map((c) => c.negate()));
-  }
-  add(rhs: Fq12) {
-    return this.init(this.zip(rhs, (left, right) => left.add(right)));
-  }
-  subtract(rhs: Fq12) {
-    return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
   }
 
   conjugate() {
