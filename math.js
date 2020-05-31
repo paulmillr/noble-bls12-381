@@ -383,6 +383,9 @@ let Fq6 = (() => {
                 c0.add(c2).multiply(b0).subtract(t0).add(t1),
             ]);
         }
+        multiplyByFq2(rhs) {
+            return new Fq6(this.map((c) => c.multiply(rhs)));
+        }
         square() {
             let [c0, c1, c2] = this.c;
             let t0 = c0.square();
@@ -545,6 +548,9 @@ let Fq12 = (() => {
                 t1.mulByNonresidue().add(t0),
                 c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1),
             ]);
+        }
+        multiplyByFq2(rhs) {
+            return this.init(this.map((c) => c.multiplyByFq2(rhs)));
         }
         square() {
             let [c0, c1] = this.c;

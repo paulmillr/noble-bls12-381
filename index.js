@@ -1,6 +1,6 @@
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
 Object.defineProperty(exports, "Fq2", { enumerable: true, get: function () { return math_1.Fq2; } });
@@ -326,9 +326,28 @@ let PointG1 = (() => {
     return PointG1;
 })();
 exports.PointG1 = PointG1;
-function clearCofactorG2(P) {
-    return P.multiplyUnsafe(math_1.CURVE.h_eff);
+const ut_root = new math_1.Fq6([math_1.Fq2.ZERO, math_1.Fq2.ONE, math_1.Fq2.ZERO]);
+const wsq = new math_1.Fq12([ut_root, math_1.Fq6.ZERO]);
+const wsq_inv = wsq.invert();
+const wcu = new math_1.Fq12([math_1.Fq6.ZERO, ut_root]);
+const wcu_inv = wcu.invert();
+function psi(P) {
+    let [x, y] = P.toAffine();
+    let new_x = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
+    let new_y = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
+    return new PointG2(new_x, new_y, math_1.Fq2.ONE);
 }
+const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+function psi2(P) {
+    let [x, y] = P.toAffine();
+    return new PointG2(x.multiply(PSI2_C1), y.negate(), math_1.Fq2.ONE);
+}
+function clearCofactorG2(P) {
+    let t1 = P.multiplyUnsafe(math_1.CURVE.BLS_X).negate();
+    let t2 = psi(P);
+    return psi2(P.double()).subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.BLS_X).negate()).subtract(t1).subtract(P);
+}
+exports.clearCofactorG2 = clearCofactorG2;
 let PointG2 = (() => {
     class PointG2 extends math_1.ProjectivePoint {
         constructor(x, y, z) {

@@ -21,6 +21,7 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     assertValidity(): void;
     millerLoop(P: PointG2): Fq12;
 }
+export declare function clearCofactorG2(P: PointG2): PointG2;
 declare type EllCoefficients = [Fq2, Fq2, Fq2];
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
