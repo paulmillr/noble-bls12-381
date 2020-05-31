@@ -2,7 +2,7 @@
 
 bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Allows to:
 
-- Construct zk-SNARKs at the 128-bit security
+- Construct [zk-SNARKs](https://z.cash/technology/zksnarks/) at the 128-bit security
 - Use [threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
