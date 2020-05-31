@@ -1171,7 +1171,7 @@ function getPublicKey(privateKey) {
 }
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
-    const msgPoint = await PointG2.hashToCurve(message);
+    const msgPoint = await PointG2.hashToCurve(message, true);
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
     return sigPoint.toSignature();
 }
