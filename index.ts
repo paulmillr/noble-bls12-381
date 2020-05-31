@@ -20,7 +20,7 @@ export const CURVE = {
   // G^2 - 1
   P2:
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
-    2n -
+      2n -
     1n,
   h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
   G2x: [
@@ -35,7 +35,6 @@ export const CURVE = {
   // The BLS parameter x for BLS12-381
   BLS_X: 0xd201000000010000n,
 };
-
 
 const P = CURVE.P;
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
@@ -77,7 +76,7 @@ interface Field<T> {
 
 type FieldStatic<T extends Field<T>> = { ZERO: T; ONE: T };
 
-function gen_pow<T extends Field<T>>(cls: FieldStatic<T>, elm: T, n: bigint): T {
+function genPow<T extends Field<T>>(cls: FieldStatic<T>, elm: T, n: bigint): T {
   if (n === 0n) return cls.ONE;
   if (n === 1n) return elm;
   let p = cls.ONE;
@@ -90,7 +89,7 @@ function gen_pow<T extends Field<T>>(cls: FieldStatic<T>, elm: T, n: bigint): T 
   return p;
 }
 
-function gen_div<T extends Field<T>>(elm: T, rhs: T | bigint): T {
+function genDiv<T extends Field<T>>(elm: T, rhs: T | bigint): T {
   const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
   return elm.multiply(inv);
 }
@@ -114,7 +113,6 @@ function gen_inv_batch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] 
   return nums;
 }
 
-
 // Amount of bits inside bigint
 function bitLen(n: bigint) {
   let len;
@@ -124,7 +122,7 @@ function bitLen(n: bigint) {
 
 // Get single bit from bigint at pos
 function bitGet(n: bigint, pos: number) {
-  return n >> BigInt(pos) & 1n;
+  return (n >> BigInt(pos)) & 1n;
 }
 
 const BLS_X_LEN = bitLen(CURVE.BLS_X);
@@ -190,7 +188,9 @@ export class Fq implements Field<Fq> {
     return new Fq(this._value * rhs);
   }
 
-  div(rhs: Fq | bigint): Fq { return gen_div(this, rhs); }
+  div(rhs: Fq | bigint): Fq {
+    return genDiv(this, rhs);
+  }
 
   toString() {
     const str = this.value.toString(16).padStart(96, '0');
@@ -204,6 +204,41 @@ const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498
 const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+
+// abstract class GenericField<FP extends Field<FP>, FC extends Field<FC>> {
+//   public c: FC[];
+//   constructor(c: [FC, FC]) {
+//     this.c = c;
+//   }
+//   abstract init(fc: FC[]): FP;
+//   private zip<T>(rhs: FP, mapper: (left: FC, right: FC) => T): [T, T] {
+//     const c0 = this.c;
+//     const c1 = rhs.c;
+//     const res: T[] = [];
+//     for (let i = 0; i < c0.length; i++) {
+//       res.push(mapper(c0[i], c1[i]))
+//     }
+//     return res as [T, T];
+//   }
+//   private map<T>(callbackfn: (value: FC) => T): [T, T] {
+//     return this.c.map(callbackfn) as [T, T];
+//   }
+//   isZero() {
+//     return this.c.every(c => c.isZero());
+//   }
+//   equals(rhs: FP) {
+//     return this.zip(rhs, (left, right) => left.equals(right)).every(r => r);
+//   }
+//   negate() {
+//     return this.init(this.map(c => c.negate()));
+//   }
+//   add(rhs: FP) {
+//     return this.init(this.zip(rhs, (left, right) => left.add(right)));
+//   }
+//   subtract(rhs: FP) {
+//     return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+//   }
+// }
 
 // Finite extension field over irreducible degree-1 polynominal represented by c0 + c1 * u.
 export class Fq2 implements Field<Fq2> {
@@ -241,37 +276,73 @@ export class Fq2 implements Field<Fq2> {
     new Fq2([-ev4, ev3]),
   ];
   static readonly FROBENIUS_COEFFICIENTS = [
-    new Fq(0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n),
-    new Fq(0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan),
+    new Fq(
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n
+    ),
+    new Fq(
+      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan
+    ),
   ];
-  public readonly c0: Fq;
-  public readonly c1: Fq;
 
-  get real(): Fq { return this.c0; }
-  get imag(): Fq { return this.c1; }
-  get value(): BigintTuple { return [this.c0.value, this.c1.value]; }
-
-  constructor(tuple: (Fq | bigint)[]) {
-    if (tuple.length !== 2) throw new Error(`Expected array with 2 elements`);
-    let [c0, c1] = tuple;
-    this.c0 = typeof c0 === 'bigint' ? new Fq(c0) : c0;
-    this.c1 = typeof c1 === 'bigint' ? new Fq(c1) : c1;
+  public readonly c: [Fq, Fq];
+  constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]) {
+    if (coeffs.length !== 2) throw new Error(`Expected array with 2 elements`);
+    coeffs.forEach((c: any, i: any) => {
+      if (typeof c === 'bigint') coeffs[i] = new Fq(c);
+    });
+    this.c = coeffs as [Fq, Fq];
   }
-  // Same as Fq12
-  toString() { return `Fq2(${this.c0} + ${this.c1}×i)`; }
-  isZero() { return this.c0.isZero() && this.c1.isZero(); }
-  equals(rhs: Fq2) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1); }
-  negate() { return new Fq2([this.c0.negate(), this.c1.negate()]); }
-  add(rhs: Fq2) { return new Fq2([this.c0.add(rhs.c0), this.c1.add(rhs.c1)]); }
-  subtract(rhs: Fq2) { return new Fq2([this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1)]); }
-  conjugate() { return new Fq2([this.c0, this.c1.negate()]); }
-  pow(n: bigint): Fq2 { return gen_pow(Fq2, this, n); }
-  div(rhs: Fq2 | bigint): Fq2 { return gen_div(this, rhs); }
+  init(tuple: [Fq, Fq]) {
+    return new Fq2(tuple);
+  }
+  toString() {
+    return `Fq2(${this.c[0]} + ${this.c[1]}×i)`;
+  }
+  get value(): BigintTuple {
+    return this.c.map((c) => c.value) as BigintTuple;
+  }
+  private zip<T>(rhs: Fq2, mapper: (left: Fq, right: Fq) => T): [T, T] {
+    const c0 = this.c;
+    const c1 = rhs.c;
+    const res: T[] = [];
+    for (let i = 0; i < c0.length; i++) {
+      res.push(mapper(c0[i], c1[i]));
+    }
+    return res as [T, T];
+  }
+  private map<T>(callbackfn: (value: Fq) => T): [T, T] {
+    return this.c.map(callbackfn) as [T, T];
+  }
+  isZero() {
+    return this.c.every((c) => c.isZero());
+  }
+  equals(rhs: Fq2) {
+    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+  }
+  negate() {
+    return this.init(this.map((c) => c.negate()));
+  }
+  add(rhs: Fq2) {
+    return this.init(this.zip(rhs, (left, right) => left.add(right)));
+  }
+  subtract(rhs: Fq2) {
+    return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+  }
+  conjugate() {
+    return this.init([this.c[0], this.c[1].negate()]);
+  }
+  pow(n: bigint): Fq2 {
+    return genPow(Fq2, this, n);
+  }
+  div(rhs: Fq2 | bigint): Fq2 {
+    return genDiv(this, rhs);
+  }
 
   multiply(rhs: Fq2 | bigint) {
-    if (typeof rhs === 'bigint') return new Fq2([this.c0.multiply(rhs), this.c1.multiply(rhs)]);
+    if (typeof rhs === 'bigint') return new Fq2(this.map((c) => c.multiply(rhs)));
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
-    const [{ c0, c1 }, { c0: r0, c1: r1 }] = [this, rhs];
+    const [c0, c1] = this.c;
+    const [r0, r1] = rhs.c;
     let t1 = c0.multiply(r0); // c0 * o0
     let t2 = c1.multiply(r1); // c1 * o1
     // (T1 - T2) + ((c0 + c1) * (r0 + r1) - (T1 + T2))*i
@@ -279,14 +350,18 @@ export class Fq2 implements Field<Fq2> {
   }
   // multiply by u + 1
   mulByNonresidue() {
-    return new Fq2([this.c0.subtract(this.c1), this.c0.add(this.c1)]);
+    const c0 = this.c[0];
+    const c1 = this.c[1];
+    return new Fq2([c0.subtract(c1), c0.add(c1)]);
   }
 
   square() {
-    const a = this.real.add(this.imag);
-    const b = this.real.subtract(this.imag);
-    const c = this.real.add(this.real);
-    return new Fq2([a.multiply(b), c.multiply(this.imag)]);
+    const c0 = this.c[0];
+    const c1 = this.c[1];
+    const a = c0.add(c1);
+    const b = c0.subtract(c1);
+    const c = c0.add(c0);
+    return new Fq2([a.multiply(b), c.multiply(c1)]);
   }
 
   sqrt(): Fq2 | undefined {
@@ -327,10 +402,10 @@ export class Fq2 implements Field<Fq2> {
 
   // Raises to q**i -th power
   frobeniusMap(power: number): Fq2 {
-    return new Fq2([this.c0, this.c1.multiply(Fq2.FROBENIUS_COEFFICIENTS[power % 2])]);
+    return new Fq2([this.c[0], this.c[1].multiply(Fq2.FROBENIUS_COEFFICIENTS[power % 2])]);
   }
   multiplyByB() {
-    let { c0, c1 } = this;
+    let [c0, c1] = this.c;
     let t0 = c0.multiply(4n); // 4 * c0
     let t1 = c1.multiply(4n); // 4 * c1
     // (T0-T1) + (T0+T1)*i
@@ -340,226 +415,382 @@ export class Fq2 implements Field<Fq2> {
 
 // Finite extension field represented by c0 + c1 * v + c2 * v^(2).
 export class Fq6 implements Field<Fq6> {
-  static readonly ZERO = new Fq6(Fq2.ZERO, Fq2.ZERO, Fq2.ZERO);
-  static readonly ONE = new Fq6(Fq2.ONE, Fq2.ZERO, Fq2.ZERO);
+  static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
+  static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS_1 = [
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn]),
-    new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n]),
-    new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    ]),
+    new Fq2([
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    ]),
   ];
   static readonly FROBENIUS_COEFFICIENTS_2 = [
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
   ];
   static from_tuple(t: BigintSix): Fq6 {
-    return new Fq6(new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6)));
+    return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
   }
 
-  constructor(public readonly c0: Fq2, public readonly c1: Fq2, public readonly c2: Fq2) { }
-  toString() { return `Fq6(${this.c0} + ${this.c1} * v, ${this.c2} * v^2)`; }
-  isZero() { return this.c0.isZero() && this.c1.isZero() && this.c2.isZero(); }
-  negate() { return new Fq6(this.c0.negate(), this.c1.negate(), this.c2.negate()); }
-  equals(rhs: Fq6) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1) && this.c2.equals(rhs.c2); }
-  add(rhs: Fq6) { return new Fq6(this.c0.add(rhs.c0), this.c1.add(rhs.c1), this.c2.add(rhs.c2)); }
-  subtract(rhs: Fq6) { return new Fq6(this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1), this.c2.subtract(rhs.c2)); }
-  div(rhs: Fq6 | bigint): Fq6 { return gen_div(this, rhs); }
-  pow(n: bigint): Fq6 { return gen_pow(Fq6, this, n); }
+  constructor(public readonly c: [Fq2, Fq2, Fq2]) {
+    if (c.length !== 3) throw new Error(`Expected array with 2 elements`);
+  }
+  init(triple: [Fq2, Fq2, Fq2]) {
+    return new Fq6(triple);
+  }
+  toString() {
+    return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
+  }
+  private zip<T>(rhs: Fq6, mapper: (left: Fq2, right: Fq2) => T): [T, T, T] {
+    const c0 = this.c;
+    const c1 = rhs.c;
+    const res: T[] = [];
+    for (let i = 0; i < c0.length; i++) {
+      res.push(mapper(c0[i], c1[i]));
+    }
+    return res as [T, T, T];
+  }
+  private map<T>(callbackfn: (value: Fq2) => T): [T, T, T] {
+    return this.c.map(callbackfn) as [T, T, T];
+  }
+  isZero() {
+    return this.c.every((c) => c.isZero());
+  }
+  equals(rhs: Fq6) {
+    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+  }
+  negate() {
+    return new Fq6(this.map((c) => c.negate()));
+  }
+  add(rhs: Fq6) {
+    return new Fq6(this.zip(rhs, (left, right) => left.add(right)));
+  }
+  subtract(rhs: Fq6) {
+    return new Fq6(this.zip(rhs, (left, right) => left.subtract(right)));
+  }
+  div(rhs: Fq6 | bigint): Fq6 {
+    return genDiv(this, rhs);
+  }
+  pow(n: bigint): Fq6 {
+    return genPow(Fq6, this, n);
+  }
 
   multiply(rhs: Fq6 | bigint) {
-    if (typeof rhs === 'bigint') return new Fq6(this.c0.multiply(rhs), this.c1.multiply(rhs), this.c2.multiply(rhs));
-    let [{ c0, c1, c2 }, { c0: r0, c1: r1, c2: r2 }] = [this, rhs];
+    if (typeof rhs === 'bigint')
+      return new Fq6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
+    let [c0, c1, c2] = this.c;
+    const [r0, r1, r2] = rhs.c;
     let t0 = c0.multiply(r0); // c0 * o0
     let t1 = c1.multiply(r1); // c1 * o1
     let t2 = c2.multiply(r2); // c2 * o2
-    return new Fq6(
+    return new Fq6([
       // t0 + (c1 + c2) * (r1 * r2) - (T1 + T2) * (u + 1)
       t0.add(c1.add(c2).multiply(r1.add(r2)).subtract(t1.add(t2)).mulByNonresidue()),
       // (c0 + c1) * (r0 + r1) - (T0 + T1) + T2 * (u + 1)
       c0.add(c1).multiply(r0.add(r1)).subtract(t0.add(t1)).add(t2.mulByNonresidue()),
       // T1 + (c0 + c2) * (r0 + r2) - T0 + T2
-      t1.add(c0.add(c2).multiply(r0.add(r2)).subtract(t0.add(t2)))
-    );
+      t1.add(c0.add(c2).multiply(r0.add(r2)).subtract(t0.add(t2))),
+    ]);
   }
   // Multiply by quadratic nonresidue v.
-  mulByNonresidue() { return new Fq6(this.c2.mulByNonresidue(), this.c0, this.c1); }
+  mulByNonresidue() {
+    return new Fq6([this.c[2].mulByNonresidue(), this.c[0], this.c[1]]);
+  }
   // Sparse multiplication
   multiplyBy1(b1: Fq2): Fq6 {
-    return new Fq6(this.c2.multiply(b1).mulByNonresidue(), this.c0.multiply(b1), this.c1.multiply(b1));
+    return new Fq6([
+      this.c[2].multiply(b1).mulByNonresidue(),
+      this.c[0].multiply(b1),
+      this.c[1].multiply(b1),
+    ]);
   }
   // Sparse multiplication
   multiplyBy01(b0: Fq2, b1: Fq2): Fq6 {
-    let { c0, c1, c2 } = this;
+    let [c0, c1, c2] = this.c;
     let t0 = c0.multiply(b0); // c0 * b0
     let t1 = c1.multiply(b1); // c1 * b1
-    return new Fq6(
+    return new Fq6([
       // ((c1 + c2) * b1 - T1) * (u + 1) + T0
       c1.add(c2).multiply(b1).subtract(t1).mulByNonresidue().add(t0),
       // (b0 + b1) * (c0 + c1) - T0 - T1
       b0.add(b1).multiply(c0.add(c1)).subtract(t0).subtract(t1),
       // (c0 + c2) * b0 - T0 + T1
-      c0.add(c2).multiply(b0).subtract(t0).add(t1)
-    );
+      c0.add(c2).multiply(b0).subtract(t0).add(t1),
+    ]);
   }
 
   square() {
-    let { c0, c1, c2 } = this;
+    let [c0, c1, c2] = this.c;
     let t0 = c0.square(); // c0^2
     let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1
     let t3 = c1.multiply(c2).multiply(2n); // 2 * c1 * c2
     let t4 = c2.square(); // c2^2
-    return new Fq6(t3.mulByNonresidue().add(t0), // T3 * (u + 1) + T0
+    return new Fq6([
+      t3.mulByNonresidue().add(t0), // T3 * (u + 1) + T0
       t4.mulByNonresidue().add(t1), // T4 * (u + 1) + T1
       // T1 + (c0 - c1 + c2)^2 + T3 - T0 - T4
-      t1.add(c0.subtract(c1).add(c2).square()).add(t3).subtract(t0).subtract(t4)
-    );
+      t1.add(c0.subtract(c1).add(c2).square()).add(t3).subtract(t0).subtract(t4),
+    ]);
   }
 
   invert() {
-    let { c0, c1, c2 } = this;
+    let [c0, c1, c2] = this.c;
     let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue()); // c0^2 - c2 * c1 * (u + 1)
     let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1)); // c2^2 * (u + 1) - c0 * c1
     let t2 = c1.square().subtract(c0.multiply(c2)); // c1^2 - c0 * c2
     // 1/(((c2 * T1 + c1 * T2) * v) + c0 * T0)
     let t4 = c2.multiply(t1).add(c1.multiply(t2)).mulByNonresidue().add(c0.multiply(t0)).invert();
-    return new Fq6(t4.multiply(t0), t4.multiply(t1), t4.multiply(t2));
+    return new Fq6([t4.multiply(t0), t4.multiply(t1), t4.multiply(t2)]);
   }
   // Raises to q**i -th power
   frobeniusMap(power: number) {
-    return new Fq6(this.c0.frobeniusMap(power),
-      this.c1.frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_1[power % 6]),
-      this.c2.frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_2[power % 6]));
+    return new Fq6([
+      this.c[0].frobeniusMap(power),
+      this.c[1].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_1[power % 6]),
+      this.c[2].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_2[power % 6]),
+    ]);
   }
 }
 
 // Finite extension field represented by c0 + c1 * w.
 export class Fq12 implements Field<Fq12> {
-  static readonly ZERO = new Fq12(Fq6.ZERO, Fq6.ZERO);
-  static readonly ONE = new Fq12(Fq6.ONE, Fq6.ZERO);
+  static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
+  static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS = [
-    new Fq2([0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
-      0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n]),
-    new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
-      0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n]),
-    new Fq2([0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
-      0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n]),
-    new Fq2([0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
-      0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n]),
-    new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
-      0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n]),
-    new Fq2([0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n]),
-    new Fq2([0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
-      0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n]),
+    new Fq2([
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+      0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+    ]),
+    new Fq2([
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+      0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+    ]),
+    new Fq2([
+      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+      0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+      0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+      0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+    ]),
+    new Fq2([
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+    ]),
+    new Fq2([
+      0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+      0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+    ]),
   ];
   static from_tuple(t: BigintTwelve): Fq12 {
-    return new Fq12(Fq6.from_tuple(t.slice(0, 6) as BigintSix), Fq6.from_tuple(t.slice(6, 12) as BigintSix));
+    return new Fq12([
+      Fq6.from_tuple(t.slice(0, 6) as BigintSix),
+      Fq6.from_tuple(t.slice(6, 12) as BigintSix),
+    ]);
   }
-  constructor(public readonly c0: Fq6, public readonly c1: Fq6) { }
-  get value(): [Fq6, Fq6] { return [this.c0, this.c1]; }
-  toString() { return `Fq12(${this.c0} + ${this.c1} * w)`; }
-  isZero() { return this.c0.isZero() && this.c1.isZero(); }
-  equals(rhs: Fq12) { return this.c0.equals(rhs.c0) && this.c1.equals(rhs.c1); }
-  negate() { return new Fq12(this.c0.negate(), this.c1.negate()); }
-  add(rhs: Fq12) { return new Fq12(this.c0.add(rhs.c0), this.c1.add(rhs.c1)); }
-  subtract(rhs: Fq12) { return new Fq12(this.c0.subtract(rhs.c0), this.c1.subtract(rhs.c1)); }
-  conjugate() { return new Fq12(this.c0, this.c1.negate()); }
-  pow(n: bigint): Fq12 { return gen_pow(Fq12, this, n); }
-  div(rhs: Fq12 | bigint): Fq12 { return gen_div(this, rhs); }
+  constructor(public readonly c: [Fq6, Fq6]) {
+    if (c.length !== 2) throw new Error(`Expected array with 2 elements`);
+  }
+  init(c: [Fq6, Fq6]) {
+    return new Fq12(c);
+  }
+  toString() {
+    return `Fq12(${this.c[0]} + ${this.c[1]} * w)`;
+  }
+  get value(): [Fq6, Fq6] {
+    return this.c;
+  }
+  private zip<T>(rhs: Fq12, mapper: (left: Fq6, right: Fq6) => T): [T, T] {
+    const c0 = this.c;
+    const c1 = rhs.c;
+    const res: T[] = [];
+    for (let i = 0; i < c0.length; i++) {
+      res.push(mapper(c0[i], c1[i]));
+    }
+    return res as [T, T];
+  }
+  private map<T>(callbackfn: (value: Fq6) => T): [T, T] {
+    return this.c.map(callbackfn) as [T, T];
+  }
+  isZero() {
+    return this.c.every((c) => c.isZero());
+  }
+  equals(rhs: Fq12) {
+    return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+  }
+  negate() {
+    return this.init(this.map((c) => c.negate()));
+  }
+  add(rhs: Fq12) {
+    return this.init(this.zip(rhs, (left, right) => left.add(right)));
+  }
+  subtract(rhs: Fq12) {
+    return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+  }
+
+  conjugate() {
+    return this.init([this.c[0], this.c[1].negate()]);
+  }
+  pow(n: bigint): Fq12 {
+    return genPow(Fq12, this, n);
+  }
+  div(rhs: Fq12 | bigint): Fq12 {
+    return genDiv(this, rhs);
+  }
 
   multiply(rhs: Fq12 | bigint) {
-    if (typeof rhs === 'bigint') return new Fq12(this.c0.multiply(rhs), this.c1.multiply(rhs));
-    let [{ c0, c1 }, { c0: r0, c1: r1 }] = [this, rhs];
+    if (typeof rhs === 'bigint')
+      return new Fq12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
+    let [c0, c1] = this.c;
+    const [r0, r1] = rhs.c;
     let t1 = c0.multiply(r0); // c0 * r0
     let t2 = c1.multiply(r1); // c1 * r1
-    return new Fq12(t1.add(t2.mulByNonresidue()), // T1 + T2 * v
+    return new Fq12([
+      t1.add(t2.mulByNonresidue()), // T1 + T2 * v
       // (c0 + c1) * (r0 + r1) - (T1 + T2)
-      c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2)));
+      c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2)),
+    ]);
   }
   // Sparse multiplication
   multiplyBy014(o0: Fq2, o1: Fq2, o4: Fq2) {
-    let { c0, c1 } = this;
+    let [c0, c1] = this.c;
     let [t0, t1] = [c0.multiplyBy01(o0, o1), c1.multiplyBy1(o4)];
-    return new Fq12(t1.mulByNonresidue().add(t0), // T1 * v + T0
+    return new Fq12([
+      t1.mulByNonresidue().add(t0), // T1 * v + T0
       // (c1 + c0) * [o0, o1+o4] - T0 - T1
-      c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1));
+      c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1),
+    ]);
   }
 
   square() {
-    let { c0, c1 } = this;
+    let [c0, c1] = this.c;
     let ab = c0.multiply(c1); // c0 * c1
-    return new Fq12(
+    return new Fq12([
       // (c1 * v + c0) * (c0 + c1) - AB - AB * v
       c1.mulByNonresidue().add(c0).multiply(c0.add(c1)).subtract(ab).subtract(ab.mulByNonresidue()),
-      ab.add(ab)); // AB + AB
+      ab.add(ab),
+    ]); // AB + AB
   }
 
   invert() {
-    let { c0, c1 } = this;
+    let [c0, c1] = this.c;
     let t = c0.square().subtract(c1.square().mulByNonresidue()).invert(); // 1 / (c0^2 - c1^2 * v)
-    return new Fq12(c0.multiply(t), c1.multiply(t).negate()); // ((C0 * T) * T) + (-C1 * T) * w
+    return new Fq12([c0.multiply(t), c1.multiply(t).negate()]); // ((C0 * T) * T) + (-C1 * T) * w
   }
   // Raises to q**i -th power
   frobeniusMap(power: number) {
-    const { c0, c1 } = this;
+    const [c0, c1] = this.c;
     let r0 = c0.frobeniusMap(power);
-    let { c0: c1_0, c1: c1_1, c2: c1_2 } = c1.frobeniusMap(power);
-    return new Fq12(r0,
-      new Fq6(c1_0.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
+    let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
+    return new Fq12([
+      r0,
+      new Fq6([
+        c1_0.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
         c1_1.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
-        c1_2.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12])));
+        c1_2.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
+      ]),
+    ]);
   }
 
   private Fq4Square(a: Fq2, b: Fq2): [Fq2, Fq2] {
-    const a2 = a.square(), b2 = b.square();
+    const a2 = a.square(),
+      b2 = b.square();
     return [
       b2.mulByNonresidue().add(a2), // b^2 * Nonresidue + a^2
-      a.add(b).square().subtract(a2).subtract(b2) // (a + b)^2 - a^2 - b^2
+      a.add(b).square().subtract(a2).subtract(b2), // (a + b)^2 - a^2 - b^2
     ];
   }
 
   private cyclotomicSquare(): Fq12 {
-    const { c0: { c0: c0c0, c1: c0c1, c2: c0c2 },
-      c1: { c0: c1c0, c1: c1c1, c2: c1c2 } } = this;
+    const [c0, c1] = this.c;
+    const [c0c0, c0c1, c0c2] = c0.c;
+    const [c1c0, c1c1, c1c2] = c1.c;
+
+    // const {
+    //   c0: { c0: c0c0, c1: c0c1, c2: c0c2 },
+    //   c1: { c0: c1c0, c1: c1c1, c2: c1c2 },
+    // } = this;
     let [t3, t4] = this.Fq4Square(c0c0, c1c1);
     let [t5, t6] = this.Fq4Square(c1c0, c0c2);
     let [t7, t8] = this.Fq4Square(c0c1, c1c2);
     let t9 = t8.mulByNonresidue(); // T8 * (u + 1)
-    return new Fq12(
-      new Fq6(t3.subtract(c0c0).multiply(2n).add(t3), // 2 * (T3 - c0c0)  + T3
+    return new Fq12([
+      new Fq6([
+        t3.subtract(c0c0).multiply(2n).add(t3), // 2 * (T3 - c0c0)  + T3
         t5.subtract(c0c1).multiply(2n).add(t5), // 2 * (T5 - c0c1)  + T5
-        t7.subtract(c0c2).multiply(2n).add(t7)),  // 2 * (T7 - c0c2)  + T7
-      new Fq6(t9.add(c1c0).multiply(2n).add(t9), // 2 * (T9 + c1c0) + T9
+        t7.subtract(c0c2).multiply(2n).add(t7),
+      ]), // 2 * (T7 - c0c2)  + T7
+      new Fq6([
+        t9.add(c1c0).multiply(2n).add(t9), // 2 * (T9 + c1c0) + T9
         t4.add(c1c1).multiply(2n).add(t4), // 2 * (T4 + c1c1) + T4
-        t6.add(c1c2).multiply(2n).add(t6)));  // 2 * (T6 + c1c2) + T6
+        t6.add(c1c2).multiply(2n).add(t6),
+      ]),
+    ]); // 2 * (T6 + c1c2) + T6
   }
 
   private cyclotomicExp(n: bigint) {
@@ -582,7 +813,9 @@ export class Fq12 implements Field<Fq12> {
     let t5 = t4.cyclotomicExp(CURVE.BLS_X).conjugate();
     let t6 = t5.cyclotomicExp(CURVE.BLS_X).conjugate().multiply(t2.cyclotomicSquare());
     // (t2 * t5)^(q^2) * (t4 * t1)^(q^3) * (t6 * (t1.conj))^(q^1) * (t6^X).conj * t3.conj * t1
-    return t2.multiply(t5).frobeniusMap(2)
+    return t2
+      .multiply(t5)
+      .frobeniusMap(2)
       .multiply(t4.multiply(t1).frobeniusMap(3))
       .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
       .multiply(t6.cyclotomicExp(CURVE.BLS_X).conjugate())
@@ -591,7 +824,9 @@ export class Fq12 implements Field<Fq12> {
   }
 }
 
-type Constructor<T extends Field<T>> = { new(...args: any[]): T } & FieldStatic<T> & { MAX_BITS: number };
+type Constructor<T extends Field<T>> = { new (...args: any[]): T } & FieldStatic<T> & {
+    MAX_BITS: number;
+  };
 //type PointConstructor<TT extends Field<T>, T extends ProjectivePoint<TT>> = { new(...args: any[]): T };
 
 // x=X/Z, y=Y/Z
@@ -602,8 +837,8 @@ abstract class ProjectivePoint<T extends Field<T>> {
     public readonly x: T,
     public readonly y: T,
     public readonly z: T,
-    private readonly C: Constructor<T>,
-  ) { }
+    private readonly C: Constructor<T>
+  ) {}
 
   isZero() {
     return this.z.isZero();
@@ -619,7 +854,9 @@ abstract class ProjectivePoint<T extends Field<T>> {
   // Compare one point to another.
   equals(rhs: ProjectivePoint<T>) {
     if (this.constructor != rhs.constructor)
-      throw new Error(`ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+      throw new Error(
+        `ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`
+      );
     const a = this;
     const b = rhs;
     // Ax * Bz == Bx * Az
@@ -651,12 +888,15 @@ abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   toAffineBatch(points: ProjectivePoint<T>[]): [T, T][] {
-    const toInv = gen_inv_batch(this.C, points.map(p => p.z));
+    const toInv = gen_inv_batch(
+      this.C,
+      points.map((p) => p.z)
+    );
     return points.map((p, i) => p.toAffine(toInv[i]));
   }
 
   normalizeZ(points: this[]): this[] {
-    return this.toAffineBatch(points).map(t => this.fromAffineTuple(t));
+    return this.toAffineBatch(points).map((t) => this.fromAffineTuple(t));
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-1998-cmo-2
@@ -682,7 +922,9 @@ abstract class ProjectivePoint<T extends Field<T>> {
   // Cost: 12M + 2S + 6add + 1*2.
   add(rhs: this): this {
     if (this.constructor != rhs.constructor)
-      throw new Error(`ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+      throw new Error(
+        `ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`
+      );
     const p1 = this;
     const p2 = rhs;
     if (p1.isZero()) return p2;
@@ -714,7 +956,9 @@ abstract class ProjectivePoint<T extends Field<T>> {
 
   subtract(rhs: this): this {
     if (this.constructor != rhs.constructor)
-      throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+      throw new Error(
+        `ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`
+      );
     return this.add(rhs.negate());
   }
   // Non-constant-time multiplication. Uses double-and-add algorithm.
@@ -825,7 +1069,9 @@ abstract class ProjectivePoint<T extends Field<T>> {
     if (n <= 0)
       throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
     if (bitLen(n) > this.maxBits())
-      throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
+      throw new Error(
+        "ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen"
+      );
     return this.wNAF(n)[0];
   }
 }
@@ -864,7 +1110,7 @@ function fromBytesBE(bytes: Bytes) {
     return fromHexBE(bytes);
   }
   let value = 0n;
-  for (let i = bytes.length - 1, j = 0; i >= 0; i-- , j++) {
+  for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
     value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
   }
   return value;
@@ -1077,7 +1323,6 @@ function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]) {
   return new PointG2(x2, y2, z2);
 }
 
-
 async function expand_message_xmd(
   msg: Uint8Array,
   DST: Uint8Array,
@@ -1168,7 +1413,7 @@ function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
   const iso_3_a = new Fq2([0n, 240n]);
   const iso_3_b = new Fq2([1012n, 1012n]);
   const iso_3_z = new Fq2([-2n, -1n]);
-  if (Array.isArray(t)) t = new Fq2(t);
+  if (Array.isArray(t)) t = new Fq2(t as BigintTuple);
 
   const t2 = t.pow(2n);
   const iso_3_z_t2 = iso_3_z.multiply(t2);
@@ -1278,11 +1523,19 @@ export class PointG1 extends ProjectivePoint<Fq> {
     let [x, y] = this.toAffine();
     let [Px, Py] = [x as Fq, y as Fq];
 
-    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i-- , j++) {
-      f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
+      f12 = f12.multiplyBy014(
+        ell[j][0],
+        ell[j][1].multiply(Px.value),
+        ell[j][2].multiply(Py.value)
+      );
       if (bitGet(CURVE.BLS_X, i)) {
         j += 1;
-        f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+        f12 = f12.multiplyBy014(
+          ell[j][0],
+          ell[j][1].multiply(Px.value),
+          ell[j][2].multiply(Py.value)
+        );
       }
       if (i != 0) f12 = f12.square();
     }
@@ -1390,7 +1643,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       ell_coeff.push([
         t2.subtract(t0), // T2 - T0
         Rx.square().multiply(3n), // 3 * Rx^2
-        t4.negate() // -T4
+        t4.negate(), // -T4
       ]);
       Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n); // ((T0 - T3) * Rx * Ry) / 2
       Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n)); // ((T0 + T3) / 2)^2 - 3 * T2^2
@@ -1402,7 +1655,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
         ell_coeff.push([
           t0.multiply(Qx).subtract(t1.multiply(Qy)), // T0 * Qx - T1 * Qy
           t0.negate(), // -T0
-          t1 // T1
+          t1, // T1
         ]);
         let t2 = t1.square(); // T1^2
         let t3 = t2.multiply(t1); // T2 * T1
@@ -1421,17 +1674,12 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   pairingPrecomputes(): EllCoefficients[] {
-    if (this.pair_precomputes)
-      return this.pair_precomputes;
+    if (this.pair_precomputes) return this.pair_precomputes;
     return (this.pair_precomputes = this.calculatePrecomputes()) as EllCoefficients[];
   }
 }
 
-export function pairing(
-  P: PointG1,
-  Q: PointG2,
-  withFinalExponent: boolean = true
-): Fq12 {
+export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = true): Fq12 {
   if (P.isZero() || Q.isZero()) throw new Error('No pairings at point of Infinity');
   P.assertValidity();
   Q.assertValidity();

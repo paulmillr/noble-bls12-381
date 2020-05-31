@@ -67,13 +67,13 @@ export declare class Fq2 implements Field<Fq2> {
     static readonly ROOTS_OF_UNITY: Fq2[];
     static readonly ETAs: Fq2[];
     static readonly FROBENIUS_COEFFICIENTS: Fq[];
-    readonly c0: Fq;
-    readonly c1: Fq;
-    get real(): Fq;
-    get imag(): Fq;
-    get value(): BigintTuple;
-    constructor(tuple: (Fq | bigint)[]);
+    readonly c: [Fq, Fq];
+    constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]);
+    init(tuple: [Fq, Fq]): Fq2;
     toString(): string;
+    get value(): BigintTuple;
+    private zip;
+    private map;
     isZero(): boolean;
     equals(rhs: Fq2): boolean;
     negate(): Fq2;
@@ -91,19 +91,20 @@ export declare class Fq2 implements Field<Fq2> {
     multiplyByB(): Fq2;
 }
 export declare class Fq6 implements Field<Fq6> {
-    readonly c0: Fq2;
-    readonly c1: Fq2;
-    readonly c2: Fq2;
+    readonly c: [Fq2, Fq2, Fq2];
     static readonly ZERO: Fq6;
     static readonly ONE: Fq6;
     static readonly FROBENIUS_COEFFICIENTS_1: Fq2[];
     static readonly FROBENIUS_COEFFICIENTS_2: Fq2[];
     static from_tuple(t: BigintSix): Fq6;
-    constructor(c0: Fq2, c1: Fq2, c2: Fq2);
+    constructor(c: [Fq2, Fq2, Fq2]);
+    init(triple: [Fq2, Fq2, Fq2]): Fq6;
     toString(): string;
+    private zip;
+    private map;
     isZero(): boolean;
-    negate(): Fq6;
     equals(rhs: Fq6): boolean;
+    negate(): Fq6;
     add(rhs: Fq6): Fq6;
     subtract(rhs: Fq6): Fq6;
     div(rhs: Fq6 | bigint): Fq6;
@@ -117,15 +118,17 @@ export declare class Fq6 implements Field<Fq6> {
     frobeniusMap(power: number): Fq6;
 }
 export declare class Fq12 implements Field<Fq12> {
-    readonly c0: Fq6;
-    readonly c1: Fq6;
+    readonly c: [Fq6, Fq6];
     static readonly ZERO: Fq12;
     static readonly ONE: Fq12;
     static readonly FROBENIUS_COEFFICIENTS: Fq2[];
     static from_tuple(t: BigintTwelve): Fq12;
-    constructor(c0: Fq6, c1: Fq6);
-    get value(): [Fq6, Fq6];
+    constructor(c: [Fq6, Fq6]);
+    init(c: [Fq6, Fq6]): Fq12;
     toString(): string;
+    get value(): [Fq6, Fq6];
+    private zip;
+    private map;
     isZero(): boolean;
     equals(rhs: Fq12): boolean;
     negate(): Fq12;
