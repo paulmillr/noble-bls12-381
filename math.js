@@ -1,0 +1,943 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.isogenyCoefficients = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.bitGet = exports.bitLen = exports.powMod = exports.mod = exports.BLS_X_LEN = exports.DST_LABEL = exports.CURVE = void 0;
+exports.CURVE = {
+    P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
+    r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
+    h: 0x396c8c005555e1568c00aaab0000aaabn,
+    Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
+    Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
+    b: 4n,
+    P2: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
+        2n -
+        1n,
+    h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
+    G2x: [
+        0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
+        0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en,
+    ],
+    G2y: [
+        0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n,
+        0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
+    ],
+    b2: [4n, 4n],
+    BLS_X: 0xd201000000010000n,
+    h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n
+};
+exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
+exports.BLS_X_LEN = bitLen(exports.CURVE.BLS_X);
+function mod(a, b) {
+    const res = a % b;
+    return res >= 0n ? res : b + res;
+}
+exports.mod = mod;
+function powMod(a, power, m) {
+    let res = 1n;
+    while (power > 0n) {
+        if (power & 1n) {
+            res = mod(res * a, m);
+        }
+        power >>= 1n;
+        a = mod(a * a, m);
+    }
+    return res;
+}
+exports.powMod = powMod;
+function genPow(cls, elm, n) {
+    if (n === 0n)
+        return cls.ONE;
+    if (n === 1n)
+        return elm;
+    let p = cls.ONE;
+    let d = elm;
+    while (n > 0n) {
+        if (n & 1n)
+            p = p.multiply(d);
+        n >>= 1n;
+        d = d.square();
+    }
+    return p;
+}
+function genDiv(elm, rhs) {
+    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+    return elm.multiply(inv);
+}
+function gen_inv_batch(cls, nums) {
+    const len = nums.length;
+    const scratch = new Array(len);
+    let acc = cls.ONE;
+    for (let i = 0; i < len; i++) {
+        if (nums[i].isZero())
+            continue;
+        scratch[i] = acc;
+        acc = acc.multiply(nums[i]);
+    }
+    acc = acc.invert();
+    for (let i = len - 1; i >= 0; i--) {
+        if (nums[i].isZero())
+            continue;
+        let tmp = acc.multiply(nums[i]);
+        nums[i] = acc.multiply(scratch[i]);
+        acc = tmp;
+    }
+    return nums;
+}
+function bitLen(n) {
+    let len;
+    for (len = 0; n > 0n; n >>= 1n, len += 1)
+        ;
+    return len;
+}
+exports.bitLen = bitLen;
+function bitGet(n, pos) {
+    return (n >> BigInt(pos)) & 1n;
+}
+exports.bitGet = bitGet;
+let Fq = (() => {
+    class Fq {
+        constructor(value) {
+            this._value = mod(value, Fq.ORDER);
+        }
+        get value() {
+            return this._value;
+        }
+        isZero() {
+            return this._value === 0n;
+        }
+        equals(rhs) {
+            return this._value === rhs._value;
+        }
+        negate() {
+            return new Fq(-this._value);
+        }
+        invert() {
+            let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
+            let a = Fq.ORDER;
+            let b = this.value;
+            let q;
+            while (a !== 0n) {
+                [q, b, a] = [b / a, a, b % a];
+                [x0, x1] = [x1, x0 - q * x1];
+                [y0, y1] = [y1, y0 - q * y1];
+            }
+            return new Fq(x0);
+        }
+        add(rhs) {
+            return new Fq(this._value + rhs.value);
+        }
+        square() {
+            return new Fq(this._value * this._value);
+        }
+        pow(n) {
+            return new Fq(powMod(this._value, n, Fq.ORDER));
+        }
+        subtract(rhs) {
+            return new Fq(this._value - rhs._value);
+        }
+        multiply(rhs) {
+            if (rhs instanceof Fq)
+                rhs = rhs.value;
+            return new Fq(this._value * rhs);
+        }
+        div(rhs) {
+            return genDiv(this, rhs);
+        }
+        toString() {
+            const str = this.value.toString(16).padStart(96, '0');
+            return str.slice(0, 2) + '.' + str.slice(-2);
+        }
+    }
+    Fq.ORDER = exports.CURVE.P;
+    Fq.MAX_BITS = bitLen(exports.CURVE.P);
+    Fq.ZERO = new Fq(0n);
+    Fq.ONE = new Fq(1n);
+    return Fq;
+})();
+exports.Fq = Fq;
+const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
+const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
+const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
+const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
+const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+let Fq2 = (() => {
+    class Fq2 {
+        constructor(coeffs) {
+            if (coeffs.length !== 2)
+                throw new Error(`Expected array with 2 elements`);
+            coeffs.forEach((c, i) => {
+                if (typeof c === 'bigint')
+                    coeffs[i] = new Fq(c);
+            });
+            this.c = coeffs;
+        }
+        init(tuple) {
+            return new Fq2(tuple);
+        }
+        toString() {
+            return `Fq2(${this.c[0]} + ${this.c[1]}×i)`;
+        }
+        get value() {
+            return this.c.map((c) => c.value);
+        }
+        zip(rhs, mapper) {
+            const c0 = this.c;
+            const c1 = rhs.c;
+            const res = [];
+            for (let i = 0; i < c0.length; i++) {
+                res.push(mapper(c0[i], c1[i]));
+            }
+            return res;
+        }
+        map(callbackfn) {
+            return this.c.map(callbackfn);
+        }
+        isZero() {
+            return this.c.every((c) => c.isZero());
+        }
+        equals(rhs) {
+            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+        }
+        negate() {
+            return this.init(this.map((c) => c.negate()));
+        }
+        add(rhs) {
+            return this.init(this.zip(rhs, (left, right) => left.add(right)));
+        }
+        subtract(rhs) {
+            return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+        }
+        conjugate() {
+            return this.init([this.c[0], this.c[1].negate()]);
+        }
+        pow(n) {
+            return genPow(Fq2, this, n);
+        }
+        div(rhs) {
+            return genDiv(this, rhs);
+        }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq2(this.map((c) => c.multiply(rhs)));
+            const [c0, c1] = this.c;
+            const [r0, r1] = rhs.c;
+            let t1 = c0.multiply(r0);
+            let t2 = c1.multiply(r1);
+            return new Fq2([t1.subtract(t2), c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2))]);
+        }
+        mulByNonresidue() {
+            const c0 = this.c[0];
+            const c1 = this.c[1];
+            return new Fq2([c0.subtract(c1), c0.add(c1)]);
+        }
+        square() {
+            const c0 = this.c[0];
+            const c1 = this.c[1];
+            const a = c0.add(c1);
+            const b = c0.subtract(c1);
+            const c = c0.add(c0);
+            return new Fq2([a.multiply(b), c.multiply(c1)]);
+        }
+        sqrt() {
+            const candidateSqrt = this.pow((Fq2.ORDER + 8n) / 16n);
+            const check = candidateSqrt.square().div(this);
+            const R = Fq2.ROOTS_OF_UNITY;
+            const divisor = [R[0], R[2], R[4], R[6]].find((r) => r.equals(check));
+            if (!divisor)
+                return undefined;
+            const index = R.indexOf(divisor);
+            const root = R[index / 2];
+            if (!root)
+                throw new Error('Invalid root');
+            const x1 = candidateSqrt.div(root);
+            const x2 = x1.negate();
+            const [x1_re, x1_im] = x1.value;
+            const [x2_re, x2_im] = x2.value;
+            if (x1_im > x2_im || (x1_im == x2_im && x1_re > x2_re))
+                return x1;
+            return x2;
+        }
+        invert() {
+            const [a, b] = this.value;
+            const factor = new Fq(a * a + b * b).invert();
+            return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
+        }
+        frobeniusMap(power) {
+            return new Fq2([this.c[0], this.c[1].multiply(Fq2.FROBENIUS_COEFFICIENTS[power % 2])]);
+        }
+        multiplyByB() {
+            let [c0, c1] = this.c;
+            let t0 = c0.multiply(4n);
+            let t1 = c1.multiply(4n);
+            return new Fq2([t0.subtract(t1), t0.add(t1)]);
+        }
+    }
+    Fq2.ORDER = exports.CURVE.P2;
+    Fq2.MAX_BITS = bitLen(exports.CURVE.P2);
+    Fq2.ROOT = new Fq(-1n);
+    Fq2.ZERO = new Fq2([0n, 0n]);
+    Fq2.ONE = new Fq2([1n, 0n]);
+    Fq2.COFACTOR = exports.CURVE.h2;
+    Fq2.ROOTS_OF_UNITY = [
+        new Fq2([1n, 0n]),
+        new Fq2([rv1, -rv1]),
+        new Fq2([0n, 1n]),
+        new Fq2([rv1, rv1]),
+        new Fq2([-1n, 0n]),
+        new Fq2([-rv1, rv1]),
+        new Fq2([0n, -1n]),
+        new Fq2([-rv1, -rv1]),
+    ];
+    Fq2.ETAs = [
+        new Fq2([ev1, ev2]),
+        new Fq2([-ev2, ev1]),
+        new Fq2([ev3, ev4]),
+        new Fq2([-ev4, ev3]),
+    ];
+    Fq2.FROBENIUS_COEFFICIENTS = [
+        new Fq(0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n),
+        new Fq(0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan),
+    ];
+    return Fq2;
+})();
+exports.Fq2 = Fq2;
+let Fq6 = (() => {
+    class Fq6 {
+        constructor(c) {
+            this.c = c;
+            if (c.length !== 3)
+                throw new Error(`Expected array with 2 elements`);
+        }
+        static from_tuple(t) {
+            return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
+        }
+        init(triple) {
+            return new Fq6(triple);
+        }
+        toString() {
+            return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
+        }
+        zip(rhs, mapper) {
+            const c0 = this.c;
+            const c1 = rhs.c;
+            const res = [];
+            for (let i = 0; i < c0.length; i++) {
+                res.push(mapper(c0[i], c1[i]));
+            }
+            return res;
+        }
+        map(callbackfn) {
+            return this.c.map(callbackfn);
+        }
+        isZero() {
+            return this.c.every((c) => c.isZero());
+        }
+        equals(rhs) {
+            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+        }
+        negate() {
+            return new Fq6(this.map((c) => c.negate()));
+        }
+        add(rhs) {
+            return new Fq6(this.zip(rhs, (left, right) => left.add(right)));
+        }
+        subtract(rhs) {
+            return new Fq6(this.zip(rhs, (left, right) => left.subtract(right)));
+        }
+        div(rhs) {
+            return genDiv(this, rhs);
+        }
+        pow(n) {
+            return genPow(Fq6, this, n);
+        }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
+            let [c0, c1, c2] = this.c;
+            const [r0, r1, r2] = rhs.c;
+            let t0 = c0.multiply(r0);
+            let t1 = c1.multiply(r1);
+            let t2 = c2.multiply(r2);
+            return new Fq6([
+                t0.add(c1.add(c2).multiply(r1.add(r2)).subtract(t1.add(t2)).mulByNonresidue()),
+                c0.add(c1).multiply(r0.add(r1)).subtract(t0.add(t1)).add(t2.mulByNonresidue()),
+                t1.add(c0.add(c2).multiply(r0.add(r2)).subtract(t0.add(t2))),
+            ]);
+        }
+        mulByNonresidue() {
+            return new Fq6([this.c[2].mulByNonresidue(), this.c[0], this.c[1]]);
+        }
+        multiplyBy1(b1) {
+            return new Fq6([
+                this.c[2].multiply(b1).mulByNonresidue(),
+                this.c[0].multiply(b1),
+                this.c[1].multiply(b1),
+            ]);
+        }
+        multiplyBy01(b0, b1) {
+            let [c0, c1, c2] = this.c;
+            let t0 = c0.multiply(b0);
+            let t1 = c1.multiply(b1);
+            return new Fq6([
+                c1.add(c2).multiply(b1).subtract(t1).mulByNonresidue().add(t0),
+                b0.add(b1).multiply(c0.add(c1)).subtract(t0).subtract(t1),
+                c0.add(c2).multiply(b0).subtract(t0).add(t1),
+            ]);
+        }
+        square() {
+            let [c0, c1, c2] = this.c;
+            let t0 = c0.square();
+            let t1 = c0.multiply(c1).multiply(2n);
+            let t3 = c1.multiply(c2).multiply(2n);
+            let t4 = c2.square();
+            return new Fq6([
+                t3.mulByNonresidue().add(t0),
+                t4.mulByNonresidue().add(t1),
+                t1.add(c0.subtract(c1).add(c2).square()).add(t3).subtract(t0).subtract(t4),
+            ]);
+        }
+        invert() {
+            let [c0, c1, c2] = this.c;
+            let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue());
+            let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1));
+            let t2 = c1.square().subtract(c0.multiply(c2));
+            let t4 = c2.multiply(t1).add(c1.multiply(t2)).mulByNonresidue().add(c0.multiply(t0)).invert();
+            return new Fq6([t4.multiply(t0), t4.multiply(t1), t4.multiply(t2)]);
+        }
+        frobeniusMap(power) {
+            return new Fq6([
+                this.c[0].frobeniusMap(power),
+                this.c[1].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_1[power % 6]),
+                this.c[2].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_2[power % 6]),
+            ]);
+        }
+    }
+    Fq6.ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
+    Fq6.ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
+    Fq6.FROBENIUS_COEFFICIENTS_1 = [
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+        ]),
+        new Fq2([
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+        ]),
+    ];
+    Fq6.FROBENIUS_COEFFICIENTS_2 = [
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+    ];
+    return Fq6;
+})();
+exports.Fq6 = Fq6;
+let Fq12 = (() => {
+    class Fq12 {
+        constructor(c) {
+            this.c = c;
+            if (c.length !== 2)
+                throw new Error(`Expected array with 2 elements`);
+        }
+        static from_tuple(t) {
+            return new Fq12([
+                Fq6.from_tuple(t.slice(0, 6)),
+                Fq6.from_tuple(t.slice(6, 12)),
+            ]);
+        }
+        init(c) {
+            return new Fq12(c);
+        }
+        toString() {
+            return `Fq12(${this.c[0]} + ${this.c[1]} * w)`;
+        }
+        get value() {
+            return this.c;
+        }
+        zip(rhs, mapper) {
+            const c0 = this.c;
+            const c1 = rhs.c;
+            const res = [];
+            for (let i = 0; i < c0.length; i++) {
+                res.push(mapper(c0[i], c1[i]));
+            }
+            return res;
+        }
+        map(callbackfn) {
+            return this.c.map(callbackfn);
+        }
+        isZero() {
+            return this.c.every((c) => c.isZero());
+        }
+        equals(rhs) {
+            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+        }
+        negate() {
+            return this.init(this.map((c) => c.negate()));
+        }
+        add(rhs) {
+            return this.init(this.zip(rhs, (left, right) => left.add(right)));
+        }
+        subtract(rhs) {
+            return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+        }
+        conjugate() {
+            return this.init([this.c[0], this.c[1].negate()]);
+        }
+        pow(n) {
+            return genPow(Fq12, this, n);
+        }
+        div(rhs) {
+            return genDiv(this, rhs);
+        }
+        multiply(rhs) {
+            if (typeof rhs === 'bigint')
+                return new Fq12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
+            let [c0, c1] = this.c;
+            const [r0, r1] = rhs.c;
+            let t1 = c0.multiply(r0);
+            let t2 = c1.multiply(r1);
+            return new Fq12([
+                t1.add(t2.mulByNonresidue()),
+                c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2)),
+            ]);
+        }
+        multiplyBy014(o0, o1, o4) {
+            let [c0, c1] = this.c;
+            let [t0, t1] = [c0.multiplyBy01(o0, o1), c1.multiplyBy1(o4)];
+            return new Fq12([
+                t1.mulByNonresidue().add(t0),
+                c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1),
+            ]);
+        }
+        square() {
+            let [c0, c1] = this.c;
+            let ab = c0.multiply(c1);
+            return new Fq12([
+                c1.mulByNonresidue().add(c0).multiply(c0.add(c1)).subtract(ab).subtract(ab.mulByNonresidue()),
+                ab.add(ab),
+            ]);
+        }
+        invert() {
+            let [c0, c1] = this.c;
+            let t = c0.square().subtract(c1.square().mulByNonresidue()).invert();
+            return new Fq12([c0.multiply(t), c1.multiply(t).negate()]);
+        }
+        frobeniusMap(power) {
+            const [c0, c1] = this.c;
+            let r0 = c0.frobeniusMap(power);
+            let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
+            return new Fq12([
+                r0,
+                new Fq6([
+                    c1_0.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
+                    c1_1.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
+                    c1_2.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
+                ]),
+            ]);
+        }
+        Fq4Square(a, b) {
+            const a2 = a.square(), b2 = b.square();
+            return [
+                b2.mulByNonresidue().add(a2),
+                a.add(b).square().subtract(a2).subtract(b2),
+            ];
+        }
+        cyclotomicSquare() {
+            const [c0, c1] = this.c;
+            const [c0c0, c0c1, c0c2] = c0.c;
+            const [c1c0, c1c1, c1c2] = c1.c;
+            let [t3, t4] = this.Fq4Square(c0c0, c1c1);
+            let [t5, t6] = this.Fq4Square(c1c0, c0c2);
+            let [t7, t8] = this.Fq4Square(c0c1, c1c2);
+            let t9 = t8.mulByNonresidue();
+            return new Fq12([
+                new Fq6([
+                    t3.subtract(c0c0).multiply(2n).add(t3),
+                    t5.subtract(c0c1).multiply(2n).add(t5),
+                    t7.subtract(c0c2).multiply(2n).add(t7),
+                ]),
+                new Fq6([
+                    t9.add(c1c0).multiply(2n).add(t9),
+                    t4.add(c1c1).multiply(2n).add(t4),
+                    t6.add(c1c2).multiply(2n).add(t6),
+                ]),
+            ]);
+        }
+        cyclotomicExp(n) {
+            let z = Fq12.ONE;
+            for (let i = exports.BLS_X_LEN - 1; i >= 0; i--) {
+                z = z.cyclotomicSquare();
+                if (bitGet(n, i))
+                    z = z.multiply(this);
+            }
+            return z;
+        }
+        finalExponentiate() {
+            let t0 = this.frobeniusMap(6).div(this);
+            let t1 = t0.frobeniusMap(2).multiply(t0);
+            let t2 = t1.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
+            let t4 = t3.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t5 = t4.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t6 = t5.cyclotomicExp(exports.CURVE.BLS_X).conjugate().multiply(t2.cyclotomicSquare());
+            return t2
+                .multiply(t5)
+                .frobeniusMap(2)
+                .multiply(t4.multiply(t1).frobeniusMap(3))
+                .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
+                .multiply(t6.cyclotomicExp(exports.CURVE.BLS_X).conjugate())
+                .multiply(t3.conjugate())
+                .multiply(t1);
+        }
+    }
+    Fq12.ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
+    Fq12.ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
+    Fq12.FROBENIUS_COEFFICIENTS = [
+        new Fq2([
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+            0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+        ]),
+        new Fq2([
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+            0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+        ]),
+        new Fq2([
+            0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+            0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+            0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+            0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+        ]),
+        new Fq2([
+            0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+            0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
+        ]),
+        new Fq2([
+            0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+            0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+        ]),
+    ];
+    return Fq12;
+})();
+exports.Fq12 = Fq12;
+class ProjectivePoint {
+    constructor(x, y, z, C) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.C = C;
+    }
+    isZero() {
+        return this.z.isZero();
+    }
+    getPoint(x, y, z) {
+        return new this.constructor(x, y, z);
+    }
+    getZero() {
+        return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
+    }
+    equals(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+        const a = this;
+        const b = rhs;
+        const xe = a.x.multiply(b.z).equals(b.x.multiply(a.z));
+        const ye = a.y.multiply(b.z).equals(b.y.multiply(a.z));
+        return xe && ye;
+    }
+    negate() {
+        return this.getPoint(this.x, this.y.negate(), this.z);
+    }
+    toString(isAffine = true) {
+        if (!isAffine) {
+            return `Point<x=${this.x}, y=${this.y}, z=${this.z}>`;
+        }
+        const [x, y] = this.toAffine();
+        return `Point<x=${x}, y=${y}>`;
+    }
+    fromAffineTuple(xy) {
+        return this.getPoint(xy[0], xy[1], this.C.ONE);
+    }
+    toAffine(invZ = this.z.invert()) {
+        return [this.x.multiply(invZ), this.y.multiply(invZ)];
+    }
+    toAffineBatch(points) {
+        const toInv = gen_inv_batch(this.C, points.map((p) => p.z));
+        return points.map((p, i) => p.toAffine(toInv[i]));
+    }
+    normalizeZ(points) {
+        return this.toAffineBatch(points).map((t) => this.fromAffineTuple(t));
+    }
+    double() {
+        const { x, y, z } = this;
+        const W = x.multiply(x).multiply(3n);
+        const S = y.multiply(z);
+        const SS = S.multiply(S);
+        const SSS = SS.multiply(S);
+        const B = x.multiply(y).multiply(S);
+        const H = W.multiply(W).subtract(B.multiply(8n));
+        const X3 = H.multiply(S).multiply(2n);
+        const Y3 = W.multiply(B.multiply(4n).subtract(H)).subtract(y.multiply(y).multiply(8n).multiply(SS));
+        const Z3 = SSS.multiply(8n);
+        return this.getPoint(X3, Y3, Z3);
+    }
+    add(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+        const p1 = this;
+        const p2 = rhs;
+        if (p1.isZero())
+            return p2;
+        if (p2.isZero())
+            return p1;
+        const X1 = p1.x;
+        const Y1 = p1.y;
+        const Z1 = p1.z;
+        const X2 = p2.x;
+        const Y2 = p2.y;
+        const Z2 = p2.z;
+        const U1 = Y2.multiply(Z1);
+        const U2 = Y1.multiply(Z2);
+        const V1 = X2.multiply(Z1);
+        const V2 = X1.multiply(Z2);
+        if (V1.equals(V2) && U1.equals(U2))
+            return this.double();
+        if (V1.equals(V2))
+            return this.getZero();
+        const U = U1.subtract(U2);
+        const V = V1.subtract(V2);
+        const VV = V.multiply(V);
+        const VVV = VV.multiply(V);
+        const V2VV = V2.multiply(VV);
+        const W = Z1.multiply(Z2);
+        const A = U.multiply(U).multiply(W).subtract(VVV).subtract(V2VV.multiply(2n));
+        const X3 = V.multiply(A);
+        const Y3 = U.multiply(V2VV.subtract(A)).subtract(VVV.multiply(U2));
+        const Z3 = VVV.multiply(W);
+        return this.getPoint(X3, Y3, Z3);
+    }
+    subtract(rhs) {
+        if (this.constructor != rhs.constructor)
+            throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
+        return this.add(rhs.negate());
+    }
+    multiplyUnsafe(scalar) {
+        let n = scalar;
+        if (n instanceof Fq)
+            n = n.value;
+        if (typeof n === 'number')
+            n = BigInt(n);
+        if (n <= 0) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer');
+        }
+        let p = this.getZero();
+        let d = this;
+        while (n > 0n) {
+            if (n & 1n)
+                p = p.add(d);
+            d = d.double();
+            n >>= 1n;
+        }
+        return p;
+    }
+    maxBits() {
+        return this.C.MAX_BITS;
+    }
+    precomputeWindow(W) {
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        let points = [];
+        let p = this;
+        let base = p;
+        for (let window = 0; window < windows; window++) {
+            base = p;
+            points.push(base);
+            for (let i = 1; i < windowSize; i++) {
+                base = base.add(p);
+                points.push(base);
+            }
+            p = base.double();
+        }
+        return points;
+    }
+    calcMultiplyPrecomputes(W) {
+        if (this.multiply_precomputes)
+            throw new Error('This point already has precomputes');
+        this.multiply_precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+    }
+    clearMultiplyPrecomputes() {
+        this.multiply_precomputes = undefined;
+    }
+    wNAF(n) {
+        let W, precomputes;
+        if (this.multiply_precomputes) {
+            [W, precomputes] = this.multiply_precomputes;
+        }
+        else {
+            W = 1;
+            precomputes = this.precomputeWindow(W);
+        }
+        let [p, f] = [this.getZero(), this.getZero()];
+        const windows = Math.ceil(this.maxBits() / W);
+        const windowSize = 2 ** (W - 1);
+        const mask = BigInt(2 ** W - 1);
+        const maxNumber = 2 ** W;
+        const shiftBy = BigInt(W);
+        for (let window = 0; window < windows; window++) {
+            const offset = window * windowSize;
+            let wbits = Number(n & mask);
+            n >>= shiftBy;
+            if (wbits > windowSize) {
+                wbits -= maxNumber;
+                n += 1n;
+            }
+            if (wbits === 0) {
+                f = f.add(window % 2 ? precomputes[offset].negate() : precomputes[offset]);
+            }
+            else {
+                const cached = precomputes[offset + Math.abs(wbits) - 1];
+                p = p.add(wbits < 0 ? cached.negate() : cached);
+            }
+        }
+        return [p, f];
+    }
+    multiply(scalar) {
+        let n = scalar;
+        if (n instanceof Fq)
+            n = n.value;
+        if (typeof n === 'number')
+            n = BigInt(n);
+        if (n <= 0)
+            throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
+        if (bitLen(n) > this.maxBits())
+            throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
+        return this.wNAF(n)[0];
+    }
+}
+exports.ProjectivePoint = ProjectivePoint;
+const xnum = [
+    new Fq2([
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
+    ]),
+    new Fq2([
+        0x0n,
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71an,
+    ]),
+    new Fq2([
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71en,
+        0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38dn,
+    ]),
+    new Fq2([
+        0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
+        0x0n,
+    ]),
+];
+const xden = [
+    new Fq2([
+        0x0n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n,
+    ]),
+    new Fq2([
+        0xcn,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn,
+    ]),
+    Fq2.ONE,
+    Fq2.ZERO,
+];
+const ynum = [
+    new Fq2([
+        0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
+        0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
+    ]),
+    new Fq2([
+        0x0n,
+        0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97ben,
+    ]),
+    new Fq2([
+        0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71cn,
+        0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38fn,
+    ]),
+    new Fq2([
+        0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
+        0x0n,
+    ]),
+];
+const yden = [
+    new Fq2([
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
+    ]),
+    new Fq2([
+        0x0n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3n,
+    ]),
+    new Fq2([
+        0x12n,
+        0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n,
+    ]),
+    new Fq2([0x1n, 0x0n]),
+];
+exports.isogenyCoefficients = [xnum, xden, ynum, yden];

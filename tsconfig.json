@@ -9,5 +9,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["index.ts"]
+  "include": ["index.ts", "math.ts"]
 }

@@ -1,14 +1,13 @@
 # noble-bls12-381 ![Node CI](https://github.com/paulmillr/noble-secp256k1/workflows/Node%20CI/badge.svg) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-[bls12-381](https://electriccoin.co/blog/new-snark-curve/), a pairing-friendly elliptic curve construction.
+bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Allows to:
 
-This is a Barreto-Lynn-Scott curve with an embedding degree of 12. It's optimal for zk-SNARKs at the 128-bit security level.
+- Construct zk-SNARKs at the 128-bit security
+- Use [threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
+  which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
+  using Boneh-Lynn-Shacham signature scheme.
 
-Implements Boneh-Lynn-Shacham signature scheme allowing construction of
-[threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
-which allows a user to sign lots of messages with one signature and verify them swiftly in a batch.
-
-Matches following specs:
+**The fastest implementation written in a scripting language**. Matches following specs:
 
 - [Pairing-friendly curves 02](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02)
 - [BLS signatures 02](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02)
@@ -20,7 +19,7 @@ Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-38
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
 
-- No dependencies, one small file
+- No dependencies
 - Easily auditable TypeScript/JS code
 - Uses es2020 bigint. Supported in Chrome, Firefox, node 10+
 - All releases are signed and trusted
