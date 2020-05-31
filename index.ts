@@ -1447,7 +1447,7 @@ export function getPublicKey(privateKey: PrivateKey) {
 
 // S = pk x H(m)
 export async function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array> {
-  const msgPoint = await PointG2.hashToCurve(message);
+  const msgPoint = await PointG2.hashToCurve(message, true);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   return sigPoint.toSignature();
 }

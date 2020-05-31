@@ -4,7 +4,7 @@ const bls = require('..');
 run(async () => {
   // warm-up
   // await mark(() => {
-  //   ed.utils.precompute();
+  //   bls.PointG1.BASE.calcMultiplyPrecomputes(16);
   // });
 
   logMem();
