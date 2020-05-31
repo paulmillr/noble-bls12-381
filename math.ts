@@ -1,5 +1,13 @@
 // To verify curve params, see pairing-friendly-curves spec:
 // https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02
+// Basic math is done over finite fields over q.
+// More complicated math is done over polynominal extension fields.
+// To simplify calculations in Fq12, we construct extension tower:
+// Fq12 = Fq6^2 => Fq2^3
+// Fq(u) / (u^2 - β) where β = -1
+// Fq2(v) / (v^3 - ξ) where ξ = u + 1
+// Fq6(w) / (w2 - γ) where γ = v
+
 export const CURVE = {
   // a characteristic
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
@@ -84,25 +92,7 @@ export function powMod(a: bigint, power: bigint, m: bigint) {
   return res;
 }
 
-function genPow<T extends Field<T>>(cls: FieldStatic<T>, elm: T, n: bigint): T {
-  if (n === 0n) return cls.ONE;
-  if (n === 1n) return elm;
-  let p = cls.ONE;
-  let d: T = elm;
-  while (n > 0n) {
-    if (n & 1n) p = p.multiply(d);
-    n >>= 1n;
-    d = d.square();
-  }
-  return p;
-}
-
-function genDiv<T extends Field<T>>(elm: T, rhs: T | bigint): T {
-  const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
-  return elm.multiply(inv);
-}
-
-function gen_inv_batch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] {
+function genInvertBatch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] {
   const len = nums.length;
   const scratch = new Array(len);
   let acc = cls.ONE;
@@ -140,24 +130,21 @@ export class Fq implements Field<Fq> {
   static readonly ZERO = new Fq(0n);
   static readonly ONE = new Fq(1n);
 
-  private _value: bigint;
-  get value() {
-    return this._value;
-  }
+  readonly value: bigint;
   constructor(value: bigint) {
-    this._value = mod(value, Fq.ORDER);
+    this.value = mod(value, Fq.ORDER);
   }
 
   isZero(): boolean {
-    return this._value === 0n;
+    return this.value === 0n;
   }
 
   equals(rhs: Fq): boolean {
-    return this._value === rhs._value;
+    return this.value === rhs.value;
   }
 
   negate(): Fq {
-    return new Fq(-this._value);
+    return new Fq(-this.value);
   }
 
   invert(): Fq {
@@ -174,28 +161,29 @@ export class Fq implements Field<Fq> {
   }
 
   add(rhs: Fq): Fq {
-    return new Fq(this._value + rhs.value);
+    return new Fq(this.value + rhs.value);
   }
 
   square(): Fq {
-    return new Fq(this._value * this._value);
+    return new Fq(this.value * this.value);
   }
 
   pow(n: bigint): Fq {
-    return new Fq(powMod(this._value, n, Fq.ORDER));
+    return new Fq(powMod(this.value, n, Fq.ORDER));
   }
 
   subtract(rhs: Fq): Fq {
-    return new Fq(this._value - rhs._value);
+    return new Fq(this.value - rhs.value);
   }
 
-  multiply(rhs: bigint | Fq): Fq {
+  multiply(rhs: Fq | bigint): Fq {
     if (rhs instanceof Fq) rhs = rhs.value;
-    return new Fq(this._value * rhs);
+    return new Fq(this.value * rhs);
   }
 
   div(rhs: Fq | bigint): Fq {
-    return genDiv(this, rhs);
+    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+    return this.multiply(inv);
   }
 
   toString() {
@@ -203,15 +191,16 @@ export class Fq implements Field<Fq> {
     return str.slice(0, 2) + '.' + str.slice(-2);
   }
 }
+
+// Abstract class for a field over polynominal.
 // TT - ThisType, CT - ChildType, TTT - Tuple Type
-abstract class FieldExt<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT extends CT[]> implements Field<TT> {
+abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT extends CT[]>
+  implements Field<TT> {
   public abstract readonly c: CT[];
   abstract init(c: TTT): TT;
   abstract multiply(rhs: TT | bigint): TT;
   abstract invert(): TT;
   abstract square(): TT;
-  abstract pow(n: bigint): TT;
-  abstract div(n: bigint): TT;
 
   zip<T, RT extends T[]>(rhs: TT, mapper: (left: CT, right: CT) => T): RT {
     const c0 = this.c;
@@ -240,6 +229,35 @@ abstract class FieldExt<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>,
   subtract(rhs: TT) {
     return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
   }
+  conjugate() {
+    return this.init([this.c[0], this.c[1].negate()] as TTT);
+  }
+  private one(): TT {
+    const el = this;
+    let one: unknown;
+    if (el instanceof Fq2) one = Fq2.ONE;
+    if (el instanceof Fq6) one = Fq6.ONE;
+    if (el instanceof Fq12) one = Fq12.ONE;
+    return one as TT;
+  }
+  pow(n: bigint): TT {
+    const elm = this as Field<TT>;
+    const one = this.one();
+    if (n === 0n) return one;
+    if (n === 1n) return elm as TT;
+    let p = one;
+    let d: TT = elm as TT;
+    while (n > 0n) {
+      if (n & 1n) p = p.multiply(d);
+      n >>= 1n;
+      d = d.square();
+    }
+    return p;
+  }
+  div(rhs: TT | bigint): TT {
+    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+    return this.multiply(inv);
+  }
 }
 
 // For Fq2 roots of unity.
@@ -249,43 +267,9 @@ const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 
-// abstract class GenericField<FP extends Field<FP>, FC extends Field<FC>> {
-//   public c: FC[];
-//   constructor(c: [FC, FC]) {
-//     this.c = c;
-//   }
-//   abstract init(fc: FC[]): FP;
-//   private zip<T>(rhs: FP, mapper: (left: FC, right: FC) => T): [T, T] {
-//     const c0 = this.c;
-//     const c1 = rhs.c;
-//     const res: T[] = [];
-//     for (let i = 0; i < c0.length; i++) {
-//       res.push(mapper(c0[i], c1[i]))
-//     }
-//     return res as [T, T];
-//   }
-//   private map<T>(callbackfn: (value: FC) => T): [T, T] {
-//     return this.c.map(callbackfn) as [T, T];
-//   }
-//   isZero() {
-//     return this.c.every(c => c.isZero());
-//   }
-//   equals(rhs: FP) {
-//     return this.zip(rhs, (left, right) => left.equals(right)).every(r => r);
-//   }
-//   negate() {
-//     return this.init(this.map(c => c.negate()));
-//   }
-//   add(rhs: FP) {
-//     return this.init(this.zip(rhs, (left, right) => left.add(right)));
-//   }
-//   subtract(rhs: FP) {
-//     return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
-//   }
-// }
-
-// Finite extension field over irreducible degree-1 polynominal represented by c0 + c1 * u.
-export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
+// Finite extension field over irreducible polynominal.
+// Fq(u) / (u^2 - β) where β = -1
+export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
   static readonly ROOT = new Fq(-1n);
@@ -305,13 +289,6 @@ export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
     new Fq2([0n, -1n]),
     new Fq2([-rv1, -rv1]),
   ];
-  // Positive eighth roots of unity, used for computing square roots in Fq2
-  // static readonly PE_ROOTS_OF_UNITY = [
-  //   new Fq2([1n, 0n]),
-  //   new Fq2([rv1, -rv1]),
-  //   new Fq2([0n, 1n]),
-  //   new Fq2([rv1, rv1]),
-  // ];
   // eta values, used for computing sqrt(g(X1(t)))
   static readonly ETAs = [
     new Fq2([ev1, ev2]),
@@ -343,21 +320,15 @@ export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
   toString() {
     return `Fq2(${this.c[0]} + ${this.c[1]}×i)`;
   }
-  get value(): BigintTuple {
+  get values(): BigintTuple {
     return this.c.map((c) => c.value) as BigintTuple;
-  }
-  conjugate() {
-    return this.init([this.c[0], this.c[1].negate()]);
-  }
-  pow(n: bigint): Fq2 {
-    return genPow(Fq2, this, n);
-  }
-  div(rhs: Fq2 | bigint): Fq2 {
-    return genDiv(this, rhs);
   }
 
   multiply(rhs: Fq2 | bigint): Fq2 {
-    if (typeof rhs === 'bigint') return new Fq2(this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs)));
+    if (typeof rhs === 'bigint')
+      return new Fq2(
+        this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs))
+      );
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     const [c0, c1] = this.c;
     const [r0, r1] = rhs.c;
@@ -387,15 +358,15 @@ export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
     const check = candidateSqrt.square().div(this);
     const R = Fq2.ROOTS_OF_UNITY;
     const divisor = [R[0], R[2], R[4], R[6]].find((r) => r.equals(check));
-    if (!divisor) return undefined;
+    if (!divisor) return;
     const index = R.indexOf(divisor);
     const root = R[index / 2];
     if (!root) throw new Error('Invalid root');
     const x1 = candidateSqrt.div(root);
     const x2 = x1.negate();
-    const [x1_re, x1_im] = x1.value;
-    const [x2_re, x2_im] = x2.value;
-    if (x1_im > x2_im || (x1_im == x2_im && x1_re > x2_re)) return x1;
+    const [re1, im1] = x1.values;
+    const [re2, im2] = x2.values;
+    if (im1 > im2 || (im1 == im2 && re1 > re2)) return x1;
     return x2;
   }
 
@@ -413,7 +384,7 @@ export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
   // of (a + bu). Importantly, this can be computing using
   // only a single inversion in Fp.
   invert() {
-    const [a, b] = this.value;
+    const [a, b] = this.values;
     const factor = new Fq(a * a + b * b).invert();
     return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
   }
@@ -431,8 +402,9 @@ export class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
   }
 }
 
-// Finite extension field represented by c0 + c1 * v + c2 * v^(2).
-export class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
+// Finite extension field over irreducible polynominal.
+// Fq2(v) / (v^3 - ξ) where ξ = u + 1
+export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS_1 = [
@@ -487,7 +459,7 @@ export class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
       0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
     ]),
   ];
-  static from_tuple(t: BigintSix): Fq6 {
+  static fromTuple(t: BigintSix): Fq6 {
     return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
   }
 
@@ -501,11 +473,8 @@ export class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   toString() {
     return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
   }
-  div(rhs: Fq6 | bigint): Fq6 {
-    return genDiv(this, rhs);
-  }
-  pow(n: bigint): Fq6 {
-    return genPow(Fq6, this, n);
+  conjugate(): any {
+    throw new TypeError('No conjugate on Fq6');
   }
 
   multiply(rhs: Fq6 | bigint) {
@@ -589,8 +558,9 @@ export class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   }
 }
 
-// Finite extension field represented by c0 + c1 * w.
-export class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
+// Finite extension field over irreducible polynominal.
+// Fq6(w) / (w2 - γ) where γ = v
+export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
   static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
   static readonly FROBENIUS_COEFFICIENTS = [
@@ -643,10 +613,10 @@ export class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
       0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
     ]),
   ];
-  static from_tuple(t: BigintTwelve): Fq12 {
+  static fromTuple(t: BigintTwelve): Fq12 {
     return new Fq12([
-      Fq6.from_tuple(t.slice(0, 6) as BigintSix),
-      Fq6.from_tuple(t.slice(6, 12) as BigintSix),
+      Fq6.fromTuple(t.slice(0, 6) as BigintSix),
+      Fq6.fromTuple(t.slice(6, 12) as BigintSix),
     ]);
   }
   constructor(public readonly c: [Fq6, Fq6]) {
@@ -659,20 +629,6 @@ export class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
   toString() {
     return `Fq12(${this.c[0]} + ${this.c[1]} * w)`;
   }
-  get value(): [Fq6, Fq6] {
-    return this.c;
-  }
-
-  conjugate() {
-    return this.init([this.c[0], this.c[1].negate()]);
-  }
-  pow(n: bigint): Fq12 {
-    return genPow(Fq12, this, n);
-  }
-  div(rhs: Fq12 | bigint): Fq12 {
-    return genDiv(this, rhs);
-  }
-
   multiply(rhs: Fq12 | bigint) {
     if (typeof rhs === 'bigint')
       return new Fq12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
@@ -860,7 +816,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   toAffineBatch(points: ProjectivePoint<T>[]): [T, T][] {
-    const toInv = gen_inv_batch(
+    const toInv = genInvertBatch(
       this.C,
       points.map((p) => p.z)
     );
@@ -1049,7 +1005,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
 }
 
 function sgn0(x: Fq2) {
-  const [x0, x1] = x.value;
+  const [x0, x1] = x.values;
   const sign_0 = x0 % 2n;
   const zero_0 = x0 === 0n;
   const sign_1 = x1 % 2n;

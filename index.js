@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
@@ -64,15 +64,12 @@ function toBytesBE(num, padding = 0) {
     return padStart(u8, padding, 0);
 }
 function toBigInt(num) {
-    if (typeof num === 'string') {
+    if (typeof num === 'string')
         return fromHexBE(num);
-    }
-    if (typeof num === 'number') {
+    if (typeof num === 'number')
         return BigInt(num);
-    }
-    if (num instanceof Uint8Array) {
+    if (num instanceof Uint8Array)
         return fromBytesBE(num);
-    }
     return num;
 }
 function hexToArray(hex) {
@@ -182,7 +179,7 @@ let PointG1 = (() => {
             const x = math_1.mod(compressedValue, POW_2_381);
             const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
             let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
-            if (math_1.powMod(y, 2n, P) !== fullY) {
+            if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
                 throw new Error('The given point is not on G1: y**2 = x**3 + b');
             }
             const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
@@ -265,7 +262,7 @@ let PointG2 = (() => {
             let y = x.pow(3n).add(new math_1.Fq2(math_1.CURVE.b2)).sqrt();
             if (!y)
                 throw new Error('Failed to find a square root');
-            const [y0, y1] = y.value;
+            const [y0, y1] = y.values;
             const aflag1 = (z1 % POW_2_382) / POW_2_381;
             const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
             const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
@@ -284,7 +281,7 @@ let PointG2 = (() => {
                 return concatTypedArrays(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
             }
             this.assertValidity();
-            const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.value);
+            const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
             const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
             const aflag1 = tmp / math_1.CURVE.P;
             const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;

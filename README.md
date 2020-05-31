@@ -203,6 +203,8 @@ Formulas:
 - frobenius coefficients
 - endomorphism for clearing cofactor
 
+Benchmarks:
+
 ```
 getPublicKey x 1080 ops/sec @ 925μs/op
 sign x 14 ops/sec @ 70ms/op

@@ -40,8 +40,7 @@ export declare class Fq implements Field<Fq> {
     static readonly MAX_BITS: number;
     static readonly ZERO: Fq;
     static readonly ONE: Fq;
-    private _value;
-    get value(): bigint;
+    readonly value: bigint;
     constructor(value: bigint);
     isZero(): boolean;
     equals(rhs: Fq): boolean;
@@ -51,11 +50,11 @@ export declare class Fq implements Field<Fq> {
     square(): Fq;
     pow(n: bigint): Fq;
     subtract(rhs: Fq): Fq;
-    multiply(rhs: bigint | Fq): Fq;
+    multiply(rhs: Fq | bigint): Fq;
     div(rhs: Fq | bigint): Fq;
     toString(): string;
 }
-declare abstract class FieldExt<TT extends {
+declare abstract class FQP<TT extends {
     c: TTT;
 } & Field<TT>, CT extends Field<CT>, TTT extends CT[]> implements Field<TT> {
     abstract readonly c: CT[];
@@ -63,8 +62,6 @@ declare abstract class FieldExt<TT extends {
     abstract multiply(rhs: TT | bigint): TT;
     abstract invert(): TT;
     abstract square(): TT;
-    abstract pow(n: bigint): TT;
-    abstract div(n: bigint): TT;
     zip<T, RT extends T[]>(rhs: TT, mapper: (left: CT, right: CT) => T): RT;
     map<T, RT extends T[]>(callbackfn: (value: CT) => T): RT;
     isZero(): boolean;
@@ -72,8 +69,12 @@ declare abstract class FieldExt<TT extends {
     negate(): TT;
     add(rhs: TT): TT;
     subtract(rhs: TT): TT;
+    conjugate(): TT;
+    private one;
+    pow(n: bigint): TT;
+    div(rhs: TT | bigint): TT;
 }
-export declare class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
+export declare class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
     static readonly ROOT: Fq;
@@ -87,10 +88,7 @@ export declare class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
     constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]);
     init(tuple: [Fq, Fq]): Fq2;
     toString(): string;
-    get value(): BigintTuple;
-    conjugate(): Fq2;
-    pow(n: bigint): Fq2;
-    div(rhs: Fq2 | bigint): Fq2;
+    get values(): BigintTuple;
     multiply(rhs: Fq2 | bigint): Fq2;
     mulByNonresidue(): Fq2;
     square(): Fq2;
@@ -99,18 +97,17 @@ export declare class Fq2 extends FieldExt<Fq2, Fq, [Fq, Fq]> {
     frobeniusMap(power: number): Fq2;
     multiplyByB(): Fq2;
 }
-export declare class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
+export declare class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     readonly c: [Fq2, Fq2, Fq2];
     static readonly ZERO: Fq6;
     static readonly ONE: Fq6;
     static readonly FROBENIUS_COEFFICIENTS_1: Fq2[];
     static readonly FROBENIUS_COEFFICIENTS_2: Fq2[];
-    static from_tuple(t: BigintSix): Fq6;
+    static fromTuple(t: BigintSix): Fq6;
     constructor(c: [Fq2, Fq2, Fq2]);
     init(triple: [Fq2, Fq2, Fq2]): Fq6;
     toString(): string;
-    div(rhs: Fq6 | bigint): Fq6;
-    pow(n: bigint): Fq6;
+    conjugate(): any;
     multiply(rhs: Fq6 | bigint): Fq6;
     mulByNonresidue(): Fq6;
     multiplyBy1(b1: Fq2): Fq6;
@@ -120,19 +117,15 @@ export declare class Fq6 extends FieldExt<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     invert(): Fq6;
     frobeniusMap(power: number): Fq6;
 }
-export declare class Fq12 extends FieldExt<Fq12, Fq6, [Fq6, Fq6]> {
+export declare class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     readonly c: [Fq6, Fq6];
     static readonly ZERO: Fq12;
     static readonly ONE: Fq12;
     static readonly FROBENIUS_COEFFICIENTS: Fq2[];
-    static from_tuple(t: BigintTwelve): Fq12;
+    static fromTuple(t: BigintTwelve): Fq12;
     constructor(c: [Fq6, Fq6]);
     init(c: [Fq6, Fq6]): Fq12;
     toString(): string;
-    get value(): [Fq6, Fq6];
-    conjugate(): Fq12;
-    pow(n: bigint): Fq12;
-    div(rhs: Fq12 | bigint): Fq12;
     multiply(rhs: Fq12 | bigint): Fq12;
     multiplyBy014(o0: Fq2, o1: Fq2, o4: Fq2): Fq12;
     multiplyByFq2(rhs: Fq2): Fq12;

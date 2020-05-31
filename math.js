@@ -43,26 +43,7 @@ function powMod(a, power, m) {
     return res;
 }
 exports.powMod = powMod;
-function genPow(cls, elm, n) {
-    if (n === 0n)
-        return cls.ONE;
-    if (n === 1n)
-        return elm;
-    let p = cls.ONE;
-    let d = elm;
-    while (n > 0n) {
-        if (n & 1n)
-            p = p.multiply(d);
-        n >>= 1n;
-        d = d.square();
-    }
-    return p;
-}
-function genDiv(elm, rhs) {
-    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
-    return elm.multiply(inv);
-}
-function gen_inv_batch(cls, nums) {
+function genInvertBatch(cls, nums) {
     const len = nums.length;
     const scratch = new Array(len);
     let acc = cls.ONE;
@@ -94,19 +75,16 @@ function bitGet(n, pos) {
 let Fq = (() => {
     class Fq {
         constructor(value) {
-            this._value = mod(value, Fq.ORDER);
-        }
-        get value() {
-            return this._value;
+            this.value = mod(value, Fq.ORDER);
         }
         isZero() {
-            return this._value === 0n;
+            return this.value === 0n;
         }
         equals(rhs) {
-            return this._value === rhs._value;
+            return this.value === rhs.value;
         }
         negate() {
-            return new Fq(-this._value);
+            return new Fq(-this.value);
         }
         invert() {
             let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
@@ -121,24 +99,25 @@ let Fq = (() => {
             return new Fq(x0);
         }
         add(rhs) {
-            return new Fq(this._value + rhs.value);
+            return new Fq(this.value + rhs.value);
         }
         square() {
-            return new Fq(this._value * this._value);
+            return new Fq(this.value * this.value);
         }
         pow(n) {
-            return new Fq(powMod(this._value, n, Fq.ORDER));
+            return new Fq(powMod(this.value, n, Fq.ORDER));
         }
         subtract(rhs) {
-            return new Fq(this._value - rhs._value);
+            return new Fq(this.value - rhs.value);
         }
         multiply(rhs) {
             if (rhs instanceof Fq)
                 rhs = rhs.value;
-            return new Fq(this._value * rhs);
+            return new Fq(this.value * rhs);
         }
         div(rhs) {
-            return genDiv(this, rhs);
+            const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+            return this.multiply(inv);
         }
         toString() {
             const str = this.value.toString(16).padStart(96, '0');
@@ -152,7 +131,7 @@ let Fq = (() => {
     return Fq;
 })();
 exports.Fq = Fq;
-class FieldExt {
+class FQP {
     zip(rhs, mapper) {
         const c0 = this.c;
         const c1 = rhs.c;
@@ -180,6 +159,41 @@ class FieldExt {
     subtract(rhs) {
         return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
     }
+    conjugate() {
+        return this.init([this.c[0], this.c[1].negate()]);
+    }
+    one() {
+        const el = this;
+        let one;
+        if (el instanceof Fq2)
+            one = Fq2.ONE;
+        if (el instanceof Fq6)
+            one = Fq6.ONE;
+        if (el instanceof Fq12)
+            one = Fq12.ONE;
+        return one;
+    }
+    pow(n) {
+        const elm = this;
+        const one = this.one();
+        if (n === 0n)
+            return one;
+        if (n === 1n)
+            return elm;
+        let p = one;
+        let d = elm;
+        while (n > 0n) {
+            if (n & 1n)
+                p = p.multiply(d);
+            n >>= 1n;
+            d = d.square();
+        }
+        return p;
+    }
+    div(rhs) {
+        const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+        return this.multiply(inv);
+    }
 }
 const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
@@ -187,7 +201,7 @@ const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 let Fq2 = (() => {
-    class Fq2 extends FieldExt {
+    class Fq2 extends FQP {
         constructor(coeffs) {
             super();
             if (coeffs.length !== 2)
@@ -204,17 +218,8 @@ let Fq2 = (() => {
         toString() {
             return `Fq2(${this.c[0]} + ${this.c[1]}×i)`;
         }
-        get value() {
+        get values() {
             return this.c.map((c) => c.value);
-        }
-        conjugate() {
-            return this.init([this.c[0], this.c[1].negate()]);
-        }
-        pow(n) {
-            return genPow(Fq2, this, n);
-        }
-        div(rhs) {
-            return genDiv(this, rhs);
         }
         multiply(rhs) {
             if (typeof rhs === 'bigint')
@@ -244,21 +249,21 @@ let Fq2 = (() => {
             const R = Fq2.ROOTS_OF_UNITY;
             const divisor = [R[0], R[2], R[4], R[6]].find((r) => r.equals(check));
             if (!divisor)
-                return undefined;
+                return;
             const index = R.indexOf(divisor);
             const root = R[index / 2];
             if (!root)
                 throw new Error('Invalid root');
             const x1 = candidateSqrt.div(root);
             const x2 = x1.negate();
-            const [x1_re, x1_im] = x1.value;
-            const [x2_re, x2_im] = x2.value;
-            if (x1_im > x2_im || (x1_im == x2_im && x1_re > x2_re))
+            const [re1, im1] = x1.values;
+            const [re2, im2] = x2.values;
+            if (im1 > im2 || (im1 == im2 && re1 > re2))
                 return x1;
             return x2;
         }
         invert() {
-            const [a, b] = this.value;
+            const [a, b] = this.values;
             const factor = new Fq(a * a + b * b).invert();
             return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
         }
@@ -302,14 +307,14 @@ let Fq2 = (() => {
 })();
 exports.Fq2 = Fq2;
 let Fq6 = (() => {
-    class Fq6 extends FieldExt {
+    class Fq6 extends FQP {
         constructor(c) {
             super();
             this.c = c;
             if (c.length !== 3)
                 throw new Error(`Expected array with 2 elements`);
         }
-        static from_tuple(t) {
+        static fromTuple(t) {
             return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
         }
         init(triple) {
@@ -318,11 +323,8 @@ let Fq6 = (() => {
         toString() {
             return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
         }
-        div(rhs) {
-            return genDiv(this, rhs);
-        }
-        pow(n) {
-            return genPow(Fq6, this, n);
+        conjugate() {
+            throw new TypeError('No conjugate on Fq6');
         }
         multiply(rhs) {
             if (typeof rhs === 'bigint')
@@ -447,17 +449,17 @@ let Fq6 = (() => {
 })();
 exports.Fq6 = Fq6;
 let Fq12 = (() => {
-    class Fq12 extends FieldExt {
+    class Fq12 extends FQP {
         constructor(c) {
             super();
             this.c = c;
             if (c.length !== 2)
                 throw new Error(`Expected array with 2 elements`);
         }
-        static from_tuple(t) {
+        static fromTuple(t) {
             return new Fq12([
-                Fq6.from_tuple(t.slice(0, 6)),
-                Fq6.from_tuple(t.slice(6, 12)),
+                Fq6.fromTuple(t.slice(0, 6)),
+                Fq6.fromTuple(t.slice(6, 12)),
             ]);
         }
         init(c) {
@@ -465,18 +467,6 @@ let Fq12 = (() => {
         }
         toString() {
             return `Fq12(${this.c[0]} + ${this.c[1]} * w)`;
-        }
-        get value() {
-            return this.c;
-        }
-        conjugate() {
-            return this.init([this.c[0], this.c[1].negate()]);
-        }
-        pow(n) {
-            return genPow(Fq12, this, n);
-        }
-        div(rhs) {
-            return genDiv(this, rhs);
         }
         multiply(rhs) {
             if (typeof rhs === 'bigint')
@@ -679,7 +669,7 @@ class ProjectivePoint {
         return [this.x.multiply(invZ), this.y.multiply(invZ)];
     }
     toAffineBatch(points) {
-        const toInv = gen_inv_batch(this.C, points.map((p) => p.z));
+        const toInv = genInvertBatch(this.C, points.map((p) => p.z));
         return points.map((p, i) => p.toAffine(toInv[i]));
     }
     normalizeZ(points) {
@@ -833,7 +823,7 @@ class ProjectivePoint {
 }
 exports.ProjectivePoint = ProjectivePoint;
 function sgn0(x) {
-    const [x0, x1] = x.value;
+    const [x0, x1] = x.values;
     const sign_0 = x0 % 2n;
     const zero_0 = x0 === 0n;
     const sign_1 = x1 % 2n;
