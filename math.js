@@ -152,14 +152,44 @@ let Fq = (() => {
     return Fq;
 })();
 exports.Fq = Fq;
+class FieldExt {
+    zip(rhs, mapper) {
+        const c0 = this.c;
+        const c1 = rhs.c;
+        const res = [];
+        for (let i = 0; i < c0.length; i++) {
+            res.push(mapper(c0[i], c1[i]));
+        }
+        return res;
+    }
+    map(callbackfn) {
+        return this.c.map(callbackfn);
+    }
+    isZero() {
+        return this.c.every((c) => c.isZero());
+    }
+    equals(rhs) {
+        return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
+    }
+    negate() {
+        return this.init(this.map((c) => c.negate()));
+    }
+    add(rhs) {
+        return this.init(this.zip(rhs, (left, right) => left.add(right)));
+    }
+    subtract(rhs) {
+        return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
+    }
+}
 const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
 const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
 const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
 const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 let Fq2 = (() => {
-    class Fq2 {
+    class Fq2 extends FieldExt {
         constructor(coeffs) {
+            super();
             if (coeffs.length !== 2)
                 throw new Error(`Expected array with 2 elements`);
             coeffs.forEach((c, i) => {
@@ -176,33 +206,6 @@ let Fq2 = (() => {
         }
         get value() {
             return this.c.map((c) => c.value);
-        }
-        zip(rhs, mapper) {
-            const c0 = this.c;
-            const c1 = rhs.c;
-            const res = [];
-            for (let i = 0; i < c0.length; i++) {
-                res.push(mapper(c0[i], c1[i]));
-            }
-            return res;
-        }
-        map(callbackfn) {
-            return this.c.map(callbackfn);
-        }
-        isZero() {
-            return this.c.every((c) => c.isZero());
-        }
-        equals(rhs) {
-            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-        }
-        negate() {
-            return this.init(this.map((c) => c.negate()));
-        }
-        add(rhs) {
-            return this.init(this.zip(rhs, (left, right) => left.add(right)));
-        }
-        subtract(rhs) {
-            return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
         }
         conjugate() {
             return this.init([this.c[0], this.c[1].negate()]);
@@ -299,8 +302,9 @@ let Fq2 = (() => {
 })();
 exports.Fq2 = Fq2;
 let Fq6 = (() => {
-    class Fq6 {
+    class Fq6 extends FieldExt {
         constructor(c) {
+            super();
             this.c = c;
             if (c.length !== 3)
                 throw new Error(`Expected array with 2 elements`);
@@ -313,33 +317,6 @@ let Fq6 = (() => {
         }
         toString() {
             return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
-        }
-        zip(rhs, mapper) {
-            const c0 = this.c;
-            const c1 = rhs.c;
-            const res = [];
-            for (let i = 0; i < c0.length; i++) {
-                res.push(mapper(c0[i], c1[i]));
-            }
-            return res;
-        }
-        map(callbackfn) {
-            return this.c.map(callbackfn);
-        }
-        isZero() {
-            return this.c.every((c) => c.isZero());
-        }
-        equals(rhs) {
-            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-        }
-        negate() {
-            return new Fq6(this.map((c) => c.negate()));
-        }
-        add(rhs) {
-            return new Fq6(this.zip(rhs, (left, right) => left.add(right)));
-        }
-        subtract(rhs) {
-            return new Fq6(this.zip(rhs, (left, right) => left.subtract(right)));
         }
         div(rhs) {
             return genDiv(this, rhs);
@@ -470,8 +447,9 @@ let Fq6 = (() => {
 })();
 exports.Fq6 = Fq6;
 let Fq12 = (() => {
-    class Fq12 {
+    class Fq12 extends FieldExt {
         constructor(c) {
+            super();
             this.c = c;
             if (c.length !== 2)
                 throw new Error(`Expected array with 2 elements`);
@@ -490,33 +468,6 @@ let Fq12 = (() => {
         }
         get value() {
             return this.c;
-        }
-        zip(rhs, mapper) {
-            const c0 = this.c;
-            const c1 = rhs.c;
-            const res = [];
-            for (let i = 0; i < c0.length; i++) {
-                res.push(mapper(c0[i], c1[i]));
-            }
-            return res;
-        }
-        map(callbackfn) {
-            return this.c.map(callbackfn);
-        }
-        isZero() {
-            return this.c.every((c) => c.isZero());
-        }
-        equals(rhs) {
-            return this.zip(rhs, (left, right) => left.equals(right)).every((r) => r);
-        }
-        negate() {
-            return this.init(this.map((c) => c.negate()));
-        }
-        add(rhs) {
-            return this.init(this.zip(rhs, (left, right) => left.add(right)));
-        }
-        subtract(rhs) {
-            return this.init(this.zip(rhs, (left, right) => left.subtract(right)));
         }
         conjugate() {
             return this.init([this.c[0], this.c[1].negate()]);
