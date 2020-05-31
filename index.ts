@@ -4,7 +4,7 @@
 // We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
 'use strict';
 
-import {Fq, Fq2, Fq12, ProjectivePoint, CURVE, BLS_X_LEN, bitGet, mod, powMod, isogenyCoefficients} from './math';
+import { Fq, Fq2, Fq6, Fq12, ProjectivePoint, CURVE, BLS_X_LEN, bitGet, mod, powMod, isogenyCoefficients } from './math';
 
 const P = CURVE.P;
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
@@ -24,7 +24,7 @@ export type BigintTwelve = [
   bigint, bigint, bigint, bigint
 ];
 
-export {Fq, Fq2, Fq12, CURVE};
+export { Fq, Fq2, Fq12, CURVE };
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -62,7 +62,7 @@ function fromBytesBE(bytes: Bytes) {
     return fromHexBE(bytes);
   }
   let value = 0n;
-  for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
+  for (let i = bytes.length - 1, j = 0; i >= 0; i-- , j++) {
     value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
   }
   return value;
@@ -392,7 +392,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
     let [x, y] = this.toAffine();
     let [Px, Py] = [x as Fq, y as Fq];
 
-    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
+    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i-- , j++) {
       f12 = f12.multiplyBy014(
         ell[j][0],
         ell[j][1].multiply(Px.value),
@@ -412,9 +412,33 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 }
 
-// https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
-function clearCofactorG2(P: PointG2) {
-  return P.multiplyUnsafe(CURVE.h_eff);
+const ut_root = new Fq6([Fq2.ZERO, Fq2.ONE, Fq2.ZERO]);
+const wsq = new Fq12([ut_root, Fq6.ZERO]);
+const wsq_inv = wsq.invert();
+const wcu = new Fq12([Fq6.ZERO, ut_root])
+const wcu_inv = wcu.invert();
+
+function psi(P: PointG2) {
+  let [x, y] = P.toAffine();
+  // Untwist Fq2->Fq12 && frobenius(1) && twist back
+  let new_x = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
+  let new_y = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
+  return new PointG2(new_x, new_y, Fq2.ONE);
+}
+
+// 1 / F2(2)^((p - 1) / 3) in GF(p^2)
+const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+function psi2(P: PointG2) {
+  let [x, y] = P.toAffine();
+  return new PointG2(x.multiply(PSI2_C1), y.negate(), Fq2.ONE);
+}
+
+export function clearCofactorG2(P: PointG2) {
+  // BLS_X is negative number
+  let t1 = P.multiplyUnsafe(CURVE.BLS_X).negate();
+  let t2 = psi(P);
+  // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
+  return psi2(P.double()).subtract(t2).add(t1.add(t2).multiplyUnsafe(CURVE.BLS_X).negate()).subtract(t1).subtract(P);
 }
 
 type EllCoefficients = [Fq2, Fq2, Fq2];

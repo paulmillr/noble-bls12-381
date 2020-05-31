@@ -114,6 +114,7 @@ export declare class Fq6 implements Field<Fq6> {
     mulByNonresidue(): Fq6;
     multiplyBy1(b1: Fq2): Fq6;
     multiplyBy01(b0: Fq2, b1: Fq2): Fq6;
+    multiplyByFq2(rhs: Fq2): Fq6;
     square(): Fq6;
     invert(): Fq6;
     frobeniusMap(power: number): Fq6;
@@ -140,6 +141,7 @@ export declare class Fq12 implements Field<Fq12> {
     div(rhs: Fq12 | bigint): Fq12;
     multiply(rhs: Fq12 | bigint): Fq12;
     multiplyBy014(o0: Fq2, o1: Fq2, o4: Fq2): Fq12;
+    multiplyByFq2(rhs: Fq2): Fq12;
     square(): Fq12;
     invert(): Fq12;
     frobeniusMap(power: number): Fq12;
