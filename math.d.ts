@@ -14,7 +14,6 @@ export declare const CURVE: {
     h_eff: bigint;
 };
 export declare let DST_LABEL: string;
-export declare const BLS_X_LEN: number;
 declare type BigintTuple = [bigint, bigint];
 declare type BigintSix = [bigint, bigint, bigint, bigint, bigint, bigint];
 export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
@@ -37,7 +36,6 @@ declare type FieldStatic<T extends Field<T>> = {
 export declare function mod(a: bigint, b: bigint): bigint;
 export declare function powMod(a: bigint, power: bigint, m: bigint): bigint;
 export declare function bitLen(n: bigint): number;
-export declare function bitGet(n: bigint, pos: number): bigint;
 export declare class Fq implements Field<Fq> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
@@ -183,6 +181,14 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     private wNAF;
     multiply(scalar: number | bigint | Fq): this;
 }
+export declare function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2];
+export declare function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2];
+declare type EllCoefficients = [Fq2, Fq2, Fq2];
+export declare function calculatePrecomputes(x: Fq2, y: Fq2): EllCoefficients[];
+export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
+export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];
+export declare const PSI2_C1 = 4002409555221667392624310435006688643935503118305586438271171395842971157480381377015405980053539358417135540939436n;
+export declare function psi2(x: Fq2, y: Fq2): [Fq2, Fq2];
 declare type Numerators = [Fq2, Fq2, Fq2, Fq2];
 export declare const isogenyCoefficients: Numerators[];
 export {};

@@ -26,14 +26,13 @@ declare type EllCoefficients = [Fq2, Fq2, Fq2];
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
     static ZERO: PointG2;
-    private pair_precomputes;
+    private pairPrecomputes;
     constructor(x: Fq2, y: Fq2, z: Fq2);
     static hashToCurve(msg: PublicKey): Promise<PointG2>;
     static fromSignature(hex: Signature): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
     assertValidity(): void;
-    calculatePrecomputes(): EllCoefficients[];
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];
 }

@@ -125,26 +125,6 @@ function strxor(a, b) {
     }
     return arr;
 }
-function isogenyMapG2(xyz) {
-    const [x, y, z] = xyz;
-    const mapped = [math_1.Fq2.ZERO, math_1.Fq2.ZERO, math_1.Fq2.ZERO, math_1.Fq2.ZERO];
-    const zPowers = [z, z.pow(2n), z.pow(3n)];
-    for (let i = 0; i < math_1.isogenyCoefficients.length; i++) {
-        const k_i = math_1.isogenyCoefficients[i];
-        mapped[i] = k_i.slice(-1)[0];
-        const arr = k_i.slice(0, -1).reverse();
-        for (let j = 0; j < arr.length; j++) {
-            const k_i_j = arr[j];
-            mapped[i] = mapped[i].multiply(x).add(zPowers[j].multiply(k_i_j));
-        }
-    }
-    mapped[2] = mapped[2].multiply(y);
-    mapped[3] = mapped[3].multiply(z);
-    const z2 = mapped[1].multiply(mapped[3]);
-    const x2 = mapped[0].multiply(mapped[3]);
-    const y2 = mapped[1].multiply(mapped[2]);
-    return new PointG2(x2, y2, z2);
-}
 async function expand_message_xmd(msg, DST, len_in_bytes) {
     const H = exports.utils.sha256;
     const b_in_bytes = Number(SHA256_DIGEST_SIZE);
@@ -185,73 +165,6 @@ async function hash_to_field(msg, degree, isRandomOracle = true) {
     return u;
 }
 exports.hash_to_field = hash_to_field;
-function sgn0(x) {
-    const [x0, x1] = x.value;
-    const sign_0 = x0 % 2n;
-    const zero_0 = x0 === 0n;
-    const sign_1 = x1 % 2n;
-    return BigInt(sign_0 || (zero_0 && sign_1));
-}
-const P_MINUS_9_DIV_16 = (P ** 2n - 9n) / 16n;
-function sqrt_div_fq2(u, v) {
-    const uv7 = u.multiply(v.pow(7n));
-    const uv15 = uv7.multiply(v.pow(8n));
-    const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
-    let success = false;
-    let result = gamma;
-    const positiveRootsOfUnity = math_1.Fq2.ROOTS_OF_UNITY.slice(0, 4);
-    for (const root of positiveRootsOfUnity) {
-        const candidate = root.multiply(gamma);
-        if (candidate.pow(2n).multiply(v).subtract(u).isZero() && !success) {
-            success = true;
-            result = candidate;
-        }
-    }
-    return [success, result];
-}
-function map_to_curve_SSWU_G2(t) {
-    const iso_3_a = new math_1.Fq2([0n, 240n]);
-    const iso_3_b = new math_1.Fq2([1012n, 1012n]);
-    const iso_3_z = new math_1.Fq2([-2n, -1n]);
-    if (Array.isArray(t))
-        t = new math_1.Fq2(t);
-    const t2 = t.pow(2n);
-    const iso_3_z_t2 = iso_3_z.multiply(t2);
-    const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n));
-    let denominator = iso_3_a.multiply(ztzt).negate();
-    let numerator = iso_3_b.multiply(ztzt.add(math_1.Fq2.ONE));
-    if (denominator.isZero())
-        denominator = iso_3_z.multiply(iso_3_a);
-    let v = denominator.pow(3n);
-    let u = numerator
-        .pow(3n)
-        .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
-        .add(iso_3_b.multiply(v));
-    const [success, sqrtCandidateOrGamma] = sqrt_div_fq2(u, v);
-    let y;
-    if (success)
-        y = sqrtCandidateOrGamma;
-    const sqrtCandidateX1 = sqrtCandidateOrGamma.multiply(t.pow(3n));
-    u = iso_3_z_t2.pow(3n).multiply(u);
-    let success2 = false;
-    for (const eta of math_1.Fq2.ETAs) {
-        const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
-        const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
-        if (temp.isZero() && !success && !success2) {
-            y = etaSqrtCandidate;
-            success2 = true;
-        }
-    }
-    if (!success && !success2)
-        throw new Error('Hash to Curve - Optimized SWU failure');
-    if (success2)
-        numerator = numerator.multiply(iso_3_z_t2);
-    y = y;
-    if (sgn0(t) !== sgn0(y))
-        y = y.negate();
-    y = y.multiply(denominator);
-    return [numerator, y, denominator];
-}
 function normalizePrivKey(privateKey) {
     return new math_1.Fq(toBigInt(privateKey));
 }
@@ -305,20 +218,7 @@ let PointG1 = (() => {
                 throw new Error('Invalid point: not on curve over Fq');
         }
         millerLoop(P) {
-            const ell = P.pairingPrecomputes();
-            let f12 = math_1.Fq12.ONE;
-            let [x, y] = this.toAffine();
-            let [Px, Py] = [x, y];
-            for (let j = 0, i = math_1.BLS_X_LEN - 2; i >= 0; i--, j++) {
-                f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
-                if (math_1.bitGet(math_1.CURVE.BLS_X, i)) {
-                    j += 1;
-                    f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
-                }
-                if (i != 0)
-                    f12 = f12.square();
-            }
-            return f12.conjugate();
+            return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
         }
     }
     PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
@@ -326,26 +226,11 @@ let PointG1 = (() => {
     return PointG1;
 })();
 exports.PointG1 = PointG1;
-const ut_root = new math_1.Fq6([math_1.Fq2.ZERO, math_1.Fq2.ONE, math_1.Fq2.ZERO]);
-const wsq = new math_1.Fq12([ut_root, math_1.Fq6.ZERO]);
-const wsq_inv = wsq.invert();
-const wcu = new math_1.Fq12([math_1.Fq6.ZERO, ut_root]);
-const wcu_inv = wcu.invert();
-function psi(P) {
-    let [x, y] = P.toAffine();
-    let new_x = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
-    let new_y = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
-    return new PointG2(new_x, new_y, math_1.Fq2.ONE);
-}
-const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
-function psi2(P) {
-    let [x, y] = P.toAffine();
-    return new PointG2(x.multiply(PSI2_C1), y.negate(), math_1.Fq2.ONE);
-}
 function clearCofactorG2(P) {
-    let t1 = P.multiplyUnsafe(math_1.CURVE.BLS_X).negate();
-    let t2 = psi(P);
-    return psi2(P.double())
+    const t1 = P.multiplyUnsafe(math_1.CURVE.BLS_X).negate();
+    const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
+    const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
+    return p2
         .subtract(t2)
         .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.BLS_X).negate())
         .subtract(t1)
@@ -361,8 +246,8 @@ let PointG2 = (() => {
             if (typeof msg === 'string')
                 msg = hexToArray(msg);
             const u = await hash_to_field(msg, 2);
-            const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
-            const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
+            const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
+            const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
             const R = Q0.add(Q1);
             const P = clearCofactorG2(R);
             return P;
@@ -416,51 +301,13 @@ let PointG2 = (() => {
             if (!left.equals(right))
                 throw new Error('Invalid point: not on curve over Fq2');
         }
-        calculatePrecomputes() {
-            const [x, y] = this.toAffine();
-            const [Qx, Qy, Qz] = [x, y, math_1.Fq2.ONE];
-            let [Rx, Ry, Rz] = [Qx, Qy, Qz];
-            let ell_coeff = [];
-            for (let i = math_1.BLS_X_LEN - 2; i >= 0; i--) {
-                let t0 = Ry.square();
-                let t1 = Rz.square();
-                let t2 = t1.multiply(3n).multiplyByB();
-                let t3 = t2.multiply(3n);
-                let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0);
-                ell_coeff.push([
-                    t2.subtract(t0),
-                    Rx.square().multiply(3n),
-                    t4.negate(),
-                ]);
-                Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n);
-                Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n));
-                Rz = t0.multiply(t4);
-                if (math_1.bitGet(math_1.CURVE.BLS_X, i)) {
-                    let t0 = Ry.subtract(Qy.multiply(Rz));
-                    let t1 = Rx.subtract(Qx.multiply(Rz));
-                    ell_coeff.push([
-                        t0.multiply(Qx).subtract(t1.multiply(Qy)),
-                        t0.negate(),
-                        t1,
-                    ]);
-                    let t2 = t1.square();
-                    let t3 = t2.multiply(t1);
-                    let t4 = t2.multiply(Rx);
-                    let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz));
-                    Rx = t1.multiply(t5);
-                    Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry));
-                    Rz = Rz.multiply(t3);
-                }
-            }
-            return ell_coeff;
-        }
         clearPairingPrecomputes() {
-            this.pair_precomputes = undefined;
+            this.pairPrecomputes = undefined;
         }
         pairingPrecomputes() {
-            if (this.pair_precomputes)
-                return this.pair_precomputes;
-            return (this.pair_precomputes = this.calculatePrecomputes());
+            if (this.pairPrecomputes)
+                return this.pairPrecomputes;
+            return (this.pairPrecomputes = math_1.calculatePrecomputes(...this.toAffine()));
         }
     }
     PointG2.BASE = new PointG2(new math_1.Fq2(math_1.CURVE.G2x), new math_1.Fq2(math_1.CURVE.G2y), math_1.Fq2.ONE);

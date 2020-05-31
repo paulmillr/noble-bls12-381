@@ -34,7 +34,7 @@ export const CURVE = {
 
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-export const BLS_X_LEN = bitLen(CURVE.BLS_X);
+const BLS_X_LEN = bitLen(CURVE.BLS_X);
 
 type BigintTuple = [bigint, bigint];
 
@@ -129,7 +129,7 @@ export function bitLen(n: bigint) {
 }
 
 // Get single bit from bigint at pos
-export function bitGet(n: bigint, pos: number) {
+function bitGet(n: bigint, pos: number) {
   return (n >> BigInt(pos)) & 1n;
 }
 
@@ -1083,6 +1083,205 @@ export abstract class ProjectivePoint<T extends Field<T>> {
       );
     return this.wNAF(n)[0];
   }
+}
+
+function sgn0(x: Fq2) {
+  const [x0, x1] = x.value;
+  const sign_0 = x0 % 2n;
+  const zero_0 = x0 === 0n;
+  const sign_1 = x1 % 2n;
+  return BigInt(sign_0 || (zero_0 && sign_1));
+}
+
+const P_MINUS_9_DIV_16 = (CURVE.P ** 2n - 9n) / 16n;
+// Does not return a square root.
+// Returns uv^7 * (uv^15)^((p^2 - 9) / 16) * root of unity
+// if valid square root is found
+function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
+  const uv7 = u.multiply(v.pow(7n));
+  const uv15 = uv7.multiply(v.pow(8n));
+  // gamma =  uv^7 * (uv^15)^((p^2 - 9) / 16)
+  const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
+  let success = false;
+  let result = gamma;
+  // Constant-time routine, so we do not early-return.
+  const positiveRootsOfUnity = Fq2.ROOTS_OF_UNITY.slice(0, 4);
+  for (const root of positiveRootsOfUnity) {
+    // Valid if (root * gamma)^2 * v - u == 0
+    const candidate = root.multiply(gamma);
+    if (candidate.pow(2n).multiply(v).subtract(u).isZero() && !success) {
+      success = true;
+      result = candidate;
+    }
+  }
+  return [success, result];
+}
+
+// Optimized SWU Map - FQ2 to G2': y^2 = x^3 + 240i * x + 1012 + 1012i
+// Found in Section 4 of https://eprint.iacr.org/2019/403
+// Note: it's constant-time
+export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
+  const iso_3_a = new Fq2([0n, 240n]);
+  const iso_3_b = new Fq2([1012n, 1012n]);
+  const iso_3_z = new Fq2([-2n, -1n]);
+  if (Array.isArray(t)) t = new Fq2(t as BigintTuple);
+
+  const t2 = t.pow(2n);
+  const iso_3_z_t2 = iso_3_z.multiply(t2);
+  const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n)); // (Z * t^2 + Z^2 * t^4)
+  let denominator = iso_3_a.multiply(ztzt).negate(); // -a(Z * t^2 + Z^2 * t^4)
+  let numerator = iso_3_b.multiply(ztzt.add(Fq2.ONE)); // b(Z * t^2 + Z^2 * t^4 + 1)
+
+  // Exceptional case
+  if (denominator.isZero()) denominator = iso_3_z.multiply(iso_3_a);
+
+  // v = D^3
+  let v = denominator.pow(3n);
+  // u = N^3 + a * N * D^2 + b * D^3
+  let u = numerator
+    .pow(3n)
+    .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
+    .add(iso_3_b.multiply(v));
+  // Attempt y = sqrt(u / v)
+  const [success, sqrtCandidateOrGamma] = sqrt_div_fq2(u, v);
+  let y;
+  if (success) y = sqrtCandidateOrGamma;
+  // Handle case where (u / v) is not square
+  // sqrt_candidate(x1) = sqrt_candidate(x0) * t^3
+  const sqrtCandidateX1 = sqrtCandidateOrGamma.multiply(t.pow(3n));
+
+  // u(x1) = Z^3 * t^6 * u(x0)
+  u = iso_3_z_t2.pow(3n).multiply(u);
+  let success2 = false;
+  for (const eta of Fq2.ETAs) {
+    // Valid solution if (eta * sqrt_candidate(x1))^2 * v - u == 0
+    const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
+    const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
+    if (temp.isZero() && !success && !success2) {
+      y = etaSqrtCandidate;
+      success2 = true;
+    }
+  }
+
+  if (!success && !success2) throw new Error('Hash to Curve - Optimized SWU failure');
+  if (success2) numerator = numerator.multiply(iso_3_z_t2);
+  y = y as Fq2;
+  if (sgn0(t) !== sgn0(y)) y = y.negate();
+  y = y.multiply(denominator);
+  return [numerator, y, denominator];
+}
+
+// 3-isogeny map from E' to E
+// Converts from Jacobi (xyz) to Projective (xyz) coordinates.
+// https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#appendix-C.3
+export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
+  const [x, y, z] = xyz;
+  // x-numerator, x-denominator, y-numerator, y-denominator
+  const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
+  const zPowers = [z, z.pow(2n), z.pow(3n)];
+
+  // Horner Polynomial Evaluation
+  for (let i = 0; i < isogenyCoefficients.length; i++) {
+    const k_i = isogenyCoefficients[i];
+    mapped[i] = k_i.slice(-1)[0];
+    const arr = k_i.slice(0, -1).reverse();
+    for (let j = 0; j < arr.length; j++) {
+      const k_i_j = arr[j];
+      mapped[i] = mapped[i].multiply(x).add(zPowers[j].multiply(k_i_j));
+    }
+  }
+
+  mapped[2] = mapped[2].multiply(y); // y-numerator * y
+  mapped[3] = mapped[3].multiply(z); // y-denominator * z
+
+  const z2 = mapped[1].multiply(mapped[3]);
+  const x2 = mapped[0].multiply(mapped[3]);
+  const y2 = mapped[1].multiply(mapped[2]);
+  return [x2, y2, z2];
+}
+
+type EllCoefficients = [Fq2, Fq2, Fq2];
+
+// Pre-compute coefficients for sparse multiplication
+// Point addition and point double calculations is reused for coefficients
+export function calculatePrecomputes(x: Fq2, y: Fq2) {
+  //const [x, y] = this.toAffine();
+  const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
+  let [Rx, Ry, Rz] = [Qx, Qy, Qz];
+  let ell_coeff: EllCoefficients[] = [];
+  for (let i = BLS_X_LEN - 2; i >= 0; i--) {
+    // Double
+    let t0 = Ry.square(); // Ry^2
+    let t1 = Rz.square(); // Rz^2
+    let t2 = t1.multiply(3n).multiplyByB(); // 3 * T1 * B
+    let t3 = t2.multiply(3n); // 3 * T2
+    let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0); // (Ry + Rz)^2 - T1 - T0
+    ell_coeff.push([
+      t2.subtract(t0), // T2 - T0
+      Rx.square().multiply(3n), // 3 * Rx^2
+      t4.negate(), // -T4
+    ]);
+    Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n); // ((T0 - T3) * Rx * Ry) / 2
+    Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n)); // ((T0 + T3) / 2)^2 - 3 * T2^2
+    Rz = t0.multiply(t4); // T0 * T4
+    if (bitGet(CURVE.BLS_X, i)) {
+      // Addition
+      let t0 = Ry.subtract(Qy.multiply(Rz)); // Ry - Qy * Rz
+      let t1 = Rx.subtract(Qx.multiply(Rz)); // Rx - Qx * Rz
+      ell_coeff.push([
+        t0.multiply(Qx).subtract(t1.multiply(Qy)), // T0 * Qx - T1 * Qy
+        t0.negate(), // -T0
+        t1, // T1
+      ]);
+      let t2 = t1.square(); // T1^2
+      let t3 = t2.multiply(t1); // T2 * T1
+      let t4 = t2.multiply(Rx); // T2 * Rx
+      let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz)); // T3 - 4 * T4 + T0^2 * Rz
+      Rx = t1.multiply(t5); // T1 * T5
+      Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry)); // (T4 - T5) * T0 - T3 * Ry
+      Rz = Rz.multiply(t3); // Rz * T3
+    }
+  }
+  return ell_coeff;
+}
+
+export function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12 {
+  let f12 = Fq12.ONE;
+  const [x, y] = g1;
+  const [Px, Py] = [x as Fq, y as Fq];
+  for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
+    f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+    if (bitGet(CURVE.BLS_X, i)) {
+      j += 1;
+      f12 = f12.multiplyBy014(
+        ell[j][0],
+        ell[j][1].multiply(Px.value),
+        ell[j][2].multiply(Py.value)
+      );
+    }
+    if (i != 0) f12 = f12.square();
+  }
+  return f12.conjugate();
+}
+
+const ut_root = new Fq6([Fq2.ZERO, Fq2.ONE, Fq2.ZERO]);
+const wsq = new Fq12([ut_root, Fq6.ZERO]);
+const wsq_inv = wsq.invert();
+const wcu = new Fq12([Fq6.ZERO, ut_root]);
+const wcu_inv = wcu.invert();
+
+export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
+  //const [x, y] = P.toAffine();
+  // Untwist Fq2->Fq12 && frobenius(1) && twist back
+  const x2 = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
+  const y2 = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
+  return [x2, y2];
+}
+
+// 1 / F2(2)^((p - 1) / 3) in GF(p^2)
+export const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
+  return [x.multiply(PSI2_C1), y.negate()];
 }
 
 // Utilities for 3-isogeny map from E' to E.

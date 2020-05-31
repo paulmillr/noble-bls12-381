@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isogenyCoefficients = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.bitGet = exports.bitLen = exports.powMod = exports.mod = exports.BLS_X_LEN = exports.DST_LABEL = exports.CURVE = void 0;
+exports.isogenyCoefficients = exports.psi2 = exports.PSI2_C1 = exports.psi = exports.millerLoop = exports.calculatePrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.bitLen = exports.powMod = exports.mod = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -25,7 +25,7 @@ exports.CURVE = {
     h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-exports.BLS_X_LEN = bitLen(exports.CURVE.BLS_X);
+const BLS_X_LEN = bitLen(exports.CURVE.BLS_X);
 function mod(a, b) {
     const res = a % b;
     return res >= 0n ? res : b + res;
@@ -92,7 +92,6 @@ exports.bitLen = bitLen;
 function bitGet(n, pos) {
     return (n >> BigInt(pos)) & 1n;
 }
-exports.bitGet = bitGet;
 let Fq = (() => {
     class Fq {
         constructor(value) {
@@ -608,7 +607,7 @@ let Fq12 = (() => {
         }
         cyclotomicExp(n) {
             let z = Fq12.ONE;
-            for (let i = exports.BLS_X_LEN - 1; i >= 0; i--) {
+            for (let i = BLS_X_LEN - 1; i >= 0; i--) {
                 z = z.cyclotomicSquare();
                 if (bitGet(n, i))
                     z = z.multiply(this);
@@ -883,6 +882,165 @@ class ProjectivePoint {
     }
 }
 exports.ProjectivePoint = ProjectivePoint;
+function sgn0(x) {
+    const [x0, x1] = x.value;
+    const sign_0 = x0 % 2n;
+    const zero_0 = x0 === 0n;
+    const sign_1 = x1 % 2n;
+    return BigInt(sign_0 || (zero_0 && sign_1));
+}
+const P_MINUS_9_DIV_16 = (exports.CURVE.P ** 2n - 9n) / 16n;
+function sqrt_div_fq2(u, v) {
+    const uv7 = u.multiply(v.pow(7n));
+    const uv15 = uv7.multiply(v.pow(8n));
+    const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
+    let success = false;
+    let result = gamma;
+    const positiveRootsOfUnity = Fq2.ROOTS_OF_UNITY.slice(0, 4);
+    for (const root of positiveRootsOfUnity) {
+        const candidate = root.multiply(gamma);
+        if (candidate.pow(2n).multiply(v).subtract(u).isZero() && !success) {
+            success = true;
+            result = candidate;
+        }
+    }
+    return [success, result];
+}
+function map_to_curve_SSWU_G2(t) {
+    const iso_3_a = new Fq2([0n, 240n]);
+    const iso_3_b = new Fq2([1012n, 1012n]);
+    const iso_3_z = new Fq2([-2n, -1n]);
+    if (Array.isArray(t))
+        t = new Fq2(t);
+    const t2 = t.pow(2n);
+    const iso_3_z_t2 = iso_3_z.multiply(t2);
+    const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n));
+    let denominator = iso_3_a.multiply(ztzt).negate();
+    let numerator = iso_3_b.multiply(ztzt.add(Fq2.ONE));
+    if (denominator.isZero())
+        denominator = iso_3_z.multiply(iso_3_a);
+    let v = denominator.pow(3n);
+    let u = numerator
+        .pow(3n)
+        .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
+        .add(iso_3_b.multiply(v));
+    const [success, sqrtCandidateOrGamma] = sqrt_div_fq2(u, v);
+    let y;
+    if (success)
+        y = sqrtCandidateOrGamma;
+    const sqrtCandidateX1 = sqrtCandidateOrGamma.multiply(t.pow(3n));
+    u = iso_3_z_t2.pow(3n).multiply(u);
+    let success2 = false;
+    for (const eta of Fq2.ETAs) {
+        const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
+        const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
+        if (temp.isZero() && !success && !success2) {
+            y = etaSqrtCandidate;
+            success2 = true;
+        }
+    }
+    if (!success && !success2)
+        throw new Error('Hash to Curve - Optimized SWU failure');
+    if (success2)
+        numerator = numerator.multiply(iso_3_z_t2);
+    y = y;
+    if (sgn0(t) !== sgn0(y))
+        y = y.negate();
+    y = y.multiply(denominator);
+    return [numerator, y, denominator];
+}
+exports.map_to_curve_SSWU_G2 = map_to_curve_SSWU_G2;
+function isogenyMapG2(xyz) {
+    const [x, y, z] = xyz;
+    const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
+    const zPowers = [z, z.pow(2n), z.pow(3n)];
+    for (let i = 0; i < exports.isogenyCoefficients.length; i++) {
+        const k_i = exports.isogenyCoefficients[i];
+        mapped[i] = k_i.slice(-1)[0];
+        const arr = k_i.slice(0, -1).reverse();
+        for (let j = 0; j < arr.length; j++) {
+            const k_i_j = arr[j];
+            mapped[i] = mapped[i].multiply(x).add(zPowers[j].multiply(k_i_j));
+        }
+    }
+    mapped[2] = mapped[2].multiply(y);
+    mapped[3] = mapped[3].multiply(z);
+    const z2 = mapped[1].multiply(mapped[3]);
+    const x2 = mapped[0].multiply(mapped[3]);
+    const y2 = mapped[1].multiply(mapped[2]);
+    return [x2, y2, z2];
+}
+exports.isogenyMapG2 = isogenyMapG2;
+function calculatePrecomputes(x, y) {
+    const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
+    let [Rx, Ry, Rz] = [Qx, Qy, Qz];
+    let ell_coeff = [];
+    for (let i = BLS_X_LEN - 2; i >= 0; i--) {
+        let t0 = Ry.square();
+        let t1 = Rz.square();
+        let t2 = t1.multiply(3n).multiplyByB();
+        let t3 = t2.multiply(3n);
+        let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0);
+        ell_coeff.push([
+            t2.subtract(t0),
+            Rx.square().multiply(3n),
+            t4.negate(),
+        ]);
+        Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n);
+        Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n));
+        Rz = t0.multiply(t4);
+        if (bitGet(exports.CURVE.BLS_X, i)) {
+            let t0 = Ry.subtract(Qy.multiply(Rz));
+            let t1 = Rx.subtract(Qx.multiply(Rz));
+            ell_coeff.push([
+                t0.multiply(Qx).subtract(t1.multiply(Qy)),
+                t0.negate(),
+                t1,
+            ]);
+            let t2 = t1.square();
+            let t3 = t2.multiply(t1);
+            let t4 = t2.multiply(Rx);
+            let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz));
+            Rx = t1.multiply(t5);
+            Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry));
+            Rz = Rz.multiply(t3);
+        }
+    }
+    return ell_coeff;
+}
+exports.calculatePrecomputes = calculatePrecomputes;
+function millerLoop(ell, g1) {
+    let f12 = Fq12.ONE;
+    const [x, y] = g1;
+    const [Px, Py] = [x, y];
+    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
+        f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+        if (bitGet(exports.CURVE.BLS_X, i)) {
+            j += 1;
+            f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+        }
+        if (i != 0)
+            f12 = f12.square();
+    }
+    return f12.conjugate();
+}
+exports.millerLoop = millerLoop;
+const ut_root = new Fq6([Fq2.ZERO, Fq2.ONE, Fq2.ZERO]);
+const wsq = new Fq12([ut_root, Fq6.ZERO]);
+const wsq_inv = wsq.invert();
+const wcu = new Fq12([Fq6.ZERO, ut_root]);
+const wcu_inv = wcu.invert();
+function psi(x, y) {
+    const x2 = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
+    const y2 = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
+    return [x2, y2];
+}
+exports.psi = psi;
+exports.PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+function psi2(x, y) {
+    return [x.multiply(exports.PSI2_C1), y.negate()];
+}
+exports.psi2 = psi2;
 const xnum = [
     new Fq2([
         0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
