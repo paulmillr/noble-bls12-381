@@ -780,6 +780,7 @@ export class Fq12 implements Field<Fq12> {
     ];
   }
 
+  // https://eprint.iacr.org/2009/565.pdf
   private cyclotomicSquare(): Fq12 {
     const [c0, c1] = this.c;
     const [c0c0, c0c1, c0c2] = c0.c;
@@ -811,6 +812,8 @@ export class Fq12 implements Field<Fq12> {
     return z;
   }
 
+  // https://eprint.iacr.org/2010/354.pdf
+  // https://eprint.iacr.org/2009/565.pdf
   finalExponentiate() {
     // this^(q^6) / this
     let t0 = this.frobeniusMap(6).div(this);
