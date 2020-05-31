@@ -35,7 +35,6 @@ declare type FieldStatic<T extends Field<T>> = {
 };
 export declare function mod(a: bigint, b: bigint): bigint;
 export declare function powMod(a: bigint, power: bigint, m: bigint): bigint;
-export declare function bitLen(n: bigint): number;
 export declare class Fq implements Field<Fq> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
@@ -158,7 +157,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     readonly y: T;
     readonly z: T;
     private readonly C;
-    private multiply_precomputes;
+    private _MPRECOMPUTES;
     constructor(x: T, y: T, z: T, C: Constructor<T>);
     isZero(): boolean;
     getPoint<TT extends this>(x: T, y: T, z: T): TT;
@@ -184,10 +183,9 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
 export declare function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2];
 export declare function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2];
 declare type EllCoefficients = [Fq2, Fq2, Fq2];
-export declare function calculatePrecomputes(x: Fq2, y: Fq2): EllCoefficients[];
+export declare function calcPairingPrecomputes(x: Fq2, y: Fq2): EllCoefficients[];
 export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
 export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];
-export declare const PSI2_C1 = 4002409555221667392624310435006688643935503118305586438271171395842971157480381377015405980053539358417135540939436n;
 export declare function psi2(x: Fq2, y: Fq2): [Fq2, Fq2];
 declare type Numerators = [Fq2, Fq2, Fq2, Fq2];
 export declare const isogenyCoefficients: Numerators[];

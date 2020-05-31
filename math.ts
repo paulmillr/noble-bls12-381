@@ -122,7 +122,7 @@ function gen_inv_batch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] 
 }
 
 // Amount of bits inside bigint
-export function bitLen(n: bigint) {
+function bitLen(n: bigint) {
   let len;
   for (len = 0; n > 0n; n >>= 1n, len += 1);
   return len;
@@ -843,7 +843,7 @@ type Constructor<T extends Field<T>> = { new (...args: any[]): T } & FieldStatic
 
 // x=X/Z, y=Y/Z
 export abstract class ProjectivePoint<T extends Field<T>> {
-  private multiply_precomputes: undefined | [number, this[]];
+  private _MPRECOMPUTES: undefined | [number, this[]];
 
   constructor(
     public readonly x: T,
@@ -1021,18 +1021,18 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   calcMultiplyPrecomputes(W: number) {
-    if (this.multiply_precomputes) throw new Error('This point already has precomputes');
-    this.multiply_precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+    if (this._MPRECOMPUTES) throw new Error('This point already has precomputes');
+    this._MPRECOMPUTES = [W, this.normalizeZ(this.precomputeWindow(W))];
   }
 
   clearMultiplyPrecomputes() {
-    this.multiply_precomputes = undefined;
+    this._MPRECOMPUTES = undefined;
   }
 
   private wNAF(n: bigint): [this, this] {
     let W, precomputes;
-    if (this.multiply_precomputes) {
-      [W, precomputes] = this.multiply_precomputes;
+    if (this._MPRECOMPUTES) {
+      [W, precomputes] = this._MPRECOMPUTES;
     } else {
       W = 1;
       precomputes = this.precomputeWindow(W);
@@ -1207,7 +1207,7 @@ type EllCoefficients = [Fq2, Fq2, Fq2];
 
 // Pre-compute coefficients for sparse multiplication
 // Point addition and point double calculations is reused for coefficients
-export function calculatePrecomputes(x: Fq2, y: Fq2) {
+export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
   //const [x, y] = this.toAffine();
   const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
   let [Rx, Ry, Rz] = [Qx, Qy, Qz];
@@ -1282,7 +1282,7 @@ export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
 }
 
 // 1 / F2(2)^((p - 1) / 3) in GF(p^2)
-export const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
 export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }

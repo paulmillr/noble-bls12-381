@@ -22,6 +22,8 @@ function toHex(uint8a: Uint8Array): string {
 }
 
 describe("bls12-381", () => {
+  bls.PointG1.BASE.calcMultiplyPrecomputes(8);
+
   it("should compress and decompress G1 points", async () => {
     const priv = bls.PointG1.fromPrivateKey(42n);
     const publicKey = priv.toCompressedHex();

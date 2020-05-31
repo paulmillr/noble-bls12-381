@@ -9,28 +9,17 @@ import {
   Fq, Fq2, Fq12, ProjectivePoint,
   CURVE,
   map_to_curve_SSWU_G2, isogenyMapG2,
-  millerLoop, psi, psi2, calculatePrecomputes,
-  mod, powMod
+  millerLoop, psi, psi2, calcPairingPrecomputes,
+  mod, powMod,
+  BigintTwelve
 } from './math';
 
 const P = CURVE.P;
-//export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 type Bytes = Uint8Array | string;
-type Hash = Bytes;
 type PrivateKey = Bytes | bigint | number;
-type PublicKey = Bytes;
-type Signature = Bytes;
-
-// prettier-ignore
-export type BigintTwelve = [
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint
-];
-
-export { Fq, Fq2, Fq12, CURVE };
+export { Fq, Fq2, Fq12, CURVE, BigintTwelve };
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -229,7 +218,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
     super(x, y, z, Fq);
   }
 
-  static fromCompressedHex(hex: PublicKey) {
+  static fromCompressedHex(hex: Bytes) {
     const compressedValue = fromBytesBE(hex);
     const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
     if (bflag === 1n) {
@@ -298,14 +287,14 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   static BASE = new PointG2(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE);
   static ZERO = new PointG2(Fq2.ONE, Fq2.ONE, Fq2.ZERO);
 
-  private pairPrecomputes: EllCoefficients[] | undefined;
+  private _PPRECOMPUTES: EllCoefficients[] | undefined;
 
   constructor(x: Fq2, y: Fq2, z: Fq2) {
     super(x, y, z, Fq2);
   }
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
-  static async hashToCurve(msg: PublicKey) {
+  static async hashToCurve(msg: Bytes) {
     if (typeof msg === 'string') msg = hexToArray(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
@@ -317,7 +306,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return P;
   }
 
-  static fromSignature(hex: Signature): PointG2 {
+  static fromSignature(hex: Bytes): PointG2 {
     const half = hex.length / 2;
     const z1 = fromBytesBE(hex.slice(0, half));
     const z2 = fromBytesBE(hex.slice(half));
@@ -372,12 +361,13 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   clearPairingPrecomputes() {
-    this.pairPrecomputes = undefined;
+    this._PPRECOMPUTES = undefined;
   }
 
   pairingPrecomputes(): EllCoefficients[] {
-    if (this.pairPrecomputes) return this.pairPrecomputes;
-    return (this.pairPrecomputes = calculatePrecomputes(...this.toAffine())) as EllCoefficients[];
+    if (this._PPRECOMPUTES) return this._PPRECOMPUTES;
+    this._PPRECOMPUTES = calcPairingPrecomputes(...this.toAffine());
+    return this._PPRECOMPUTES;
   }
 }
 
@@ -396,18 +386,14 @@ export function getPublicKey(privateKey: PrivateKey) {
 }
 
 // S = pk x H(m)
-export async function sign(message: Hash, privateKey: PrivateKey): Promise<Uint8Array> {
+export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array> {
   const msgPoint = await PointG2.hashToCurve(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   return sigPoint.toSignature();
 }
 
 // e(P, H(m)) == e(G,S)
-export async function verify(
-  signature: Signature,
-  message: Hash,
-  publicKey: PublicKey
-): Promise<boolean> {
+export async function verify(signature: Bytes, message: Bytes, publicKey: Bytes): Promise<boolean> {
   const P = PointG1.fromCompressedHex(publicKey).negate();
   const Hm = await PointG2.hashToCurve(message);
   const G = PointG1.BASE;
@@ -420,14 +406,7 @@ export async function verify(
   return exp.equals(Fq12.ONE);
 }
 
-// function pairs(array: any[]) {
-//   return array.reduce((acc, curr, index) => {
-//     acc[index % 2].push(curr);
-//     return acc;
-//   }, [[], []]);
-// }
-
-export function aggregatePublicKeys(publicKeys: PublicKey[]) {
+export function aggregatePublicKeys(publicKeys: Bytes[]) {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   return publicKeys.reduce(
     (sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)),
@@ -436,7 +415,7 @@ export function aggregatePublicKeys(publicKeys: PublicKey[]) {
 }
 
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
-export function aggregateSignatures(signatures: Signature[]) {
+export function aggregateSignatures(signatures: Bytes[]) {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const aggregatedSignature = signatures.reduce(
     (sum, signature) => sum.add(PointG2.fromSignature(signature)),
@@ -445,7 +424,7 @@ export function aggregateSignatures(signatures: Signature[]) {
   return aggregatedSignature.toSignature();
 }
 
-export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], signature: Signature) {
+export async function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signature: Bytes) {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   try {

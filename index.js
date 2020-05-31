@@ -302,12 +302,13 @@ let PointG2 = (() => {
                 throw new Error('Invalid point: not on curve over Fq2');
         }
         clearPairingPrecomputes() {
-            this.pairPrecomputes = undefined;
+            this._PPRECOMPUTES = undefined;
         }
         pairingPrecomputes() {
-            if (this.pairPrecomputes)
-                return this.pairPrecomputes;
-            return (this.pairPrecomputes = math_1.calculatePrecomputes(...this.toAffine()));
+            if (this._PPRECOMPUTES)
+                return this._PPRECOMPUTES;
+            this._PPRECOMPUTES = math_1.calcPairingPrecomputes(...this.toAffine());
+            return this._PPRECOMPUTES;
         }
     }
     PointG2.BASE = new PointG2(new math_1.Fq2(math_1.CURVE.G2x), new math_1.Fq2(math_1.CURVE.G2y), math_1.Fq2.ONE);

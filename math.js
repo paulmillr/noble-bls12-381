@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isogenyCoefficients = exports.psi2 = exports.PSI2_C1 = exports.psi = exports.millerLoop = exports.calculatePrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.bitLen = exports.powMod = exports.mod = exports.DST_LABEL = exports.CURVE = void 0;
+exports.isogenyCoefficients = exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.powMod = exports.mod = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -88,7 +88,6 @@ function bitLen(n) {
         ;
     return len;
 }
-exports.bitLen = bitLen;
 function bitGet(n, pos) {
     return (n >> BigInt(pos)) & 1n;
 }
@@ -828,17 +827,17 @@ class ProjectivePoint {
         return points;
     }
     calcMultiplyPrecomputes(W) {
-        if (this.multiply_precomputes)
+        if (this._MPRECOMPUTES)
             throw new Error('This point already has precomputes');
-        this.multiply_precomputes = [W, this.normalizeZ(this.precomputeWindow(W))];
+        this._MPRECOMPUTES = [W, this.normalizeZ(this.precomputeWindow(W))];
     }
     clearMultiplyPrecomputes() {
-        this.multiply_precomputes = undefined;
+        this._MPRECOMPUTES = undefined;
     }
     wNAF(n) {
         let W, precomputes;
-        if (this.multiply_precomputes) {
-            [W, precomputes] = this.multiply_precomputes;
+        if (this._MPRECOMPUTES) {
+            [W, precomputes] = this._MPRECOMPUTES;
         }
         else {
             W = 1;
@@ -971,7 +970,7 @@ function isogenyMapG2(xyz) {
     return [x2, y2, z2];
 }
 exports.isogenyMapG2 = isogenyMapG2;
-function calculatePrecomputes(x, y) {
+function calcPairingPrecomputes(x, y) {
     const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
     let [Rx, Ry, Rz] = [Qx, Qy, Qz];
     let ell_coeff = [];
@@ -1008,7 +1007,7 @@ function calculatePrecomputes(x, y) {
     }
     return ell_coeff;
 }
-exports.calculatePrecomputes = calculatePrecomputes;
+exports.calcPairingPrecomputes = calcPairingPrecomputes;
 function millerLoop(ell, g1) {
     let f12 = Fq12.ONE;
     const [x, y] = g1;
@@ -1036,9 +1035,9 @@ function psi(x, y) {
     return [x2, y2];
 }
 exports.psi = psi;
-exports.PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
 function psi2(x, y) {
-    return [x.multiply(exports.PSI2_C1), y.negate()];
+    return [x.multiply(PSI2_C1), y.negate()];
 }
 exports.psi2 = psi2;
 const xnum = [
