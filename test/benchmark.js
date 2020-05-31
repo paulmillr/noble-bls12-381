@@ -1,5 +1,5 @@
 const { run, mark, logMem } = require('micro-bmark');
-const bls = require('..');
+let bls;
 
 run(async () => {
   // warm-up
@@ -26,6 +26,9 @@ run(async () => {
   // console.log(`signed ${toHex(signed)}`);
 
   //await mark('sign', 1, async () => await bls.hashToG2('0abc', '424c53313233383147325f584d443a5348412d3235365f535357555f524f5f5445535447454e'));
+  await mark('init', 1, () => {
+    bls = require('..');
+  });
   await mark('getPublicKey(small)', 1000, () => bls.getPublicKey('1'));
   await mark('getPublicKey(big)', 1000, () =>
     bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')

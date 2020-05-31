@@ -32,7 +32,7 @@ export const CURVE = {
     0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
   ],
   b2: [4n, 4n],
-  // The BLS parameter x for BLS12-381 
+  // The BLS parameter x for BLS12-381
   BLS_X: 0xd201000000010000n,
 };
 
@@ -122,7 +122,7 @@ function bitLen(n: bigint) {
   return len;
 }
 
-// Get single bit from bigint at pos 
+// Get single bit from bigint at pos
 function bitGet(n: bigint, pos: number) {
   return n >> BigInt(pos) & 1n;
 }
@@ -423,7 +423,7 @@ export class Fq6 implements Field<Fq6> {
   square() {
     let { c0, c1, c2 } = this;
     let t0 = c0.square(); // c0^2
-    let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1 
+    let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1
     let t3 = c1.multiply(c2).multiply(2n); // 2 * c1 * c2
     let t4 = c2.square(); // c2^2
     return new Fq6(t3.mulByNonresidue().add(t0), // T3 * (u + 1) + T0
@@ -737,7 +737,7 @@ abstract class ProjectivePoint<T extends Field<T>> {
     return p;
   }
 
-  // Should be not more than curve order, but I cannot find it. 
+  // Should be not more than curve order, but I cannot find it.
   // Curve order cannot be more than Group/Field order, so let's use it.
   private maxBits() {
     return this.C.MAX_BITS;
@@ -817,7 +817,7 @@ abstract class ProjectivePoint<T extends Field<T>> {
     return [p, f];
   }
 
-  // Constant time multiplication. Uses wNAF. 
+  // Constant time multiplication. Uses wNAF.
   multiply(scalar: number | bigint | Fq): this {
     let n = scalar;
     if (n instanceof Fq) n = n.value;
@@ -1520,3 +1520,5 @@ export async function verifyBatch(messages: Hash[], publicKeys: PublicKey[], sig
     return false;
   }
 }
+
+PointG1.BASE.calcMultiplyPrecomputes(4);

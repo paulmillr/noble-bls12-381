@@ -194,7 +194,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     static ZERO: PointG2;
     private pair_precomputes;
     constructor(x: Fq2, y: Fq2, z: Fq2);
-    static hashToCurve(msg: PublicKey, unsafe?: boolean): Promise<PointG2>;
+    static hashToCurve(msg: PublicKey): Promise<PointG2>;
     static fromSignature(hex: Signature): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;

@@ -1038,22 +1038,22 @@ let PointG1 = (() => {
 })();
 exports.PointG1 = PointG1;
 const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
-function clearCofactorG2(P, unsafe = false) {
-    return unsafe ? P.multiplyUnsafe(H_EFF) : P.multiply(H_EFF);
+function clearCofactorG2(P) {
+    return P.multiplyUnsafe(H_EFF);
 }
 let PointG2 = (() => {
     class PointG2 extends ProjectivePoint {
         constructor(x, y, z) {
             super(x, y, z, Fq2);
         }
-        static async hashToCurve(msg, unsafe = false) {
+        static async hashToCurve(msg) {
             if (typeof msg === 'string')
                 msg = hexToArray(msg);
             const u = await hash_to_field(msg, 2);
             const Q0 = isogenyMapG2(map_to_curve_SSWU_G2(u[0]));
             const Q1 = isogenyMapG2(map_to_curve_SSWU_G2(u[1]));
             const R = Q0.add(Q1);
-            const P = clearCofactorG2(R, unsafe);
+            const P = clearCofactorG2(R);
             return P;
         }
         static fromSignature(hex) {
@@ -1171,14 +1171,14 @@ function getPublicKey(privateKey) {
 }
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
-    const msgPoint = await PointG2.hashToCurve(message, true);
+    const msgPoint = await PointG2.hashToCurve(message);
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
     return sigPoint.toSignature();
 }
 exports.sign = sign;
 async function verify(signature, message, publicKey) {
     const P = PointG1.fromCompressedHex(publicKey).negate();
-    const Hm = await PointG2.hashToCurve(message, true);
+    const Hm = await PointG2.hashToCurve(message);
     const G = PointG1.BASE;
     const S = PointG2.fromSignature(signature);
     const ePHm = pairing(P, Hm, false);
@@ -1211,7 +1211,7 @@ async function verifyBatch(messages, publicKeys, signature) {
             const groupPublicKey = messages.reduce((groupPublicKey, m, i) => m !== message
                 ? groupPublicKey
                 : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])), PointG1.ZERO);
-            const msg = await PointG2.hashToCurve(message, true);
+            const msg = await PointG2.hashToCurve(message);
             producer = producer.multiply(pairing(groupPublicKey, msg, false));
         }
         const sig = PointG2.fromSignature(signature);
@@ -1224,3 +1224,4 @@ async function verifyBatch(messages, publicKeys, signature) {
     }
 }
 exports.verifyBatch = verifyBatch;
+PointG1.BASE.calcMultiplyPrecomputes(4);

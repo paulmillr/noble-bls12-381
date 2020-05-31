@@ -198,14 +198,17 @@ Formulas:
 
 ## Speed
 
-The library is pretty slow right now, but it's still good enough for many everyday cases. The benchmarks:
+Pairing performance is the fastest of all pure-scripting-language implementations. That includes js, python, etc.
 
 ```
-getPublicKey x 253 ops/sec @ 3ms/op
-sign x 12 ops/sec @ 78ms/op
-aggregateSignatures x 143 ops/sec @ 6ms/op
-verify x 0 ops/sec @ 1025ms/op
-pairing x 1 ops/sec @ 878ms/op
+init x 46 ops/sec @ 21ms/op
+getPublicKey(small) x 1273 ops/sec @ 785μs/op
+getPublicKey(big) x 1124 ops/sec @ 889μs/op
+sign x 11 ops/sec @ 90ms/op
+aggregateSignatures x 187 ops/sec @ 5ms/op
+verify x 15 ops/sec @ 66ms/op
+pairing (batch) x 60 ops/sec @ 16ms/op
+pairing (single) x 53 ops/sec @ 18ms/op
 ```
 
 ## Security
@@ -218,6 +221,17 @@ We're using built-in JS `BigInt`, which is "unsuitable for use in cryptography" 
 2. Which means *any other JS library doesn't use constant-time bigints*. Including bn.js or anything else. Even statically typed Rust, a language without GC, [makes it harder to achieve constant-time](https://www.chosenplaintext.ca/open-source/rust-timing-shield/security) for some cases.
 3. If your goal is absolute security, don't use any JS lib — including bindings to native ones. Use low-level libraries & languages.
 4. We however consider infrastructure attacks like rogue NPM modules very important; that's why it's crucial to minimize the amount of 3rd-party dependencies & native bindings. If your app uses 500 dependencies, any dep could get hacked and you'll be downloading rootkits with every `npm install`. Our goal is to minimize this attack vector.
+
+## Contributing
+
+Check out a blog post about this library: [Learning fast elliptic-curve cryptography in JS](https://paulmillr.com/posts/noble-secp256k1-fast-ecc/).
+
+1. Clone the repository.
+2. `npm install` to install build dependencies like TypeScript
+3. `npm run compile` to compile TypeScript code
+4. `npm run test` to run jest on `test/index.ts`
+
+Special thanks to [Roman Koblov](https://github.com/romankoblov), who have helped to improve pairing speed.
 
 ## License
 
