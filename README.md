@@ -200,14 +200,12 @@ Formulas:
 Pairing performance is the fastest of all pure-scripting-language implementations. That includes js, python, etc.
 
 ```
-init x 46 ops/sec @ 21ms/op
-getPublicKey(small) x 1273 ops/sec @ 785μs/op
-getPublicKey(big) x 1124 ops/sec @ 889μs/op
-sign x 11 ops/sec @ 90ms/op
-aggregateSignatures x 187 ops/sec @ 5ms/op
-verify x 15 ops/sec @ 66ms/op
-pairing (batch) x 60 ops/sec @ 16ms/op
-pairing (single) x 53 ops/sec @ 18ms/op
+getPublicKey x 1080 ops/sec @ 925μs/op
+sign x 14 ops/sec @ 70ms/op
+aggregateSignatures x 201 ops/sec @ 4ms/op
+verify x 22 ops/sec @ 44ms/op
+pairing (batch) x 54 ops/sec @ 18ms/op
+pairing (single) x 48 ops/sec @ 20ms/op
 ```
 
 ## Security

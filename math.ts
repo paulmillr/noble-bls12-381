@@ -15,7 +15,7 @@ export const CURVE = {
   // G^2 - 1
   P2:
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
-    2n -
+      2n -
     1n,
   h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
   G2x: [
@@ -29,7 +29,7 @@ export const CURVE = {
   b2: [4n, 4n],
   // The BLS parameter x for BLS12-381
   BLS_X: 0xd201000000010000n,
-  h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n
+  h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
@@ -833,9 +833,9 @@ export class Fq12 implements Field<Fq12> {
   }
 }
 
-type Constructor<T extends Field<T>> = { new(...args: any[]): T } & FieldStatic<T> & {
-  MAX_BITS: number;
-};
+type Constructor<T extends Field<T>> = { new (...args: any[]): T } & FieldStatic<T> & {
+    MAX_BITS: number;
+  };
 //type PointConstructor<TT extends Field<T>, T extends ProjectivePoint<TT>> = { new(...args: any[]): T };
 
 // x=X/Z, y=Y/Z
@@ -847,7 +847,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     public readonly y: T,
     public readonly z: T,
     private readonly C: Constructor<T>
-  ) { }
+  ) {}
 
   isZero() {
     return this.z.isZero();
@@ -1084,7 +1084,6 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     return this.wNAF(n)[0];
   }
 }
-
 
 // Utilities for 3-isogeny map from E' to E.
 type Numerators = [Fq2, Fq2, Fq2, Fq2];

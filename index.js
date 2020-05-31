@@ -28,7 +28,7 @@ exports.utils = {
         else {
             throw new Error("The environment doesn't have sha256 function");
         }
-    }
+    },
 };
 function fromHexBE(hex) {
     return BigInt(`0x${hex}`);
@@ -345,7 +345,11 @@ function psi2(P) {
 function clearCofactorG2(P) {
     let t1 = P.multiplyUnsafe(math_1.CURVE.BLS_X).negate();
     let t2 = psi(P);
-    return psi2(P.double()).subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.BLS_X).negate()).subtract(t1).subtract(P);
+    return psi2(P.double())
+        .subtract(t2)
+        .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.BLS_X).negate())
+        .subtract(t1)
+        .subtract(P);
 }
 exports.clearCofactorG2 = clearCofactorG2;
 let PointG2 = (() => {

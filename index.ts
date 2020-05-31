@@ -4,7 +4,10 @@
 // We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
 'use strict';
 
-import { Fq, Fq2, Fq6, Fq12, ProjectivePoint, CURVE, BLS_X_LEN, bitGet, mod, powMod, isogenyCoefficients } from './math';
+// prettier-ignore
+import {
+  Fq, Fq2, Fq6, Fq12, ProjectivePoint, CURVE, BLS_X_LEN, bitGet, mod, powMod, isogenyCoefficients
+} from './math';
 
 const P = CURVE.P;
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
@@ -50,8 +53,8 @@ export const utils = {
     } else {
       throw new Error("The environment doesn't have sha256 function");
     }
-  }
-}
+  },
+};
 
 function fromHexBE(hex: string) {
   return BigInt(`0x${hex}`);
@@ -62,7 +65,7 @@ function fromBytesBE(bytes: Bytes) {
     return fromHexBE(bytes);
   }
   let value = 0n;
-  for (let i = bytes.length - 1, j = 0; i >= 0; i-- , j++) {
+  for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
     value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
   }
   return value;
@@ -161,7 +164,6 @@ function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
   }
   return arr;
 }
-
 
 // 3-isogeny map from E' to E
 // Converts from Jacobi (xyz) to Projective (xyz) coordinates.
@@ -392,7 +394,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
     let [x, y] = this.toAffine();
     let [Px, Py] = [x as Fq, y as Fq];
 
-    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i-- , j++) {
+    for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
       f12 = f12.multiplyBy014(
         ell[j][0],
         ell[j][1].multiply(Px.value),
@@ -415,7 +417,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
 const ut_root = new Fq6([Fq2.ZERO, Fq2.ONE, Fq2.ZERO]);
 const wsq = new Fq12([ut_root, Fq6.ZERO]);
 const wsq_inv = wsq.invert();
-const wcu = new Fq12([Fq6.ZERO, ut_root])
+const wcu = new Fq12([Fq6.ZERO, ut_root]);
 const wcu_inv = wcu.invert();
 
 function psi(P: PointG2) {
@@ -438,7 +440,11 @@ export function clearCofactorG2(P: PointG2) {
   let t1 = P.multiplyUnsafe(CURVE.BLS_X).negate();
   let t2 = psi(P);
   // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
-  return psi2(P.double()).subtract(t2).add(t1.add(t2).multiplyUnsafe(CURVE.BLS_X).negate()).subtract(t1).subtract(P);
+  return psi2(P.double())
+    .subtract(t2)
+    .add(t1.add(t2).multiplyUnsafe(CURVE.BLS_X).negate())
+    .subtract(t1)
+    .subtract(P);
 }
 
 type EllCoefficients = [Fq2, Fq2, Fq2];

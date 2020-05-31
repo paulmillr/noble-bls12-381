@@ -29,8 +29,8 @@ run(async () => {
   await mark('init', 1, () => {
     bls = require('..');
   });
-  await mark('getPublicKey(small)', 1000, () => bls.getPublicKey('1'));
-  await mark('getPublicKey(big)', 1000, () =>
+  await mark('getPublicKey (1-bit)', 1000, () => bls.getPublicKey('1'));
+  await mark('getPublicKey', 1000, () =>
     bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')
   );
   await mark(
