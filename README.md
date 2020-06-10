@@ -31,6 +31,8 @@ Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-38
 
 ## Usage
 
+Node.js and browser:
+
 > npm install noble-bls12-381
 
 ```js
@@ -63,6 +65,13 @@ const msg = 'hello';
   const aggSignature2 = await bls.aggregateSignatures(signatures);
   const isCorrect3 = await bls.verifyMultiple(signature, messages, publicKeys);
 })();
+```
+
+Deno:
+
+```typescript
+import * as bls from "https://deno.land/x/bls12_381/mod.ts";
+const publicKey = bls.getPublicKey("18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4");
 ```
 
 ## API
@@ -170,9 +179,9 @@ bls.CURVE.Gy
 // y = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582, 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
 
 // Classes
-bls.Fp // Subgroup
-bls.Fp2 // 2-dimensional number
-bls.Fp12
+bls.Fq
+bls.Fq2
+bls.Fq12
 bls.G1Point
 bls.G2Point
 bls.G12Point
@@ -226,8 +235,6 @@ We're using built-in JS `BigInt`, which is "unsuitable for use in cryptography" 
 4. We however consider infrastructure attacks like rogue NPM modules very important; that's why it's crucial to minimize the amount of 3rd-party dependencies & native bindings. If your app uses 500 dependencies, any dep could get hacked and you'll be downloading rootkits with every `npm install`. Our goal is to minimize this attack vector.
 
 ## Contributing
-
-Check out a blog post about this library: [Learning fast elliptic-curve cryptography in JS](https://paulmillr.com/posts/noble-secp256k1-fast-ecc/).
 
 1. Clone the repository.
 2. `npm install` to install build dependencies like TypeScript
