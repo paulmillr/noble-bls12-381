@@ -262,13 +262,13 @@ export class PointG1 extends ProjectivePoint<Fq> {
 
 export function clearCofactorG2(P: PointG2) {
   // BLS_X is negative number
-  const t1 = P.multiplyUnsafe(CURVE.BLS_X).negate();
+  const t1 = P.multiplyUnsafe(CURVE.x).negate();
   const t2 = P.fromAffineTuple(psi(...P.toAffine()));
   // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
   const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
   return p2
     .subtract(t2)
-    .add(t1.add(t2).multiplyUnsafe(CURVE.BLS_X).negate())
+    .add(t1.add(t2).multiplyUnsafe(CURVE.x).negate())
     .subtract(t1)
     .subtract(P);
 }

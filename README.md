@@ -201,7 +201,7 @@ Formulas:
 
 **The fastest implementation written in a scripting language** (js, python etc). Has all possible optimizations, like:
 
-- cyclotomatic exponentation
+- cyclotomic exponentation
 - frobenius coefficients
 - endomorphism for clearing cofactor
 

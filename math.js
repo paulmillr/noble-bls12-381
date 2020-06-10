@@ -21,11 +21,11 @@ exports.CURVE = {
         0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben,
     ],
     b2: [4n, 4n],
-    BLS_X: 0xd201000000010000n,
+    x: 0xd201000000010000n,
     h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-const BLS_X_LEN = bitLen(exports.CURVE.BLS_X);
+const BLS_X_LEN = bitLen(exports.CURVE.x);
 function mod(a, b) {
     const res = a % b;
     return res >= 0n ? res : b + res;
@@ -557,17 +557,17 @@ let Fq12 = (() => {
         finalExponentiate() {
             let t0 = this.frobeniusMap(6).div(this);
             let t1 = t0.frobeniusMap(2).multiply(t0);
-            let t2 = t1.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
+            let t2 = t1.cyclotomicExp(exports.CURVE.x).conjugate();
             let t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
-            let t4 = t3.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
-            let t5 = t4.cyclotomicExp(exports.CURVE.BLS_X).conjugate();
-            let t6 = t5.cyclotomicExp(exports.CURVE.BLS_X).conjugate().multiply(t2.cyclotomicSquare());
+            let t4 = t3.cyclotomicExp(exports.CURVE.x).conjugate();
+            let t5 = t4.cyclotomicExp(exports.CURVE.x).conjugate();
+            let t6 = t5.cyclotomicExp(exports.CURVE.x).conjugate().multiply(t2.cyclotomicSquare());
             return t2
                 .multiply(t5)
                 .frobeniusMap(2)
                 .multiply(t4.multiply(t1).frobeniusMap(3))
                 .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
-                .multiply(t6.cyclotomicExp(exports.CURVE.BLS_X).conjugate())
+                .multiply(t6.cyclotomicExp(exports.CURVE.x).conjugate())
                 .multiply(t3.conjugate())
                 .multiply(t1);
         }
@@ -929,7 +929,7 @@ function calcPairingPrecomputes(x, y) {
         Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n);
         Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n));
         Rz = t0.multiply(t4);
-        if (bitGet(exports.CURVE.BLS_X, i)) {
+        if (bitGet(exports.CURVE.x, i)) {
             let t0 = Ry.subtract(Qy.multiply(Rz));
             let t1 = Rx.subtract(Qx.multiply(Rz));
             ell_coeff.push([
@@ -955,7 +955,7 @@ function millerLoop(ell, g1) {
     const [Px, Py] = [x, y];
     for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
         f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
-        if (bitGet(exports.CURVE.BLS_X, i)) {
+        if (bitGet(exports.CURVE.x, i)) {
             j += 1;
             f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
         }

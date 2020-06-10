@@ -224,12 +224,12 @@ let PointG1 = (() => {
 })();
 exports.PointG1 = PointG1;
 function clearCofactorG2(P) {
-    const t1 = P.multiplyUnsafe(math_1.CURVE.BLS_X).negate();
+    const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
     const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
     const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
     return p2
         .subtract(t2)
-        .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.BLS_X).negate())
+        .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
         .subtract(t1)
         .subtract(P);
 }

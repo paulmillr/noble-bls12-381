@@ -10,7 +10,7 @@ export declare const CURVE: {
     G2x: bigint[];
     G2y: bigint[];
     b2: bigint[];
-    BLS_X: bigint;
+    x: bigint;
     h_eff: bigint;
 };
 export declare let DST_LABEL: string;

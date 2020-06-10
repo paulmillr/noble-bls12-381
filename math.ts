@@ -36,13 +36,13 @@ export const CURVE = {
   ],
   b2: [4n, 4n],
   // The BLS parameter x for BLS12-381
-  BLS_X: 0xd201000000010000n,
+  x: 0xd201000000010000n,
   h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 
 //export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-const BLS_X_LEN = bitLen(CURVE.BLS_X);
+const BLS_X_LEN = bitLen(CURVE.x);
 
 type BigintTuple = [bigint, bigint];
 
@@ -735,18 +735,18 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     let t0 = this.frobeniusMap(6).div(this);
     // t0^(q^2) * t0
     let t1 = t0.frobeniusMap(2).multiply(t0);
-    let t2 = t1.cyclotomicExp(CURVE.BLS_X).conjugate();
+    let t2 = t1.cyclotomicExp(CURVE.x).conjugate();
     let t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
-    let t4 = t3.cyclotomicExp(CURVE.BLS_X).conjugate();
-    let t5 = t4.cyclotomicExp(CURVE.BLS_X).conjugate();
-    let t6 = t5.cyclotomicExp(CURVE.BLS_X).conjugate().multiply(t2.cyclotomicSquare());
+    let t4 = t3.cyclotomicExp(CURVE.x).conjugate();
+    let t5 = t4.cyclotomicExp(CURVE.x).conjugate();
+    let t6 = t5.cyclotomicExp(CURVE.x).conjugate().multiply(t2.cyclotomicSquare());
     // (t2 * t5)^(q^2) * (t4 * t1)^(q^3) * (t6 * (t1.conj))^(q^1) * (t6^X).conj * t3.conj * t1
     return t2
       .multiply(t5)
       .frobeniusMap(2)
       .multiply(t4.multiply(t1).frobeniusMap(3))
       .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
-      .multiply(t6.cyclotomicExp(CURVE.BLS_X).conjugate())
+      .multiply(t6.cyclotomicExp(CURVE.x).conjugate())
       .multiply(t3.conjugate())
       .multiply(t1);
   }
@@ -1143,7 +1143,7 @@ export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
     Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n); // ((T0 - T3) * Rx * Ry) / 2
     Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n)); // ((T0 + T3) / 2)^2 - 3 * T2^2
     Rz = t0.multiply(t4); // T0 * T4
-    if (bitGet(CURVE.BLS_X, i)) {
+    if (bitGet(CURVE.x, i)) {
       // Addition
       let t0 = Ry.subtract(Qy.multiply(Rz)); // Ry - Qy * Rz
       let t1 = Rx.subtract(Qx.multiply(Rz)); // Rx - Qx * Rz
@@ -1170,7 +1170,7 @@ export function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12 {
   const [Px, Py] = [x as Fq, y as Fq];
   for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
     f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
-    if (bitGet(CURVE.BLS_X, i)) {
+    if (bitGet(CURVE.x, i)) {
       j += 1;
       f12 = f12.multiplyBy014(
         ell[j][0],
