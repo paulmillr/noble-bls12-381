@@ -67,13 +67,6 @@ const msg = 'hello';
 })();
 ```
 
-Deno:
-
-```typescript
-import * as bls from "https://deno.land/x/bls12_381/mod.ts";
-const publicKey = bls.getPublicKey("18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4");
-```
-
 ## API
 
 - [`getPublicKey(privateKey)`](#getpublickeyprivatekey)
