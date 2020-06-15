@@ -46,13 +46,13 @@ export const utils = {
   },
 };
 
-function fromHexBE(hex: string) {
+function hexToNumberBE(hex: string) {
   return BigInt(`0x${hex}`);
 }
 
-function fromBytesBE(bytes: Bytes) {
+function bytesToNumberBE(bytes: Bytes) {
   if (typeof bytes === 'string') {
-    return fromHexBE(bytes);
+    return hexToNumberBE(bytes);
   }
   let value = 0n;
   for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
@@ -69,7 +69,7 @@ function padStart(bytes: Uint8Array, count: number, element: number) {
   const elements = Array(diff)
     .fill(element)
     .map((i: number) => i);
-  return concatTypedArrays(new Uint8Array(elements), bytes);
+  return concatBytes(new Uint8Array(elements), bytes);
 }
 
 function toBytesBE(num: bigint | number | string, padding: number = 0) {
@@ -84,13 +84,13 @@ function toBytesBE(num: bigint | number | string, padding: number = 0) {
 }
 
 function toBigInt(num: string | Uint8Array | bigint | number) {
-  if (typeof num === 'string') return fromHexBE(num);
+  if (typeof num === 'string') return hexToNumberBE(num);
   if (typeof num === 'number') return BigInt(num);
-  if (num instanceof Uint8Array) return fromBytesBE(num);
+  if (num instanceof Uint8Array) return bytesToNumberBE(num);
   return num;
 }
 
-function hexToArray(hex: string) {
+function hexToBytes(hex: string) {
   if (!hex.length) return new Uint8Array([]);
   hex = hex.length & 1 ? `0${hex}` : hex;
   const len = hex.length;
@@ -101,10 +101,10 @@ function hexToArray(hex: string) {
   return result;
 }
 
-function concatTypedArrays(...bytes: Bytes[]) {
+function concatBytes(...bytes: Bytes[]) {
   return new Uint8Array(
     bytes.reduce((res: number[], bytesView: Bytes) => {
-      bytesView = bytesView instanceof Uint8Array ? bytesView : hexToArray(bytesView);
+      bytesView = bytesView instanceof Uint8Array ? bytesView : hexToBytes(bytesView);
       return [...res, ...bytesView];
     }, [])
   );
@@ -118,7 +118,7 @@ function stringToBytes(str: string) {
   return bytes;
 }
 
-function os2ip(bytes: Uint8Array) {
+function os2ip(bytes: Uint8Array): bigint {
   let result = 0n;
   for (let i = 0; i < bytes.length; i++) {
     result <<= 8n;
@@ -127,7 +127,7 @@ function os2ip(bytes: Uint8Array) {
   return result;
 }
 
-function i2osp(value: number, length: number) {
+function i2osp(value: number, length: number): Uint8Array {
   if (value < 0 || value >= 1 << (8 * length)) {
     throw new Error(`bad I2OSP call: value=${value} length=${length}`);
   }
@@ -158,17 +158,17 @@ async function expand_message_xmd(
 
   const ell = Math.ceil(len_in_bytes / b_in_bytes);
   if (ell > 255) throw new Error('Invalid xmd length');
-  const DST_prime = concatTypedArrays(DST, i2osp(DST.length, 1));
+  const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
   const Z_pad = i2osp(0, r_in_bytes);
   const l_i_b_str = i2osp(len_in_bytes, 2);
   const b = new Array<Uint8Array>(ell);
-  const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
-  b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
+  const b_0 = await H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
+  b[0] = await H(concatBytes(b_0, i2osp(1, 1), DST_prime));
   for (let i = 1; i <= ell; i++) {
     const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
-    b[i] = await H(concatTypedArrays(...args));
+    b[i] = await H(concatBytes(...args));
   }
-  const pseudo_random_bytes = concatTypedArrays(...b);
+  const pseudo_random_bytes = concatBytes(...b);
   return pseudo_random_bytes.slice(0, len_in_bytes);
 }
 
@@ -211,7 +211,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   static fromCompressedHex(hex: Bytes) {
-    const compressedValue = fromBytesBE(hex);
+    const compressedValue = bytesToNumberBE(hex);
     const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
     if (bflag === 1n) {
       return this.ZERO;
@@ -287,7 +287,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
-    if (typeof msg === 'string') msg = hexToArray(msg);
+    if (typeof msg === 'string') msg = hexToBytes(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
@@ -300,8 +300,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   static fromSignature(hex: Bytes): PointG2 {
     const half = hex.length / 2;
-    const z1 = fromBytesBE(hex.slice(0, half));
-    const z2 = fromBytesBE(hex.slice(half));
+    const z1 = bytesToNumberBE(hex.slice(0, half));
+    const z2 = bytesToNumberBE(hex.slice(half));
 
     // indicates the infinity point
     const bflag1 = mod(z1, POW_2_383) / POW_2_382;
@@ -332,7 +332,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   toSignature() {
     if (this.equals(PointG2.ZERO)) {
       const sum = POW_2_383 + POW_2_382;
-      return concatTypedArrays(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
+      return concatBytes(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
     }
     this.assertValidity();
     const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
@@ -340,7 +340,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
     const z2 = x0;
-    return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
+    return concatBytes(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
   }
 
   assertValidity() {

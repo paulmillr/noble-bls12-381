@@ -30,12 +30,12 @@ exports.utils = {
         }
     },
 };
-function fromHexBE(hex) {
+function hexToNumberBE(hex) {
     return BigInt(`0x${hex}`);
 }
-function fromBytesBE(bytes) {
+function bytesToNumberBE(bytes) {
     if (typeof bytes === 'string') {
-        return fromHexBE(bytes);
+        return hexToNumberBE(bytes);
     }
     let value = 0n;
     for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
@@ -51,7 +51,7 @@ function padStart(bytes, count, element) {
     const elements = Array(diff)
         .fill(element)
         .map((i) => i);
-    return concatTypedArrays(new Uint8Array(elements), bytes);
+    return concatBytes(new Uint8Array(elements), bytes);
 }
 function toBytesBE(num, padding = 0) {
     let hex = typeof num === 'string' ? num : num.toString(16);
@@ -65,14 +65,14 @@ function toBytesBE(num, padding = 0) {
 }
 function toBigInt(num) {
     if (typeof num === 'string')
-        return fromHexBE(num);
+        return hexToNumberBE(num);
     if (typeof num === 'number')
         return BigInt(num);
     if (num instanceof Uint8Array)
-        return fromBytesBE(num);
+        return bytesToNumberBE(num);
     return num;
 }
-function hexToArray(hex) {
+function hexToBytes(hex) {
     if (!hex.length)
         return new Uint8Array([]);
     hex = hex.length & 1 ? `0${hex}` : hex;
@@ -83,9 +83,9 @@ function hexToArray(hex) {
     }
     return result;
 }
-function concatTypedArrays(...bytes) {
+function concatBytes(...bytes) {
     return new Uint8Array(bytes.reduce((res, bytesView) => {
-        bytesView = bytesView instanceof Uint8Array ? bytesView : hexToArray(bytesView);
+        bytesView = bytesView instanceof Uint8Array ? bytesView : hexToBytes(bytesView);
         return [...res, ...bytesView];
     }, []));
 }
@@ -129,17 +129,17 @@ async function expand_message_xmd(msg, DST, len_in_bytes) {
     const ell = Math.ceil(len_in_bytes / b_in_bytes);
     if (ell > 255)
         throw new Error('Invalid xmd length');
-    const DST_prime = concatTypedArrays(DST, i2osp(DST.length, 1));
+    const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
     const Z_pad = i2osp(0, r_in_bytes);
     const l_i_b_str = i2osp(len_in_bytes, 2);
     const b = new Array(ell);
-    const b_0 = await H(concatTypedArrays(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
-    b[0] = await H(concatTypedArrays(b_0, i2osp(1, 1), DST_prime));
+    const b_0 = await H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
+    b[0] = await H(concatBytes(b_0, i2osp(1, 1), DST_prime));
     for (let i = 1; i <= ell; i++) {
         const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
-        b[i] = await H(concatTypedArrays(...args));
+        b[i] = await H(concatBytes(...args));
     }
-    const pseudo_random_bytes = concatTypedArrays(...b);
+    const pseudo_random_bytes = concatBytes(...b);
     return pseudo_random_bytes.slice(0, len_in_bytes);
 }
 async function hash_to_field(msg, degree, isRandomOracle = true) {
@@ -171,7 +171,7 @@ let PointG1 = (() => {
             super(x, y, z, math_1.Fq);
         }
         static fromCompressedHex(hex) {
-            const compressedValue = fromBytesBE(hex);
+            const compressedValue = bytesToNumberBE(hex);
             const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
             if (bflag === 1n) {
                 return this.ZERO;
@@ -241,7 +241,7 @@ let PointG2 = (() => {
         }
         static async hashToCurve(msg) {
             if (typeof msg === 'string')
-                msg = hexToArray(msg);
+                msg = hexToBytes(msg);
             const u = await hash_to_field(msg, 2);
             const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
             const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
@@ -251,8 +251,8 @@ let PointG2 = (() => {
         }
         static fromSignature(hex) {
             const half = hex.length / 2;
-            const z1 = fromBytesBE(hex.slice(0, half));
-            const z2 = fromBytesBE(hex.slice(half));
+            const z1 = bytesToNumberBE(hex.slice(0, half));
+            const z2 = bytesToNumberBE(hex.slice(half));
             const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
             if (bflag1 === 1n)
                 return this.ZERO;
@@ -278,7 +278,7 @@ let PointG2 = (() => {
         toSignature() {
             if (this.equals(PointG2.ZERO)) {
                 const sum = POW_2_383 + POW_2_382;
-                return concatTypedArrays(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
+                return concatBytes(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
             }
             this.assertValidity();
             const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
@@ -286,7 +286,7 @@ let PointG2 = (() => {
             const aflag1 = tmp / math_1.CURVE.P;
             const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
             const z2 = x0;
-            return concatTypedArrays(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
+            return concatBytes(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
         }
         assertValidity() {
             const b = new math_1.Fq2(math_1.CURVE.b2);
