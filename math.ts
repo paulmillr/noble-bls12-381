@@ -192,6 +192,109 @@ export class Fq implements Field<Fq> {
   }
 }
 
+// Finite field over r.
+export class Fr implements Field<Fr> {
+  static readonly ORDER = CURVE.r;
+  static readonly ZERO = new Fr(0n);
+  static readonly ONE = new Fr(1n);
+
+  static isValid(b: bigint): boolean {
+    return b <= Fr.ORDER;
+  }
+
+  readonly value: bigint;
+  constructor(value: bigint) {
+    this.value = mod(value, Fr.ORDER);
+  }
+
+  isZero(): boolean {
+    return this.value === 0n;
+  }
+
+  equals(rhs: Fr): boolean {
+    return this.value === rhs.value;
+  }
+
+  negate(): Fr {
+    return new Fr(-this.value);
+  }
+
+  invert(): Fr {
+    let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
+    let a = Fr.ORDER;
+    let b = this.value;
+    let q;
+    while (a !== 0n) {
+      [q, b, a] = [b / a, a, b % a];
+      [x0, x1] = [x1, x0 - q * x1];
+      [y0, y1] = [y1, y0 - q * y1];
+    }
+    return new Fr(x0);
+  }
+
+  add(rhs: Fr): Fr {
+    return new Fr(this.value + rhs.value);
+  }
+
+  square(): Fr {
+    return new Fr(this.value * this.value);
+  }
+
+  pow(n: bigint): Fr {
+    return new Fr(powMod(this.value, n, Fr.ORDER));
+  }
+
+  subtract(rhs: Fr): Fr {
+    return new Fr(this.value - rhs.value);
+  }
+
+  multiply(rhs: Fr | bigint): Fr {
+    if (rhs instanceof Fr) rhs = rhs.value;
+    return new Fr(this.value * rhs);
+  }
+
+  div(rhs: Fr | bigint): Fr {
+    const inv = typeof rhs === 'bigint' ? new Fr(rhs).invert().value : rhs.invert();
+    return this.multiply(inv);
+  }
+  legendre(): Fr {
+    return this.pow((Fr.ORDER - 1n) / 2n);
+  }
+  // Tonelli-Shanks algorithm
+  sqrt(): Fr | undefined {
+    if (!this.legendre().equals(Fr.ONE)) return;
+    const P = Fr.ORDER;
+    let q, s, z;
+    for (q = P - 1n, s = 0; q % 2n == 0n; q /= 2n, s++);
+    if (s == 1) return this.pow((P + 1n) / 4n);
+    for (z = 2n; z < P && new Fr(z).legendre().value != P - 1n; z++);
+
+    let c = powMod(z, q, P);
+    let r = powMod(this.value, (q + 1n) / 2n, P);
+    let t = powMod(this.value, q, P);
+
+    let t2 = 0n;
+    while (mod(t - 1n, P) != 0n) {
+      t2 = mod(t * t, P);
+      let i;
+      for (i = 1; i < s; i++) {
+        if (mod(t2 - 1n, P) == 0n) break;
+        t2 = mod(t2 * t2, P);
+      }
+      let b = powMod(c, BigInt(1 << (s - i - 1)), P);
+      r = mod(r * b, P);
+      c = mod(b * b, P);
+      t = mod(t * c, P);
+      s = i;
+    }
+    return new Fr(r);
+  }
+
+  toString() {
+    return '0x' + this.value.toString(16).padStart(64, '0');
+  }
+}
+
 // Abstract class for a field over polynominal.
 // TT - ThisType, CT - ChildType, TTT - Tuple Type
 abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT extends CT[]>

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isogenyCoefficients = exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fq = exports.powMod = exports.mod = exports.DST_LABEL = exports.CURVE = void 0;
+exports.isogenyCoefficients = exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fr = exports.Fq = exports.powMod = exports.mod = exports.DST_LABEL = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -131,6 +131,100 @@ let Fq = (() => {
     return Fq;
 })();
 exports.Fq = Fq;
+let Fr = (() => {
+    class Fr {
+        constructor(value) {
+            this.value = mod(value, Fr.ORDER);
+        }
+        static isValid(b) {
+            return b <= Fr.ORDER;
+        }
+        isZero() {
+            return this.value === 0n;
+        }
+        equals(rhs) {
+            return this.value === rhs.value;
+        }
+        negate() {
+            return new Fr(-this.value);
+        }
+        invert() {
+            let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
+            let a = Fr.ORDER;
+            let b = this.value;
+            let q;
+            while (a !== 0n) {
+                [q, b, a] = [b / a, a, b % a];
+                [x0, x1] = [x1, x0 - q * x1];
+                [y0, y1] = [y1, y0 - q * y1];
+            }
+            return new Fr(x0);
+        }
+        add(rhs) {
+            return new Fr(this.value + rhs.value);
+        }
+        square() {
+            return new Fr(this.value * this.value);
+        }
+        pow(n) {
+            return new Fr(powMod(this.value, n, Fr.ORDER));
+        }
+        subtract(rhs) {
+            return new Fr(this.value - rhs.value);
+        }
+        multiply(rhs) {
+            if (rhs instanceof Fr)
+                rhs = rhs.value;
+            return new Fr(this.value * rhs);
+        }
+        div(rhs) {
+            const inv = typeof rhs === 'bigint' ? new Fr(rhs).invert().value : rhs.invert();
+            return this.multiply(inv);
+        }
+        legendre() {
+            return this.pow((Fr.ORDER - 1n) / 2n);
+        }
+        sqrt() {
+            if (!this.legendre().equals(Fr.ONE))
+                return;
+            const P = Fr.ORDER;
+            let q, s, z;
+            for (q = P - 1n, s = 0; q % 2n == 0n; q /= 2n, s++)
+                ;
+            if (s == 1)
+                return this.pow((P + 1n) / 4n);
+            for (z = 2n; z < P && new Fr(z).legendre().value != P - 1n; z++)
+                ;
+            let c = powMod(z, q, P);
+            let r = powMod(this.value, (q + 1n) / 2n, P);
+            let t = powMod(this.value, q, P);
+            let t2 = 0n;
+            while (mod(t - 1n, P) != 0n) {
+                t2 = mod(t * t, P);
+                let i;
+                for (i = 1; i < s; i++) {
+                    if (mod(t2 - 1n, P) == 0n)
+                        break;
+                    t2 = mod(t2 * t2, P);
+                }
+                let b = powMod(c, BigInt(1 << (s - i - 1)), P);
+                r = mod(r * b, P);
+                c = mod(b * b, P);
+                t = mod(t * c, P);
+                s = i;
+            }
+            return new Fr(r);
+        }
+        toString() {
+            return '0x' + this.value.toString(16).padStart(64, '0');
+        }
+    }
+    Fr.ORDER = exports.CURVE.r;
+    Fr.ZERO = new Fr(0n);
+    Fr.ONE = new Fr(1n);
+    return Fr;
+})();
+exports.Fr = Fr;
 class FQP {
     zip(rhs, mapper) {
         const c0 = this.c;

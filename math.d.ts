@@ -54,6 +54,27 @@ export declare class Fq implements Field<Fq> {
     div(rhs: Fq | bigint): Fq;
     toString(): string;
 }
+export declare class Fr implements Field<Fr> {
+    static readonly ORDER: bigint;
+    static readonly ZERO: Fr;
+    static readonly ONE: Fr;
+    static isValid(b: bigint): boolean;
+    readonly value: bigint;
+    constructor(value: bigint);
+    isZero(): boolean;
+    equals(rhs: Fr): boolean;
+    negate(): Fr;
+    invert(): Fr;
+    add(rhs: Fr): Fr;
+    square(): Fr;
+    pow(n: bigint): Fr;
+    subtract(rhs: Fr): Fr;
+    multiply(rhs: Fr | bigint): Fr;
+    div(rhs: Fr | bigint): Fr;
+    legendre(): Fr;
+    sqrt(): Fr | undefined;
+    toString(): string;
+}
 declare abstract class FQP<TT extends {
     c: TTT;
 } & Field<TT>, CT extends Field<CT>, TTT extends CT[]> implements Field<TT> {
