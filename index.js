@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fq = exports.DST_LABEL = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
+Object.defineProperty(exports, "Fr", { enumerable: true, get: function () { return math_1.Fr; } });
 Object.defineProperty(exports, "Fq2", { enumerable: true, get: function () { return math_1.Fq2; } });
 Object.defineProperty(exports, "Fq12", { enumerable: true, get: function () { return math_1.Fq12; } });
 Object.defineProperty(exports, "CURVE", { enumerable: true, get: function () { return math_1.CURVE; } });
@@ -29,6 +30,7 @@ exports.utils = {
             throw new Error("The environment doesn't have sha256 function");
         }
     },
+    mod: math_1.mod
 };
 function hexToNumberBE(hex) {
     return BigInt(`0x${hex}`);

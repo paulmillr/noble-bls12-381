@@ -4,12 +4,10 @@
 // We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
 // prettier-ignore
 import {
-  Fq, Fq2, Fq12, ProjectivePoint,
-  CURVE,
+  Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint,
   map_to_curve_SSWU_G2, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes,
-  mod, powMod,
-  BigintTwelve
+  mod, powMod
 } from './math';
 
 const P = CURVE.P;
@@ -17,7 +15,7 @@ export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 type Bytes = Uint8Array | string;
 type PrivateKey = Bytes | bigint | number;
-export { Fq, Fq2, Fq12, CURVE, BigintTwelve };
+export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -44,6 +42,7 @@ export const utils = {
       throw new Error("The environment doesn't have sha256 function");
     }
   },
+  mod
 };
 
 function hexToNumberBE(hex: string) {

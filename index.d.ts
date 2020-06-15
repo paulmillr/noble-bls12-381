@@ -1,10 +1,11 @@
-import { Fq, Fq2, Fq12, ProjectivePoint, CURVE, BigintTwelve } from './math';
+import { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint, mod } from './math';
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
-export { Fq, Fq2, Fq12, CURVE, BigintTwelve };
+export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
+    mod: typeof mod;
 };
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fq> {
