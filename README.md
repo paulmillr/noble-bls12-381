@@ -11,7 +11,7 @@ bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Al
 
 - [Pairing-friendly curves 02](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02)
 - [BLS signatures 02](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02)
-- [Hash to curve 07](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07)
+- [Hash to curve 09](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09)
 
 Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) to get started with the primitives.
 
