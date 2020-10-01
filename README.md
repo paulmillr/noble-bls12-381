@@ -13,7 +13,7 @@ bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Al
 - [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
 - [Hash to curve 09](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09)
 
-Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) to get started with the primitives.
+Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c) to get started with the primitives.
 
 ### This library belongs to *noble* crypto
 
