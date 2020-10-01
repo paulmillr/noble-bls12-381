@@ -9,8 +9,8 @@ bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Al
 
 **The fastest implementation written in a scripting language**. Matches following specs:
 
-- [Pairing-friendly curves 02](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02)
-- [BLS signatures 02](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-02)
+- [Pairing-friendly curves 08](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-08)
+- [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
 - [Hash to curve 09](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09)
 
 Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) to get started with the primitives.

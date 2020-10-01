@@ -165,7 +165,10 @@ async function hash_to_field(msg, degree, isRandomOracle = true) {
 }
 exports.hash_to_field = hash_to_field;
 function normalizePrivKey(privateKey) {
-    return new math_1.Fq(toBigInt(privateKey));
+    const fq = new math_1.Fq(toBigInt(privateKey));
+    if (fq.isZero())
+        throw new Error('Private key cannot be 0');
+    return fq;
 }
 let PointG1 = (() => {
     class PointG1 extends math_1.ProjectivePoint {

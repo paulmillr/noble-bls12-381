@@ -198,7 +198,9 @@ export async function hash_to_field(
 }
 
 function normalizePrivKey(privateKey: PrivateKey): Fq {
-  return new Fq(toBigInt(privateKey));
+  const fq = new Fq(toBigInt(privateKey));
+  if (fq.isZero()) throw new Error('Private key cannot be 0');
+  return fq;
 }
 
 export class PointG1 extends ProjectivePoint<Fq> {

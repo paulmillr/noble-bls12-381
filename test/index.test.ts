@@ -31,6 +31,9 @@ describe("bls12-381", () => {
     const decomp = bls.PointG1.fromCompressedHex(publicKey);
     expect(publicKey).toEqual(decomp.toCompressedHex());
   });
+  it("should not compress and decompress zero G1 point", async () => {
+    expect(() => bls.PointG1.fromPrivateKey(0n)).toThrowError();
+  });
   it(`should produce correct signatures (${G2_VECTORS.length} vectors)`, async () => {
     for (let i = 0; i < G2_VECTORS.length; i++) {
       const [priv, msg, expected] = G2_VECTORS[i];
