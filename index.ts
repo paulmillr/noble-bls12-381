@@ -399,16 +399,16 @@ export async function verify(signature: Bytes, message: Bytes, publicKey: Bytes)
   return exp.equals(Fq12.ONE);
 }
 
-export function aggregatePublicKeys(publicKeys: Bytes[]) {
+export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   return publicKeys.reduce(
     (sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)),
     PointG1.ZERO
-  );
+  ).toCompressedHex();
 }
 
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
-export function aggregateSignatures(signatures: Bytes[]) {
+export function aggregateSignatures(signatures: Bytes[]): Uint8Array {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const aggregatedSignature = signatures.reduce(
     (sum, signature) => sum.add(PointG2.fromSignature(signature)),
