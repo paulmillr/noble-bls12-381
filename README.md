@@ -7,7 +7,7 @@ bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Al
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-**The fastest implementation written in a scripting language**. Matches following specs:
+**The [fastest](#speed) implementation written in a scripting language**. Matches following specs:
 
 - [Pairing-friendly curves 08](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-08)
 - [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
@@ -199,7 +199,7 @@ Formulas:
 
 ## Speed
 
-**The fastest implementation written in a scripting language** (js, python etc). Has all possible optimizations, like:
+To achieve the best speed out of all JS / Python implementations, the library employs hardcore optimizations:
 
 - cyclotomic exponentation
 - frobenius coefficients
