@@ -37,6 +37,6 @@ export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: bool
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
 export declare function verify(signature: Bytes, message: Bytes, publicKey: Bytes): Promise<boolean>;
-export declare function aggregatePublicKeys(publicKeys: Bytes[]): PointG1;
+export declare function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
 export declare function aggregateSignatures(signatures: Bytes[]): Uint8Array;
 export declare function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signature: Bytes): Promise<boolean>;

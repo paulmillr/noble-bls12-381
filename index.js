@@ -351,7 +351,7 @@ exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
-    return publicKeys.reduce((sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)), PointG1.ZERO);
+    return publicKeys.reduce((sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)), PointG1.ZERO).toCompressedHex();
 }
 exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
