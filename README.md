@@ -182,6 +182,8 @@ bls.G12Point
 
 ## Internals
 
+The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
+
 - BLS Relies on Bilinear Pairing (expensive)
 - Private Keys: 32 bytes
 - Public Keys: 48 bytes: 381 bit affine x coordinate, encoded into 48 big-endian bytes.
