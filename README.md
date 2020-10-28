@@ -53,6 +53,7 @@ const msg = 'hello';
     'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
     '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
   ];
+  const publicKeys = privateKeys.map(bls.getPublicKey);
   const signatures = await Promise.all(privateKeys.map(p => bls.sign(msg, p)));
   const aggPubKey = await bls.aggregatePublicKeys(publicKeys);
   const aggSignature = await bls.aggregateSignatures(signatures);
@@ -60,7 +61,6 @@ const msg = 'hello';
 
   // Sign 3 msgs with 3 keys
   const messages = ['whatsup', 'all good', 'thanks'];
-  const publicKeys = privateKeys.map(bls.getPublicKey);
   const signatures2 = await Promise.all(privateKeys.map((p, i) => bls.sign(messages[i], p)));
   const aggSignature2 = await bls.aggregateSignatures(signatures);
   const isCorrect3 = await bls.verifyMultiple(signature, messages, publicKeys);
@@ -212,10 +212,14 @@ Benchmarks measured with 2.9Ghz i9-8950HK:
 ```
 getPublicKey x 1080 ops/sec @ 925μs/op
 sign x 14 ops/sec @ 70ms/op
-aggregateSignatures x 201 ops/sec @ 4ms/op
 verify x 22 ops/sec @ 44ms/op
-pairing (batch) x 54 ops/sec @ 18ms/op
-pairing (single) x 48 ops/sec @ 20ms/op
+pairing x 52 ops/sec @ 19ms/op
+aggregatePublicKeys/8 x 965 ops/sec @ 1ms/op
+aggregatePublicKeys/64 x 33 ops/sec @ 29ms/op
+aggregatePublicKeys/512 x 4 ops/sec @ 233ms/op
+aggregateSignatures/8 x 199 ops/sec @ 5ms/op
+aggregateSignatures/64 x 6 ops/sec @ 158ms/op
+aggregateSignatures/512 x 0 ops/sec @ 1320ms/op
 ```
 
 ## Security

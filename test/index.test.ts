@@ -2,9 +2,10 @@ import * as fc from "fast-check";
 import * as bls from "..";
 import { readFileSync } from 'fs';
 import { join } from 'path';
-const G2_VECTORS = readFileSync(join(__dirname, './bls12-381-g2-test-vectors.txt'), 'utf-8')
+const G2_VECTORS = readFileSync(join(__dirname, 'bls12-381-g2-test-vectors.txt'), 'utf-8')
   .trim()
-  .split('\n').map(l => l.split(':'));
+  .split('\n')
+  .map(l => l.split(':'));
 
 // @ts-ignore
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
