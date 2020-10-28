@@ -205,7 +205,7 @@ To achieve the best speed out of all JS / Python implementations, the library em
 - frobenius coefficients
 - endomorphism for clearing cofactor
 
-Benchmarks:
+Benchmarks measured with 2.9Ghz i9-8950HK:
 
 ```
 getPublicKey x 1080 ops/sec @ 925μs/op
