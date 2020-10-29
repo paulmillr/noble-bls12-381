@@ -214,9 +214,9 @@ getPublicKey x 1080 ops/sec @ 925μs/op
 sign x 14 ops/sec @ 70ms/op
 verify x 22 ops/sec @ 44ms/op
 pairing x 52 ops/sec @ 19ms/op
-aggregatePublicKeys/8 x 965 ops/sec @ 1ms/op
-aggregatePublicKeys/64 x 33 ops/sec @ 29ms/op
-aggregatePublicKeys/512 x 4 ops/sec @ 233ms/op
+aggregatePublicKeys/8 x 1033 ops/sec @ 967μs/op
+aggregatePublicKeys/64 x 35 ops/sec @ 28ms/op
+aggregatePublicKeys/512 x 4 ops/sec @ 227ms/op
 aggregateSignatures/8 x 199 ops/sec @ 5ms/op
 aggregateSignatures/64 x 6 ops/sec @ 158ms/op
 aggregateSignatures/512 x 0 ops/sec @ 1320ms/op

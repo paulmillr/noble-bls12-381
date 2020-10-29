@@ -457,6 +457,12 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   }
 
   sqrt(): Fq2 | undefined {
+    // TODO: Optimize this line. It's extremely slow.
+    // Speeding this up would boost aggregateSignatures.
+    // https://eprint.iacr.org/2012/685.pdf applicable?
+    // https://github.com/zkcrypto/bls12_381/blob/080eaa74ec0e394377caa1ba302c8c121df08b07/src/fp2.rs#L250
+    // https://github.com/supranational/blst/blob/aae0c7d70b799ac269ff5edf29d8191dbd357876/src/exp2.c#L1
+    // Inspired by https://github.com/dalek-cryptography/curve25519-dalek/blob/17698df9d4c834204f83a3574143abacb4fc81a5/src/field.rs#L99
     const candidateSqrt = this.pow((Fq2.ORDER + 8n) / 16n);
     const check = candidateSqrt.square().div(this);
     const R = Fq2.ROOTS_OF_UNITY;

@@ -30,7 +30,7 @@ exports.utils = {
             throw new Error("The environment doesn't have sha256 function");
         }
     },
-    mod: math_1.mod
+    mod: math_1.mod,
 };
 function hexToNumberBE(hex) {
     return BigInt(`0x${hex}`);
@@ -232,11 +232,7 @@ function clearCofactorG2(P) {
     const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
     const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
     const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
-    return p2
-        .subtract(t2)
-        .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
-        .subtract(t1)
-        .subtract(P);
+    return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate()).subtract(t1).subtract(P);
 }
 exports.clearCofactorG2 = clearCofactorG2;
 let PointG2 = (() => {
@@ -256,6 +252,8 @@ let PointG2 = (() => {
         }
         static fromSignature(hex) {
             const half = hex.length / 2;
+            if (half != 96)
+                throw new Error('Invalid compressed signature length, must be 96');
             const z1 = bytesToNumberBE(hex.slice(0, half));
             const z2 = bytesToNumberBE(hex.slice(half));
             const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
@@ -351,14 +349,19 @@ exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
-    return publicKeys.reduce((sum, publicKey) => sum.add(PointG1.fromCompressedHex(publicKey)), PointG1.ZERO).toCompressedHex();
+    const agg = publicKeys
+        .map((p) => PointG1.fromCompressedHex(p))
+        .reduce((sum, p) => sum.add(p), PointG1.ZERO);
+    return agg.toCompressedHex();
 }
 exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
     if (!signatures.length)
         throw new Error('Expected non-empty array');
-    const aggregatedSignature = signatures.reduce((sum, signature) => sum.add(PointG2.fromSignature(signature)), PointG2.ZERO);
-    return aggregatedSignature.toSignature();
+    const agg = signatures
+        .map((s) => PointG2.fromSignature(s))
+        .reduce((sum, s) => sum.add(s), PointG2.ZERO);
+    return agg.toSignature();
 }
 exports.aggregateSignatures = aggregateSignatures;
 async function verifyBatch(messages, publicKeys, signature) {
