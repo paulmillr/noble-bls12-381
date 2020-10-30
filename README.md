@@ -44,7 +44,7 @@ const msg = 'hello';
 
 (async () => {
   const publicKey = bls.getPublicKey(privateKey);
-  const signature1 = await bls.sign(msg, PRIprivateKeyVATE_KEY);
+  const signature1 = await bls.sign(msg, privateKey);
   const isCorrect1 = await bls.verify(msg, publicKey, signature);
 
   // Sign 1 msg with 3 keys
