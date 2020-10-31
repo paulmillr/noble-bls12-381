@@ -252,8 +252,8 @@ let PointG2 = (() => {
         }
         static fromSignature(hex) {
             const half = hex.length / 2;
-            if (half != 96)
-                throw new Error('Invalid compressed signature length, must be 96');
+            if (half !== 48 && half !== 96)
+                throw new Error('Invalid compressed signature length, must be 48/96');
             const z1 = bytesToNumberBE(hex.slice(0, half));
             const z2 = bytesToNumberBE(hex.slice(half));
             const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;

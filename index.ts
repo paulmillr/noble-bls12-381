@@ -297,7 +297,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   static fromSignature(hex: Bytes): PointG2 {
     const half = hex.length / 2;
-    if (half != 96) throw new Error('Invalid compressed signature length, must be 96');
+    if (half !== 48 && half !== 96) throw new Error('Invalid compressed signature length, must be 48/96');
     const z1 = bytesToNumberBE(hex.slice(0, half));
     const z2 = bytesToNumberBE(hex.slice(half));
     // indicates the infinity point
