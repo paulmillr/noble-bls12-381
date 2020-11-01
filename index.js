@@ -55,13 +55,23 @@ function padStart(bytes, count, element) {
         .map((i) => i);
     return concatBytes(new Uint8Array(elements), bytes);
 }
-function toBytesBE(num, padding = 0) {
-    let hex = typeof num === 'string' ? num : num.toString(16);
-    hex = hex.length & 1 ? `0${hex}` : hex;
-    const len = hex.length / 2;
-    const u8 = new Uint8Array(len);
-    for (let j = 0, i = 0; i < hex.length && i < len * 2; i += 2, j++) {
-        u8[j] = parseInt(hex[i] + hex[i + 1], 16);
+const byteMap = {};
+for (let i = 0; i < 256; i++)
+    byteMap[i.toString(16).padStart(2, '0')] = i;
+function hexToBytes(hexOrNum, padding = 0) {
+    let hex = typeof hexOrNum === 'string' ? hexOrNum.toLowerCase() : hexOrNum.toString(16);
+    if (!hex.length && !padding)
+        return new Uint8Array([]);
+    if (hex.length & 1)
+        hex = `0${hex}`;
+    const len = hex.length;
+    const u8 = new Uint8Array(len / 2);
+    for (let i = 0, j = 0; i < len - 1; i += 2, j++) {
+        const str = hex[i] + hex[i + 1];
+        const byte = byteMap[str];
+        if (byte == null)
+            throw new Error(`Expected hex string or Uint8Array, got ${hex}`);
+        u8[j] = byte;
     }
     return padStart(u8, padding, 0);
 }
@@ -73,17 +83,6 @@ function toBigInt(num) {
     if (num instanceof Uint8Array)
         return bytesToNumberBE(num);
     return num;
-}
-function hexToBytes(hex) {
-    if (!hex.length)
-        return new Uint8Array([]);
-    hex = hex.length & 1 ? `0${hex}` : hex;
-    const len = hex.length;
-    const result = new Uint8Array(len / 2);
-    for (let i = 0, j = 0; i < len - 1; i += 2, j++) {
-        result[j] = parseInt(hex[i] + hex[i + 1], 16);
-    }
-    return result;
 }
 function concatBytes(...bytes) {
     return new Uint8Array(bytes.reduce((res, bytesView) => {
@@ -207,7 +206,7 @@ let PointG1 = (() => {
                 const flag = (y.value * 2n) / P;
                 hex = x.value + flag * POW_2_381 + POW_2_383;
             }
-            return toBytesBE(hex, PUBLIC_KEY_LENGTH);
+            return hexToBytes(hex, PUBLIC_KEY_LENGTH);
         }
         assertValidity() {
             const b = new math_1.Fq(math_1.CURVE.b);
@@ -281,7 +280,7 @@ let PointG2 = (() => {
         toSignature() {
             if (this.equals(PointG2.ZERO)) {
                 const sum = POW_2_383 + POW_2_382;
-                return concatBytes(toBytesBE(sum, PUBLIC_KEY_LENGTH), toBytesBE(0n, PUBLIC_KEY_LENGTH));
+                return concatBytes(hexToBytes(sum, PUBLIC_KEY_LENGTH), hexToBytes(0n, PUBLIC_KEY_LENGTH));
             }
             this.assertValidity();
             const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
@@ -289,7 +288,7 @@ let PointG2 = (() => {
             const aflag1 = tmp / math_1.CURVE.P;
             const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
             const z2 = x0;
-            return concatBytes(toBytesBE(z1, PUBLIC_KEY_LENGTH), toBytesBE(z2, PUBLIC_KEY_LENGTH));
+            return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
         }
         assertValidity() {
             const b = new math_1.Fq2(math_1.CURVE.b2);
