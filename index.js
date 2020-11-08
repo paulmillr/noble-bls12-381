@@ -1,4 +1,5 @@
 "use strict";
+/*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
@@ -169,64 +170,61 @@ function normalizePrivKey(privateKey) {
         throw new Error('Private key cannot be 0');
     return fq;
 }
-let PointG1 = (() => {
-    class PointG1 extends math_1.ProjectivePoint {
-        constructor(x, y, z) {
-            super(x, y, z, math_1.Fq);
-        }
-        static fromCompressedHex(hex) {
-            const compressedValue = bytesToNumberBE(hex);
-            const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
-            if (bflag === 1n) {
-                return this.ZERO;
-            }
-            const x = math_1.mod(compressedValue, POW_2_381);
-            const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
-            let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
-            if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
-                throw new Error('The given point is not on G1: y**2 = x**3 + b');
-            }
-            const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
-            if ((y * 2n) / P !== aflag) {
-                y = P - y;
-            }
-            const p = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
-            return p;
-        }
-        static fromPrivateKey(privateKey) {
-            return this.BASE.multiply(normalizePrivKey(privateKey));
-        }
-        toCompressedHex() {
-            let hex;
-            if (this.equals(PointG1.ZERO)) {
-                hex = POW_2_383 + POW_2_382;
-            }
-            else {
-                const [x, y] = this.toAffine();
-                const flag = (y.value * 2n) / P;
-                hex = x.value + flag * POW_2_381 + POW_2_383;
-            }
-            return hexToBytes(hex, PUBLIC_KEY_LENGTH);
-        }
-        assertValidity() {
-            const b = new math_1.Fq(math_1.CURVE.b);
-            if (this.isZero())
-                return;
-            const { x, y, z } = this;
-            const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-            const right = b.multiply(z.pow(3n));
-            if (!left.equals(right))
-                throw new Error('Invalid point: not on curve over Fq');
-        }
-        millerLoop(P) {
-            return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
-        }
+class PointG1 extends math_1.ProjectivePoint {
+    constructor(x, y, z) {
+        super(x, y, z, math_1.Fq);
     }
-    PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
-    PointG1.ZERO = new PointG1(math_1.Fq.ONE, math_1.Fq.ONE, math_1.Fq.ZERO);
-    return PointG1;
-})();
+    static fromCompressedHex(hex) {
+        const compressedValue = bytesToNumberBE(hex);
+        const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
+        if (bflag === 1n) {
+            return this.ZERO;
+        }
+        const x = math_1.mod(compressedValue, POW_2_381);
+        const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
+        let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
+        if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
+            throw new Error('The given point is not on G1: y**2 = x**3 + b');
+        }
+        const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
+        if ((y * 2n) / P !== aflag) {
+            y = P - y;
+        }
+        const p = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
+        return p;
+    }
+    static fromPrivateKey(privateKey) {
+        return this.BASE.multiply(normalizePrivKey(privateKey));
+    }
+    toCompressedHex() {
+        let hex;
+        if (this.equals(PointG1.ZERO)) {
+            hex = POW_2_383 + POW_2_382;
+        }
+        else {
+            const [x, y] = this.toAffine();
+            const flag = (y.value * 2n) / P;
+            hex = x.value + flag * POW_2_381 + POW_2_383;
+        }
+        return hexToBytes(hex, PUBLIC_KEY_LENGTH);
+    }
+    assertValidity() {
+        const b = new math_1.Fq(math_1.CURVE.b);
+        if (this.isZero())
+            return;
+        const { x, y, z } = this;
+        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+        const right = b.multiply(z.pow(3n));
+        if (!left.equals(right))
+            throw new Error('Invalid point: not on curve over Fq');
+    }
+    millerLoop(P) {
+        return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
+    }
+}
 exports.PointG1 = PointG1;
+PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
+PointG1.ZERO = new PointG1(math_1.Fq.ONE, math_1.Fq.ONE, math_1.Fq.ZERO);
 function clearCofactorG2(P) {
     const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
     const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
@@ -234,87 +232,84 @@ function clearCofactorG2(P) {
     return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate()).subtract(t1).subtract(P);
 }
 exports.clearCofactorG2 = clearCofactorG2;
-let PointG2 = (() => {
-    class PointG2 extends math_1.ProjectivePoint {
-        constructor(x, y, z) {
-            super(x, y, z, math_1.Fq2);
-        }
-        static async hashToCurve(msg) {
-            if (typeof msg === 'string')
-                msg = hexToBytes(msg);
-            const u = await hash_to_field(msg, 2);
-            const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
-            const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
-            const R = Q0.add(Q1);
-            const P = clearCofactorG2(R);
-            return P;
-        }
-        static fromSignature(hex) {
-            const half = hex.length / 2;
-            if (half !== 48 && half !== 96)
-                throw new Error('Invalid compressed signature length, must be 48/96');
-            const z1 = bytesToNumberBE(hex.slice(0, half));
-            const z2 = bytesToNumberBE(hex.slice(half));
-            const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
-            if (bflag1 === 1n)
-                return this.ZERO;
-            const x1 = z1 % POW_2_381;
-            const x2 = z2;
-            const x = new math_1.Fq2([x2, x1]);
-            let y = x.pow(3n).add(new math_1.Fq2(math_1.CURVE.b2)).sqrt();
-            if (!y)
-                throw new Error('Failed to find a square root');
-            const [y0, y1] = y.values;
-            const aflag1 = (z1 % POW_2_382) / POW_2_381;
-            const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
-            const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
-            if (isGreater || isZero)
-                y = y.multiply(-1n);
-            const point = new PointG2(x, y, math_1.Fq2.ONE);
-            point.assertValidity();
-            return point;
-        }
-        static fromPrivateKey(privateKey) {
-            return this.BASE.multiply(normalizePrivKey(privateKey));
-        }
-        toSignature() {
-            if (this.equals(PointG2.ZERO)) {
-                const sum = POW_2_383 + POW_2_382;
-                return concatBytes(hexToBytes(sum, PUBLIC_KEY_LENGTH), hexToBytes(0n, PUBLIC_KEY_LENGTH));
-            }
-            this.assertValidity();
-            const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
-            const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
-            const aflag1 = tmp / math_1.CURVE.P;
-            const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
-            const z2 = x0;
-            return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
-        }
-        assertValidity() {
-            const b = new math_1.Fq2(math_1.CURVE.b2);
-            if (this.isZero())
-                return;
-            const { x, y, z } = this;
-            const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-            const right = b.multiply(z.pow(3n));
-            if (!left.equals(right))
-                throw new Error('Invalid point: not on curve over Fq2');
-        }
-        clearPairingPrecomputes() {
-            this._PPRECOMPUTES = undefined;
-        }
-        pairingPrecomputes() {
-            if (this._PPRECOMPUTES)
-                return this._PPRECOMPUTES;
-            this._PPRECOMPUTES = math_1.calcPairingPrecomputes(...this.toAffine());
-            return this._PPRECOMPUTES;
-        }
+class PointG2 extends math_1.ProjectivePoint {
+    constructor(x, y, z) {
+        super(x, y, z, math_1.Fq2);
     }
-    PointG2.BASE = new PointG2(new math_1.Fq2(math_1.CURVE.G2x), new math_1.Fq2(math_1.CURVE.G2y), math_1.Fq2.ONE);
-    PointG2.ZERO = new PointG2(math_1.Fq2.ONE, math_1.Fq2.ONE, math_1.Fq2.ZERO);
-    return PointG2;
-})();
+    static async hashToCurve(msg) {
+        if (typeof msg === 'string')
+            msg = hexToBytes(msg);
+        const u = await hash_to_field(msg, 2);
+        const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
+        const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
+        const R = Q0.add(Q1);
+        const P = clearCofactorG2(R);
+        return P;
+    }
+    static fromSignature(hex) {
+        const half = hex.length / 2;
+        if (half !== 48 && half !== 96)
+            throw new Error('Invalid compressed signature length, must be 48/96');
+        const z1 = bytesToNumberBE(hex.slice(0, half));
+        const z2 = bytesToNumberBE(hex.slice(half));
+        const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
+        if (bflag1 === 1n)
+            return this.ZERO;
+        const x1 = z1 % POW_2_381;
+        const x2 = z2;
+        const x = new math_1.Fq2([x2, x1]);
+        let y = x.pow(3n).add(new math_1.Fq2(math_1.CURVE.b2)).sqrt();
+        if (!y)
+            throw new Error('Failed to find a square root');
+        const [y0, y1] = y.values;
+        const aflag1 = (z1 % POW_2_382) / POW_2_381;
+        const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
+        const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
+        if (isGreater || isZero)
+            y = y.multiply(-1n);
+        const point = new PointG2(x, y, math_1.Fq2.ONE);
+        point.assertValidity();
+        return point;
+    }
+    static fromPrivateKey(privateKey) {
+        return this.BASE.multiply(normalizePrivKey(privateKey));
+    }
+    toSignature() {
+        if (this.equals(PointG2.ZERO)) {
+            const sum = POW_2_383 + POW_2_382;
+            return concatBytes(hexToBytes(sum, PUBLIC_KEY_LENGTH), hexToBytes(0n, PUBLIC_KEY_LENGTH));
+        }
+        this.assertValidity();
+        const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+        const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
+        const aflag1 = tmp / math_1.CURVE.P;
+        const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
+        const z2 = x0;
+        return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
+    }
+    assertValidity() {
+        const b = new math_1.Fq2(math_1.CURVE.b2);
+        if (this.isZero())
+            return;
+        const { x, y, z } = this;
+        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+        const right = b.multiply(z.pow(3n));
+        if (!left.equals(right))
+            throw new Error('Invalid point: not on curve over Fq2');
+    }
+    clearPairingPrecomputes() {
+        this._PPRECOMPUTES = undefined;
+    }
+    pairingPrecomputes() {
+        if (this._PPRECOMPUTES)
+            return this._PPRECOMPUTES;
+        this._PPRECOMPUTES = math_1.calcPairingPrecomputes(...this.toAffine());
+        return this._PPRECOMPUTES;
+    }
+}
 exports.PointG2 = PointG2;
+PointG2.BASE = new PointG2(new math_1.Fq2(math_1.CURVE.G2x), new math_1.Fq2(math_1.CURVE.G2y), math_1.Fq2.ONE);
+PointG2.ZERO = new PointG2(math_1.Fq2.ONE, math_1.Fq2.ONE, math_1.Fq2.ZERO);
 function pairing(P, Q, withFinalExponent = true) {
     if (P.isZero() || Q.isZero())
         throw new Error('No pairings at point of Infinity');

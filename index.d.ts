@@ -1,3 +1,4 @@
+/*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 import { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint, mod } from './math';
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;

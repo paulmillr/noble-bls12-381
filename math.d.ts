@@ -15,8 +15,28 @@ export declare const CURVE: {
 };
 export declare let DST_LABEL: string;
 declare type BigintTuple = [bigint, bigint];
-declare type BigintSix = [bigint, bigint, bigint, bigint, bigint, bigint];
-export declare type BigintTwelve = [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+declare type BigintSix = [
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint
+];
+export declare type BigintTwelve = [
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint,
+    bigint
+];
 interface Field<T> {
     isZero(): boolean;
     equals(rhs: T): boolean;
