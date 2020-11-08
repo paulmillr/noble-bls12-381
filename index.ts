@@ -1,3 +1,4 @@
+/*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 // bls12-381 is a construction of two curves.
 // 1. Fq: (x, y) - can be used for private keys
 // 2. Fq2: (x1, x2+i), (y1, y2+i) - (imaginary numbers) can be used for signatures
@@ -396,6 +397,7 @@ export async function verify(signature: Bytes, message: Bytes, publicKey: Bytes)
   return exp.equals(Fq12.ONE);
 }
 
+// pk1 + pk2 + pk3 = pkA
 export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys
@@ -439,4 +441,5 @@ export async function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signat
   }
 }
 
+// Pre-compute points. Refer to README.
 PointG1.BASE.calcMultiplyPrecomputes(4);
