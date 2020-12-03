@@ -215,14 +215,18 @@ sign x 14 ops/sec @ 70ms/op
 verify x 22 ops/sec @ 44ms/op
 verify (no compression) x 39 ops/sec @ 25ms/op
 pairing x 52 ops/sec @ 19ms/op
-aggregatePublicKeys/8 x 1033 ops/sec @ 967μs/op
-aggregatePublicKeys/64 x 35 ops/sec @ 28ms/op
-aggregatePublicKeys/512 x 4 ops/sec @ 227ms/op
-aggregateSignatures/8 x 199 ops/sec @ 5ms/op
-aggregateSignatures/64 x 6 ops/sec @ 158ms/op
-aggregateSignatures/512 x 0 ops/sec @ 1320ms/op
-aggregatePublicKeys/30 (no compression) x 4216 ops/sec @ 237μs/op
-aggregateSignatures/30 (no compression) x 74 ops/sec @ 13ms/op
+aggregatePublicKeys/8 (compressed) x 259 ops/sec @ 3ms/op
+aggregateSignatures/8 (compressed) x 51 ops/sec @ 19ms/op
+aggregatePublicKeys/30 x 4194 ops/sec @ 238μs/op
+aggregatePublicKeys/100 x 1211 ops/sec @ 825μs/op
+aggregatePublicKeys/300 x 332 ops/sec @ 3ms/op
+aggregatePublicKeys/1000 x 104 ops/sec @ 9ms/op
+aggregatePublicKeys/4000 x 30 ops/sec @ 33ms/op
+aggregateSignatures/30 x 81 ops/sec @ 12ms/op
+aggregateSignatures/100 x 266 ops/sec @ 3ms/op
+aggregateSignatures/300 x 98 ops/sec @ 10ms/op
+aggregateSignatures/1000 x 30 ops/sec @ 33ms/op
+aggregateSignatures/4000 x 7 ops/sec @ 130ms/op
 ```
 
 ## Security

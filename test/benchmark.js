@@ -71,18 +71,29 @@ run(async () => {
   //await mark('pairing (batch)', 40, () => bls.pairing(p1, p2));
   await mark('pairing', 40, () => bls.pairing(p1, p2));
 
-  await mark('aggregatePublicKeys/8', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 8)));
-  await mark('aggregatePublicKeys/64', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 64)));
-  await mark('aggregatePublicKeys/512', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 512)));
-  await mark('aggregateSignatures/8', 10, () => bls.aggregateSignatures(sigs.slice(0, 2)));
-  await mark('aggregateSignatures/64', 10, () => bls.aggregateSignatures(sigs.slice(0, 64)));
-  await mark('aggregateSignatures/512', 4, () => bls.aggregateSignatures(sigs.slice(0, 512)));
+  await mark('aggregatePublicKeys/8 (compressed)', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 8)));
+  await mark('aggregateSignatures/8 (compressed)', 10, () => bls.aggregateSignatures(sigs.slice(0, 8)));
 
-  const aggp30 = pubs.slice(0, 30).map(bls.PointG1.fromCompressedHex);
-  await mark('aggregatePublicKeys/30 (no compression)', 10, () => bls.aggregatePublicKeys(aggp30));
+  const pub30 = pubs.slice(0, 30).map(bls.PointG1.fromCompressedHex);
+  const pub100 = pubs.slice(0, 100).map(bls.PointG1.fromCompressedHex);
+  const pub300 = pubs.slice(0, 300).map(bls.PointG1.fromCompressedHex);
+  const pub1000 = pub300.concat(pub300).concat(pub300).concat(pub100);
+  const pub4000 = pub1000.concat(pub1000).concat(pub1000).concat(pub1000);
+  await mark('aggregatePublicKeys/30', 10, () => bls.aggregatePublicKeys(pub30));
+  await mark('aggregatePublicKeys/100', 10, () => bls.aggregatePublicKeys(pub100));
+  await mark('aggregatePublicKeys/300', 4, () => bls.aggregatePublicKeys(pub300));
+  await mark('aggregatePublicKeys/1000', 4, () => bls.aggregatePublicKeys(pub1000));
+  await mark('aggregatePublicKeys/4000', 4, () => bls.aggregatePublicKeys(pub4000));
 
-  const aggs30 = sigs.slice(0, 30).map(bls.PointG2.fromSignature);
-  await mark('aggregateSignatures/30 (no compression)', 10, () => bls.aggregatePublicKeys(aggs30));
-
+  const sig30 = sigs.slice(0, 30).map(bls.PointG2.fromSignature);
+  const sig100 = sigs.slice(0, 100).map(bls.PointG2.fromSignature);
+  const sig300 = sigs.slice(0, 300).map(bls.PointG2.fromSignature);
+  const sig1000 = sig300.concat(sig300).concat(sig300).concat(sig100);
+  const sig4000 = sig1000.concat(sig1000).concat(sig1000).concat(sig1000);
+  await mark('aggregateSignatures/30', 10, () => bls.aggregatePublicKeys(sig30));
+  await mark('aggregateSignatures/100', 10, () => bls.aggregateSignatures(sig100));
+  await mark('aggregateSignatures/300', 4, () => bls.aggregateSignatures(sig300));
+  await mark('aggregateSignatures/1000', 4, () => bls.aggregateSignatures(sig1000));
+  await mark('aggregateSignatures/4000', 4, () => bls.aggregateSignatures(sig4000));
   logMem();
 });
