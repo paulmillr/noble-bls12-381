@@ -90,7 +90,7 @@ describe("bls12-381", () => {
             await bls.verifyBatch(
               messages,
               publicKey,
-              aggregatedSignature
+              aggregatedSignature as Uint8Array
             )
           ).toBe(true);
         }
@@ -124,7 +124,7 @@ describe("bls12-381", () => {
             await bls.verifyBatch(
               wrongMessages,
               publicKey,
-              aggregatedSignature
+              aggregatedSignature as Uint8Array
 
             )
           ).toBe(messages.every((m, i) => m === wrongMessages[i]));
