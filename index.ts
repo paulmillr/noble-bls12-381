@@ -415,13 +415,14 @@ export function aggregateSignatures(signatures: (Bytes | PointG2)[]): Bytes | Po
   return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
 }
 
+// ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
 export async function verifyBatch(messages: (Bytes | PointG2)[], publicKeys: (Bytes | PointG1)[], signature: Bytes | PointG2): Promise<boolean> {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   const nMessages = await Promise.all(messages.map(m => m instanceof PointG2 ? m : PointG2.hashToCurve(m)));
   const nPublicKeys = publicKeys.map(pub => pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub));
   try {
-    const pairings = [];
+    const paired = [];
     for (const message of new Set(nMessages)) {
       const groupPublicKey = nMessages.reduce(
         (groupPublicKey, subMessage, i) => 
@@ -430,13 +431,13 @@ export async function verifyBatch(messages: (Bytes | PointG2)[], publicKeys: (By
       );
       const msg = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
       // Possible to batch pairing for same msg with different groupPublicKey here
-      pairings.push(pairing(groupPublicKey, msg, false));
+      paired.push(pairing(groupPublicKey, msg, false));
     }
     const sig = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
-    pairings.push(pairing(PointG1.BASE.negate(), sig, false));
-    const product = pairings.reduce((a, b) => a.multiply(b), Fq12.ONE)
-    const final = product.finalExponentiate();
-    return final.equals(Fq12.ONE);
+    paired.push(pairing(PointG1.BASE.negate(), sig, false));
+    const product = paired.reduce((a, b) => a.multiply(b), Fq12.ONE)
+    const exp = product.finalExponentiate();
+    return exp.equals(Fq12.ONE);
   } catch {
     return false;
   }
