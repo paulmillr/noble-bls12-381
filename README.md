@@ -142,15 +142,15 @@ function verifyBatch(
 ##### `pairing(G1Point, G2Point)`
 ```typescript
 function pairing(
-  g1Point: Point<bigint>,
-  g2Point: Point<[bigint, bigint]>,
+  g1Point: PointG1,
+  g2Point: PointG2,
   withFinalExponent: boolean = true
-): Point<[bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]>
+): Fq12
 ```
-- `g1Point: Point<bigint>` - simple point, `x, y` are bigints
-- `g2Point: Point<[bigint, bigint]>` - point over curve with imaginary numbers (`(x, x_1), (y, y_1)`)
+- `g1Point: PointG1` - simple point, `x, y` are bigints
+- `g2Point: PointG2` - point over curve with imaginary numbers (`(x, x_1), (y, y_1)`)
 - `withFinalExponent: boolean` - should the result be powered by curve order. Very slow.
-- Returns `Point<BigintTwelve>`: paired point over 12-degree extension field.
+- Returns `Fq12`: paired point over 12-degree extension field.
 
 ##### Helpers
 
@@ -177,7 +177,6 @@ bls.Fq2
 bls.Fq12
 bls.G1Point
 bls.G2Point
-bls.G12Point
 ```
 
 ## Internals
