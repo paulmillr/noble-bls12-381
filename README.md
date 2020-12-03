@@ -221,7 +221,7 @@ aggregatePublicKeys/100 x 1211 ops/sec @ 825μs/op
 aggregatePublicKeys/300 x 332 ops/sec @ 3ms/op
 aggregatePublicKeys/1000 x 104 ops/sec @ 9ms/op
 aggregatePublicKeys/4000 x 30 ops/sec @ 33ms/op
-aggregateSignatures/30 x 81 ops/sec @ 12ms/op
+aggregateSignatures/30 x 1083 ops/sec @ 923μs/op
 aggregateSignatures/100 x 266 ops/sec @ 3ms/op
 aggregateSignatures/300 x 98 ops/sec @ 10ms/op
 aggregateSignatures/1000 x 30 ops/sec @ 33ms/op
