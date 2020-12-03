@@ -377,15 +377,15 @@ export function getPublicKey(privateKey: PrivateKey) {
 }
 
 // S = pk x H(m)
-export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array> {
-  const msgPoint = await PointG2.hashToCurve(message);
+export async function sign(message: Bytes | PointG2, privateKey: PrivateKey): Promise<Uint8Array> {
+  const msgPoint = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   return sigPoint.toSignature();
 }
 
 // e(P, H(m)) == e(G,S)
 export async function verify(signature: Bytes | PointG2, message: Bytes | PointG2, publicKey: Bytes | PointG1): Promise<boolean> {
-  const P = publicKey instanceof PointG1 ? publicKey : PointG1.fromCompressedHex(publicKey).negate();
+  const P = publicKey instanceof PointG1 ? publicKey.negate() : PointG1.fromCompressedHex(publicKey).negate();
   const Hm = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
   const G = PointG1.BASE;
   const S = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
@@ -415,27 +415,28 @@ export function aggregateSignatures(signatures: (Bytes | PointG2)[]): Bytes | Po
   return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
 }
 
-export async function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signature: Bytes) {
+export async function verifyBatch(messages: (Bytes | PointG2)[], publicKeys: (Bytes | PointG1)[], signature: Bytes | PointG2): Promise<boolean> {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
+  const nMessages = await Promise.all(messages.map(m => m instanceof PointG2 ? m : PointG2.hashToCurve(m)));
+  const nPublicKeys = publicKeys.map(pub => pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub));
   try {
-    let producer = Fq12.ONE;
-    for (const message of new Set(messages)) {
-      const groupPublicKey = messages.reduce(
-        (groupPublicKey, m, i) =>
-          m !== message
-            ? groupPublicKey
-            : groupPublicKey.add(PointG1.fromCompressedHex(publicKeys[i])),
+    const pairings = [];
+    for (const message of new Set(nMessages)) {
+      const groupPublicKey = nMessages.reduce(
+        (groupPublicKey, subMessage, i) => 
+          subMessage === message ? groupPublicKey.add(nPublicKeys[i]) : groupPublicKey,
         PointG1.ZERO
       );
-      const msg = await PointG2.hashToCurve(message);
+      const msg = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
       // Possible to batch pairing for same msg with different groupPublicKey here
-      producer = producer.multiply(pairing(groupPublicKey, msg, false) as Fq12);
+      pairings.push(pairing(groupPublicKey, msg, false));
     }
-    const sig = PointG2.fromSignature(signature);
-    producer = producer.multiply(pairing(PointG1.BASE.negate(), sig, false) as Fq12);
-    const finalExponent = producer.finalExponentiate();
-    return finalExponent.equals(Fq12.ONE);
+    const sig = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
+    pairings.push(pairing(PointG1.BASE.negate(), sig, false));
+    const product = pairings.reduce((a, b) => a.multiply(b), Fq12.ONE)
+    const final = product.finalExponentiate();
+    return final.equals(Fq12.ONE);
   } catch {
     return false;
   }
