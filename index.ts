@@ -384,11 +384,11 @@ export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint
 }
 
 // e(P, H(m)) == e(G,S)
-export async function verify(signature: Bytes, message: Bytes, publicKey: Bytes): Promise<boolean> {
-  const P = PointG1.fromCompressedHex(publicKey).negate();
-  const Hm = await PointG2.hashToCurve(message);
+export async function verify(signature: Bytes | PointG2, message: Bytes | PointG2, publicKey: Bytes | PointG1): Promise<boolean> {
+  const P = publicKey instanceof PointG1 ? publicKey : PointG1.fromCompressedHex(publicKey).negate();
+  const Hm = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
   const G = PointG1.BASE;
-  const S = PointG2.fromSignature(signature);
+  const S = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
   // Instead of doing 2 exponentiations, we use property of billinear maps
   // and do one exp after multiplying 2 points.
   const ePHm = pairing(P, Hm, false);
@@ -398,21 +398,21 @@ export async function verify(signature: Bytes, message: Bytes, publicKey: Bytes)
 }
 
 // pk1 + pk2 + pk3 = pkA
-export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array {
+export function aggregatePublicKeys(publicKeys: (Bytes | PointG1)[]): Bytes | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys
-    .map((p) => PointG1.fromCompressedHex(p))
+    .map((p) => p instanceof PointG1 ? p : PointG1.fromCompressedHex(p))
     .reduce((sum, p) => sum.add(p), PointG1.ZERO);
-  return agg.toCompressedHex();
+  return publicKeys[0] instanceof PointG1 ? agg : agg.toCompressedHex();
 }
 
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
-export function aggregateSignatures(signatures: Bytes[]): Uint8Array {
+export function aggregateSignatures(signatures: (Bytes | PointG2)[]): Bytes | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures
-    .map((s) => PointG2.fromSignature(s))
+    .map((s) => s instanceof PointG2 ? s : PointG2.fromSignature(s))
     .reduce((sum, s) => sum.add(s), PointG2.ZERO);
-  return agg.toSignature();
+  return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
 }
 
 export async function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signature: Bytes) {

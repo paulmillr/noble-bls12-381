@@ -37,7 +37,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
 export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fq12;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
-export declare function verify(signature: Bytes, message: Bytes, publicKey: Bytes): Promise<boolean>;
-export declare function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
-export declare function aggregateSignatures(signatures: Bytes[]): Uint8Array;
+export declare function verify(signature: Bytes | PointG2, message: Bytes | PointG2, publicKey: Bytes | PointG1): Promise<boolean>;
+export declare function aggregatePublicKeys(publicKeys: (Bytes | PointG1)[]): Bytes | PointG1;
+export declare function aggregateSignatures(signatures: (Bytes | PointG2)[]): Bytes | PointG2;
 export declare function verifyBatch(messages: Bytes[], publicKeys: Bytes[], signature: Bytes): Promise<boolean>;

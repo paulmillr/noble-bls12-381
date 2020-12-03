@@ -49,12 +49,18 @@ run(async () => {
       await bls.sign('09', '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c')
   );
   const pub = bls.getPublicKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c');
+  const pubp = bls.PointG1.fromPrivateKey('28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c');
+  const msgp = await bls.PointG2.hashToCurve('09');
+  const sigp = bls.PointG2.fromSignature(await bls.sign('09', '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c'));
   await mark('verify', 20, async () => {
     await bls.verify(
       '8647aa9680cd0cdf065b94e818ff2bb948cc97838bcee987b9bc1b76d0a0a6e0d85db4e9d75aaedfc79d4ea2733a21ae0579014de7636dd2943d45b87c82b1c66a289006b0b9767921bb8edd3f6c5c5dec0d54cd65f61513113c50cc977849e5',
       '09',
       pub
     );
+  });
+  await mark('verify (no compression)', 20, async () => {
+    await bls.verify(sigp, msgp, pubp)
   });
   const p1 = bls.PointG1.BASE.multiply(
     0x28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4cn
@@ -65,12 +71,18 @@ run(async () => {
   //await mark('pairing (batch)', 40, () => bls.pairing(p1, p2));
   await mark('pairing', 40, () => bls.pairing(p1, p2));
 
-  await mark('aggregatePublicKeys/8', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 2)));
+  await mark('aggregatePublicKeys/8', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 8)));
   await mark('aggregatePublicKeys/64', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 64)));
   await mark('aggregatePublicKeys/512', 10, () => bls.aggregatePublicKeys(pubs.slice(0, 512)));
   await mark('aggregateSignatures/8', 10, () => bls.aggregateSignatures(sigs.slice(0, 2)));
   await mark('aggregateSignatures/64', 10, () => bls.aggregateSignatures(sigs.slice(0, 64)));
   await mark('aggregateSignatures/512', 4, () => bls.aggregateSignatures(sigs.slice(0, 512)));
+
+  const aggp30 = pubs.slice(0, 30).map(bls.PointG1.fromCompressedHex);
+  await mark('aggregatePublicKeys/30 (no compression)', 10, () => bls.aggregatePublicKeys(aggp30));
+
+  const aggs30 = sigs.slice(0, 30).map(bls.PointG2.fromSignature);
+  await mark('aggregateSignatures/30 (no compression)', 10, () => bls.aggregatePublicKeys(aggs30));
 
   logMem();
 });
