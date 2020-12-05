@@ -319,22 +319,31 @@ function pairing(P, Q, withFinalExponent = true) {
     return withFinalExponent ? res.finalExponentiate() : res;
 }
 exports.pairing = pairing;
+function normP1(point) {
+    return point instanceof PointG1 ? point : PointG1.fromCompressedHex(point);
+}
+function normP2(point) {
+    return point instanceof PointG2 ? point : PointG2.fromSignature(point);
+}
+async function normP2H(point) {
+    return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
+}
 function getPublicKey(privateKey) {
     return PointG1.fromPrivateKey(privateKey).toCompressedHex();
 }
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
-    const msgPoint = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
+    const msgPoint = await normP2H(message);
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-    return sigPoint.toSignature();
+    return message instanceof PointG2 ? sigPoint : sigPoint.toSignature();
 }
 exports.sign = sign;
 async function verify(signature, message, publicKey) {
-    const P = publicKey instanceof PointG1 ? publicKey.negate() : PointG1.fromCompressedHex(publicKey).negate();
-    const Hm = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
+    const P = normP1(publicKey);
+    const Hm = await normP2H(message);
     const G = PointG1.BASE;
-    const S = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
-    const ePHm = pairing(P, Hm, false);
+    const S = normP2(signature);
+    const ePHm = pairing(P.negate(), Hm, false);
     const eGS = pairing(G, S, false);
     const exp = eGS.multiply(ePHm).finalExponentiate();
     return exp.equals(math_1.Fq12.ONE);
@@ -344,7 +353,7 @@ function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
     const agg = publicKeys
-        .map((p) => p instanceof PointG1 ? p : PointG1.fromCompressedHex(p))
+        .map(normP1)
         .reduce((sum, p) => sum.add(p), PointG1.ZERO);
     return publicKeys[0] instanceof PointG1 ? agg : agg.toCompressedHex();
 }
@@ -353,7 +362,7 @@ function aggregateSignatures(signatures) {
     if (!signatures.length)
         throw new Error('Expected non-empty array');
     const agg = signatures
-        .map((s) => s instanceof PointG2 ? s : PointG2.fromSignature(s))
+        .map(normP2)
         .reduce((sum, s) => sum.add(s), PointG2.ZERO);
     return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
 }
@@ -363,16 +372,15 @@ async function verifyBatch(messages, publicKeys, signature) {
         throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)
         throw new Error('Pubkey count should equal msg count');
-    const nMessages = await Promise.all(messages.map(m => m instanceof PointG2 ? m : PointG2.hashToCurve(m)));
-    const nPublicKeys = publicKeys.map(pub => pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub));
+    const nMessages = await Promise.all(messages.map(normP2H));
+    const nPublicKeys = publicKeys.map((pub) => pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub));
     try {
         const paired = [];
         for (const message of new Set(nMessages)) {
             const groupPublicKey = nMessages.reduce((groupPublicKey, subMessage, i) => subMessage === message ? groupPublicKey.add(nPublicKeys[i]) : groupPublicKey, PointG1.ZERO);
-            const msg = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
-            paired.push(pairing(groupPublicKey, msg, false));
+            paired.push(pairing(groupPublicKey, message, false));
         }
-        const sig = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
+        const sig = normP2(signature);
         paired.push(pairing(PointG1.BASE.negate(), sig, false));
         const product = paired.reduce((a, b) => a.multiply(b), math_1.Fq12.ONE);
         const exp = product.finalExponentiate();

@@ -72,7 +72,9 @@ function padStart(bytes: Uint8Array, count: number, element: number): Uint8Array
   return concatBytes(new Uint8Array(elements), bytes);
 }
 
-interface ByteMap { [key: string]: number; }
+interface ByteMap {
+  [key: string]: number;
+}
 const byteMap: ByteMap = {};
 for (let i = 0; i < 256; i++) byteMap[i.toString(16).padStart(2, '0')] = i;
 // Converts hex or number to big endian array
@@ -299,7 +301,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   // TODO: Optimize, it's very slow because of sqrt.
   static fromSignature(hex: Bytes): PointG2 {
     const half = hex.length / 2;
-    if (half !== 48 && half !== 96) throw new Error('Invalid compressed signature length, must be 48/96');
+    if (half !== 48 && half !== 96)
+      throw new Error('Invalid compressed signature length, must be 48/96');
     const z1 = bytesToNumberBE(hex.slice(0, half));
     const z2 = bytesToNumberBE(hex.slice(half));
     // indicates the infinity point
@@ -371,71 +374,95 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
   return withFinalExponent ? res.finalExponentiate() : res;
 }
 
+type PG1 = Bytes | PointG1;
+type PG2 = Bytes | PointG2;
+function normP1(point: PG1): PointG1 {
+  return point instanceof PointG1 ? point : PointG1.fromCompressedHex(point);
+}
+function normP2(point: PG2): PointG2 {
+  return point instanceof PointG2 ? point : PointG2.fromSignature(point);
+}
+async function normP2H(point: PG2): Promise<PointG2> {
+  return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
+}
+
 // P = pk x G
 export function getPublicKey(privateKey: PrivateKey) {
   return PointG1.fromPrivateKey(privateKey).toCompressedHex();
 }
 
 // S = pk x H(m)
-export async function sign(message: Bytes | PointG2, privateKey: PrivateKey): Promise<Uint8Array> {
-  const msgPoint = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
+export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
+export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
+export async function sign(message: PG2, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
+  const msgPoint = await normP2H(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-  return sigPoint.toSignature();
+  return message instanceof PointG2 ? sigPoint : sigPoint.toSignature();
 }
 
 // e(P, H(m)) == e(G,S)
-export async function verify(signature: Bytes | PointG2, message: Bytes | PointG2, publicKey: Bytes | PointG1): Promise<boolean> {
-  const P = publicKey instanceof PointG1 ? publicKey.negate() : PointG1.fromCompressedHex(publicKey).negate();
-  const Hm = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
+export async function verify(signature: PG2, message: PG2, publicKey: PG1): Promise<boolean> {
+  const P = normP1(publicKey);
+  const Hm = await normP2H(message);
   const G = PointG1.BASE;
-  const S = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
+  const S = normP2(signature);
   // Instead of doing 2 exponentiations, we use property of billinear maps
   // and do one exp after multiplying 2 points.
-  const ePHm = pairing(P, Hm, false);
+  const ePHm = pairing(P.negate(), Hm, false);
   const eGS = pairing(G, S, false);
   const exp = eGS.multiply(ePHm).finalExponentiate();
   return exp.equals(Fq12.ONE);
 }
 
 // pk1 + pk2 + pk3 = pkA
-export function aggregatePublicKeys(publicKeys: (Bytes | PointG1)[]): Bytes | PointG1 {
+export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
+export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
+export function aggregatePublicKeys(publicKeys: PG1[]): Uint8Array | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys
-    .map((p) => p instanceof PointG1 ? p : PointG1.fromCompressedHex(p))
+    .map(normP1)
     .reduce((sum, p) => sum.add(p), PointG1.ZERO);
   return publicKeys[0] instanceof PointG1 ? agg : agg.toCompressedHex();
 }
 
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
-export function aggregateSignatures(signatures: (Bytes | PointG2)[]): Bytes | PointG2 {
+export function aggregateSignatures(signatures: Bytes[]): Uint8Array;
+export function aggregateSignatures(signatures: PointG2[]): PointG2;
+export function aggregateSignatures(signatures: PG2[]): Uint8Array | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures
-    .map((s) => s instanceof PointG2 ? s : PointG2.fromSignature(s))
+    .map(normP2)
     .reduce((sum, s) => sum.add(s), PointG2.ZERO);
   return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
 }
 
 // ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
-export async function verifyBatch(messages: (Bytes | PointG2)[], publicKeys: (Bytes | PointG1)[], signature: Bytes | PointG2): Promise<boolean> {
+export async function verifyBatch(
+  messages: PG2[],
+  publicKeys: PG1[],
+  signature: PG2
+): Promise<boolean> {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
-  const nMessages = await Promise.all(messages.map(m => m instanceof PointG2 ? m : PointG2.hashToCurve(m)));
-  const nPublicKeys = publicKeys.map(pub => pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub));
+  const nMessages = await Promise.all(messages.map(normP2H));
+  const nPublicKeys = publicKeys.map((pub) =>
+    pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub)
+  );
   try {
     const paired = [];
     for (const message of new Set(nMessages)) {
       const groupPublicKey = nMessages.reduce(
-        (groupPublicKey, subMessage, i) => 
+        (groupPublicKey, subMessage, i) =>
           subMessage === message ? groupPublicKey.add(nPublicKeys[i]) : groupPublicKey,
         PointG1.ZERO
       );
-      const msg = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
+      // const msg = message instanceof PointG2 ? message : await PointG2.hashToCurve(message);
       // Possible to batch pairing for same msg with different groupPublicKey here
-      paired.push(pairing(groupPublicKey, msg, false));
+      paired.push(pairing(groupPublicKey, message, false));
     }
-    const sig = signature instanceof PointG2 ? signature : PointG2.fromSignature(signature);
+    const sig = normP2(signature);
     paired.push(pairing(PointG1.BASE.negate(), sig, false));
-    const product = paired.reduce((a, b) => a.multiply(b), Fq12.ONE)
+    const product = paired.reduce((a, b) => a.multiply(b), Fq12.ONE);
     const exp = product.finalExponentiate();
     return exp.equals(Fq12.ONE);
   } catch {
