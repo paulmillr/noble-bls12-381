@@ -35,14 +35,14 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     pairingPrecomputes(): EllCoefficients[];
 }
 export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fq12;
-declare type PG1 = Bytes | PointG1;
-declare type PG2 = Bytes | PointG2;
+declare type PB1 = Bytes | PointG1;
+declare type PB2 = Bytes | PointG2;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
 export declare function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
 export declare function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export declare function verify(signature: PG2, message: PG2, publicKey: PG1): Promise<boolean>;
+export declare function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean>;
 export declare function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
 export declare function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export declare function aggregateSignatures(signatures: Bytes[]): Uint8Array;
 export declare function aggregateSignatures(signatures: PointG2[]): PointG2;
-export declare function verifyBatch(messages: PG2[], publicKeys: PG1[], signature: PG2): Promise<boolean>;
+export declare function verifyBatch(messages: PB2[], publicKeys: PB1[], signature: PB2): Promise<boolean>;

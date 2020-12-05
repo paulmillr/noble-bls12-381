@@ -374,15 +374,15 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
   return withFinalExponent ? res.finalExponentiate() : res;
 }
 
-type PG1 = Bytes | PointG1;
-type PG2 = Bytes | PointG2;
-function normP1(point: PG1): PointG1 {
+type PB1 = Bytes | PointG1;
+type PB2 = Bytes | PointG2;
+function normP1(point: PB1): PointG1 {
   return point instanceof PointG1 ? point : PointG1.fromCompressedHex(point);
 }
-function normP2(point: PG2): PointG2 {
+function normP2(point: PB2): PointG2 {
   return point instanceof PointG2 ? point : PointG2.fromSignature(point);
 }
-async function normP2H(point: PG2): Promise<PointG2> {
+async function normP2H(point: PB2): Promise<PointG2> {
   return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
 }
 
@@ -394,14 +394,14 @@ export function getPublicKey(privateKey: PrivateKey) {
 // S = pk x H(m)
 export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export async function sign(message: PG2, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
+export async function sign(message: PB2, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
   const msgPoint = await normP2H(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   return message instanceof PointG2 ? sigPoint : sigPoint.toSignature();
 }
 
 // e(P, H(m)) == e(G,S)
-export async function verify(signature: PG2, message: PG2, publicKey: PG1): Promise<boolean> {
+export async function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean> {
   const P = normP1(publicKey);
   const Hm = await normP2H(message);
   const G = PointG1.BASE;
@@ -417,7 +417,7 @@ export async function verify(signature: PG2, message: PG2, publicKey: PG1): Prom
 // pk1 + pk2 + pk3 = pkA
 export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
 export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
-export function aggregatePublicKeys(publicKeys: PG1[]): Uint8Array | PointG1 {
+export function aggregatePublicKeys(publicKeys: PB1[]): Uint8Array | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys
     .map(normP1)
@@ -428,7 +428,7 @@ export function aggregatePublicKeys(publicKeys: PG1[]): Uint8Array | PointG1 {
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
 export function aggregateSignatures(signatures: Bytes[]): Uint8Array;
 export function aggregateSignatures(signatures: PointG2[]): PointG2;
-export function aggregateSignatures(signatures: PG2[]): Uint8Array | PointG2 {
+export function aggregateSignatures(signatures: PB2[]): Uint8Array | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures
     .map(normP2)
@@ -438,9 +438,9 @@ export function aggregateSignatures(signatures: PG2[]): Uint8Array | PointG2 {
 
 // ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
 export async function verifyBatch(
-  messages: PG2[],
-  publicKeys: PG1[],
-  signature: PG2
+  messages: PB2[],
+  publicKeys: PB1[],
+  signature: PB2
 ): Promise<boolean> {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');

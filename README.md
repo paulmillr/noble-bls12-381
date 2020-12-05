@@ -55,14 +55,14 @@ const msg = 'hello';
   ];
   const publicKeys = privateKeys.map(bls.getPublicKey);
   const signatures = await Promise.all(privateKeys.map(p => bls.sign(msg, p)));
-  const aggPubKey = await bls.aggregatePublicKeys(publicKeys);
-  const aggSignature = await bls.aggregateSignatures(signatures);
+  const aggPubKey = bls.aggregatePublicKeys(publicKeys);
+  const aggSignature = bls.aggregateSignatures(signatures);
   const isCorrect2 = await bls.verify(signature, msg, aggPubKey);
 
   // Sign 3 msgs with 3 keys
   const messages = ['whatsup', 'all good', 'thanks'];
   const signatures2 = await Promise.all(privateKeys.map((p, i) => bls.sign(messages[i], p)));
-  const aggSignature2 = await bls.aggregateSignatures(signatures);
+  const aggSignature2 = bls.aggregateSignatures(signatures);
   const isCorrect3 = await bls.verifyBatch(signature, messages, publicKeys);
 })();
 ```
