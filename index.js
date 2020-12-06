@@ -315,8 +315,8 @@ function pairing(P, Q, withFinalExponent = true) {
         throw new Error('No pairings at point of Infinity');
     P.assertValidity();
     Q.assertValidity();
-    let res = P.millerLoop(Q);
-    return withFinalExponent ? res.finalExponentiate() : res;
+    const looped = P.millerLoop(Q);
+    return withFinalExponent ? looped.finalExponentiate() : looped;
 }
 exports.pairing = pairing;
 function normP1(point) {

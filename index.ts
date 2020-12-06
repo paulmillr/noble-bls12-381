@@ -370,8 +370,8 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
   P.assertValidity();
   Q.assertValidity();
   // Performance: 9ms for millerLoop and ~14ms for exp.
-  let res = P.millerLoop(Q);
-  return withFinalExponent ? res.finalExponentiate() : res;
+  const looped = P.millerLoop(Q);
+  return withFinalExponent ? looped.finalExponentiate() : looped;
 }
 
 type PB1 = Bytes | PointG1;

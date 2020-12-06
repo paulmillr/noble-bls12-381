@@ -206,7 +206,7 @@ Formulas:
 
 ## Speed
 
-To achieve the best speed out of all JS / Python implementations, the library employs hardcore optimizations:
+To achieve the best speed out of all JS / Python implementations, the library employs optimizations:
 
 - cyclotomic exponentation
 - frobenius coefficients
@@ -220,18 +220,18 @@ sign x 14 ops/sec @ 70ms/op
 verify x 22 ops/sec @ 45ms/op
 verify (no compression) x 40 ops/sec @ 24ms/op
 pairing x 54 ops/sec @ 18ms/op
-aggregatePublicKeys/8 (compressed) x 259 ops/sec @ 3ms/op
-aggregateSignatures/8 (compressed) x 51 ops/sec @ 19ms/op
-aggregatePublicKeys/30 x 4194 ops/sec @ 238μs/op
-aggregatePublicKeys/100 x 1256 ops/sec @ 795μs/op
-aggregatePublicKeys/300 x 368 ops/sec @ 2ms/op
-aggregatePublicKeys/1000 x 108 ops/sec @ 9ms/op
-aggregatePublicKeys/4000 x 30 ops/sec @ 33ms/op
-aggregateSignatures/30 x 1131 ops/sec @ 884μs/op
-aggregateSignatures/100 x 299 ops/sec @ 3ms/op
-aggregateSignatures/300 x 98 ops/sec @ 10ms/op
+aggregatePublicKeys/8 x 248 ops/sec @ 4ms/op
+aggregateSignatures/8 x 50 ops/sec @ 19ms/op
+
+with compression / decompression disabled:
+sign/nc x 18 ops/sec @ 54ms/op
+verify/nc x 39 ops/sec @ 25ms/op
+aggregatePublicKeys/30 x 3988 ops/sec @ 250μs/op
+aggregatePublicKeys/1000 x 106 ops/sec @ 9ms/op
+aggregatePublicKeys/4000 x 28 ops/sec @ 34ms/op
+aggregateSignatures/30 x 1088 ops/sec @ 918μs/op
 aggregateSignatures/1000 x 30 ops/sec @ 33ms/op
-aggregateSignatures/4000 x 7 ops/sec @ 130ms/op
+aggregateSignatures/4000 x 7 ops/sec @ 128ms/op
 ```
 
 ## Security
