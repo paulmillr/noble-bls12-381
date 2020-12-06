@@ -218,7 +218,6 @@ Benchmarks measured with 2.9Ghz i9-8950HK:
 getPublicKey x 1114 ops/sec @ 897μs/op
 sign x 14 ops/sec @ 70ms/op
 verify x 22 ops/sec @ 45ms/op
-verify (no compression) x 40 ops/sec @ 24ms/op
 pairing x 54 ops/sec @ 18ms/op
 aggregatePublicKeys/8 x 248 ops/sec @ 4ms/op
 aggregateSignatures/8 x 50 ops/sec @ 19ms/op
