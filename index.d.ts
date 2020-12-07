@@ -38,7 +38,8 @@ export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: bool
 declare type PB1 = Bytes | PointG1;
 declare type PB2 = Bytes | PointG2;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array;
-export declare function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
+export declare function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
+export declare function sign(message: string, privateKey: PrivateKey): Promise<string>;
 export declare function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
 export declare function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean>;
 export declare function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;

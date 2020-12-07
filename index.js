@@ -56,6 +56,13 @@ function padStart(bytes, count, element) {
         .map((i) => i);
     return concatBytes(new Uint8Array(elements), bytes);
 }
+function bytesToHex(uint8a) {
+    let hex = '';
+    for (let i = 0; i < uint8a.length; i++) {
+        hex += uint8a[i].toString(16).padStart(2, '0');
+    }
+    return hex;
+}
 const byteMap = {};
 for (let i = 0; i < 256; i++)
     byteMap[i.toString(16).padStart(2, '0')] = i;
@@ -335,7 +342,10 @@ exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
     const msgPoint = await normP2H(message);
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-    return message instanceof PointG2 ? sigPoint : sigPoint.toSignature();
+    if (message instanceof PointG2)
+        return sigPoint;
+    const bytes = sigPoint.toSignature();
+    return typeof message === 'string' ? bytesToHex(bytes) : bytes;
 }
 exports.sign = sign;
 async function verify(signature, message, publicKey) {

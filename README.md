@@ -89,9 +89,13 @@ function getPublicKey(privateKey: Uint8Array | string | bigint): Uint8Array;
 ##### `sign(message, privateKey)`
 ```typescript
 function sign(
-  message: Uint8Array | string,
+  message: Uint8Array,
   privateKey: Uint8Array | string | bigint
 ): Promise<Uint8Array>;
+function sign(
+  message: string,
+  privateKey: Uint8Array | string | bigint
+): Promise<string>;
 function sign(
   message: PointG2,
   privateKey: Uint8Array | string | bigint
@@ -99,7 +103,7 @@ function sign(
 ```
 - `message: Uint8Array | string` - message which would be hashed & signed
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
-- Returns `Uint8Array`: encoded signature
+- Returns `Uint8Array | string | PointG2`: encoded signature
 
 Default domain (DST) is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`, use `bls.DST` to change it.
 

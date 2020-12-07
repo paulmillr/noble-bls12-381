@@ -72,6 +72,15 @@ function padStart(bytes: Uint8Array, count: number, element: number): Uint8Array
   return concatBytes(new Uint8Array(elements), bytes);
 }
 
+function bytesToHex(uint8a: Uint8Array): string {
+  // pre-caching chars could speed this up 6x.
+  let hex = '';
+  for (let i = 0; i < uint8a.length; i++) {
+    hex += uint8a[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
 interface ByteMap {
   [key: string]: number;
 }
@@ -392,12 +401,15 @@ export function getPublicKey(privateKey: PrivateKey) {
 }
 
 // S = pk x H(m)
-export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
+export async function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
+export async function sign(message: string, privateKey: PrivateKey): Promise<string>;
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export async function sign(message: PB2, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
+export async function sign(message: PB2, privateKey: PrivateKey): Promise<Bytes | PointG2> {
   const msgPoint = await normP2H(message);
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
-  return message instanceof PointG2 ? sigPoint : sigPoint.toSignature();
+  if (message instanceof PointG2) return sigPoint;
+  const bytes = sigPoint.toSignature();
+  return typeof message === 'string' ? bytesToHex(bytes) : bytes;
 }
 
 // e(P, H(m)) == e(G,S)
