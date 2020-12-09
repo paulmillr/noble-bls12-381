@@ -43,6 +43,20 @@ export const utils = {
       throw new Error("The environment doesn't have sha256 function");
     }
   },
+  randomPrivateKey: (bytesLength: number = 32): Uint8Array => {
+    // @ts-ignore
+    if (typeof window == 'object' && 'crypto' in window) {
+      // @ts-ignore
+      return window.crypto.getRandomValues(new Uint8Array(bytesLength));
+      // @ts-ignore
+    } else if (typeof process === 'object' && 'node' in process.versions) {
+      // @ts-ignore
+      const { randomBytes } = require('crypto');
+      return new Uint8Array(randomBytes(bytesLength).buffer);
+    } else {
+      throw new Error("The environment doesn't have randomBytes function");
+    }
+  },
   mod,
 };
 
@@ -267,6 +281,11 @@ export class PointG1 extends ProjectivePoint<Fq> {
     const right = b.multiply(z.pow(3n) as Fq);
     if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq');
   }
+
+  toRepr() {
+    return [this.x, this.y, this.z].map(v => v.value);
+  }
+
   // Sparse multiplication against precomputed coefficients
   millerLoop(P: PointG2): Fq12 {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
@@ -361,6 +380,10 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq2);
     if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq2');
+  }
+
+  toRepr() {
+    return [this.x, this.y, this.z].map(v => v.values);
   }
 
   clearPairingPrecomputes() {

@@ -31,6 +31,18 @@ exports.utils = {
             throw new Error("The environment doesn't have sha256 function");
         }
     },
+    randomPrivateKey: (bytesLength = 32) => {
+        if (typeof window == 'object' && 'crypto' in window) {
+            return window.crypto.getRandomValues(new Uint8Array(bytesLength));
+        }
+        else if (typeof process === 'object' && 'node' in process.versions) {
+            const { randomBytes } = require('crypto');
+            return new Uint8Array(randomBytes(bytesLength).buffer);
+        }
+        else {
+            throw new Error("The environment doesn't have randomBytes function");
+        }
+    },
     mod: math_1.mod,
 };
 function hexToNumberBE(hex) {
@@ -225,6 +237,9 @@ class PointG1 extends math_1.ProjectivePoint {
         if (!left.equals(right))
             throw new Error('Invalid point: not on curve over Fq');
     }
+    toRepr() {
+        return [this.x, this.y, this.z].map(v => v.value);
+    }
     millerLoop(P) {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
     }
@@ -303,6 +318,9 @@ class PointG2 extends math_1.ProjectivePoint {
         const right = b.multiply(z.pow(3n));
         if (!left.equals(right))
             throw new Error('Invalid point: not on curve over Fq2');
+    }
+    toRepr() {
+        return [this.x, this.y, this.z].map(v => v.values);
     }
     clearPairingPrecomputes() {
         this._PPRECOMPUTES = undefined;

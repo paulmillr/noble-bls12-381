@@ -6,6 +6,7 @@ declare type PrivateKey = Bytes | bigint | number;
 export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
+    randomPrivateKey: (bytesLength?: number) => Uint8Array;
     mod: typeof mod;
 };
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
@@ -17,6 +18,7 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toCompressedHex(): Uint8Array;
     assertValidity(): void;
+    toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
 }
 export declare function clearCofactorG2(P: PointG2): PointG2;
@@ -31,6 +33,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
     assertValidity(): void;
+    toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];
 }

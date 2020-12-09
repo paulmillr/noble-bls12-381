@@ -229,12 +229,14 @@ aggregateSignatures/8 x 50 ops/sec @ 19ms/op
 with compression / decompression disabled:
 sign/nc x 18 ops/sec @ 54ms/op
 verify/nc x 39 ops/sec @ 25ms/op
-aggregatePublicKeys/30 x 3988 ops/sec @ 250μs/op
-aggregatePublicKeys/1000 x 106 ops/sec @ 9ms/op
-aggregatePublicKeys/4000 x 28 ops/sec @ 34ms/op
-aggregateSignatures/30 x 1088 ops/sec @ 918μs/op
-aggregateSignatures/1000 x 30 ops/sec @ 33ms/op
-aggregateSignatures/4000 x 7 ops/sec @ 128ms/op
+aggregatePublicKeys/32 x 3966 ops/sec @ 252μs/op
+aggregatePublicKeys/128 x 825 ops/sec @ 1ms/op
+aggregatePublicKeys/512 x 235 ops/sec @ 4ms/op
+aggregatePublicKeys/2048 x 58 ops/sec @ 16ms/op
+aggregateSignatures/32 x 1048 ops/sec @ 953μs/op
+aggregateSignatures/128 x 252 ops/sec @ 3ms/op
+aggregateSignatures/512 x 60 ops/sec @ 16ms/op
+aggregateSignatures/2048 x 15 ops/sec @ 65ms/op
 ```
 
 ## Security
