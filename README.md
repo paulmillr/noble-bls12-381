@@ -1,13 +1,15 @@
 # noble-bls12-381 ![Node CI](https://github.com/paulmillr/noble-secp256k1/workflows/Node%20CI/badge.svg) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-bls12-381, a pairing-friendly Barreto-Lynn-Scott elliptic curve construction. Allows to:
+**The [fastest](#speed)** implementation of bls12-381 written in a scripting language.
+
+The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
 
 - Construct [zk-SNARKs](https://z.cash/technology/zksnarks/) at the 128-bit security
 - Use [threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-**The [fastest](#speed) implementation written in a scripting language**. Matches following specs:
+Matches following specs:
 
 - [Pairing-friendly curves 09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09)
 - [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
