@@ -23,14 +23,14 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@types/jest": "^25",
+    "@types/jest": "^26",
     "@types/node": "^14",
     "benchmark": "^2.1.4",
     "fast-check": "^1.24",
-    "jest": "^25",
+    "jest": "^26.5.4",
     "micro-bmark": "^0.1.2",
     "prettier": "^2.1.2",
-    "ts-jest": "^25",
+    "ts-jest": "^26",
     "typescript": "^4"
   },
   "keywords": [

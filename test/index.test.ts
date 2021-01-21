@@ -13,15 +13,6 @@ const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten
 // @ts-ignore
 const CURVE_ORDER = bls.CURVE.r;
 
-function toHex(uint8a: Uint8Array): string {
-  // pre-caching chars could speed this up 6x.
-  let hex = '';
-  for (let i = 0; i < uint8a.length; i++) {
-    hex += uint8a[i].toString(16).padStart(2, '0');
-  }
-  return hex;
-}
-
 describe("bls12-381", () => {
   bls.PointG1.BASE.clearMultiplyPrecomputes();
   bls.PointG1.BASE.calcMultiplyPrecomputes(8);
@@ -39,7 +30,7 @@ describe("bls12-381", () => {
     for (let i = 0; i < G2_VECTORS.length; i++) {
       const [priv, msg, expected] = G2_VECTORS[i];
       const sig = await bls.sign(msg, priv);
-      expect(toHex(sig)).toEqual(expected);
+      expect(sig).toEqual(expected);
     }
   });
   it("should verify signed message", async () => {
@@ -88,9 +79,9 @@ describe("bls12-381", () => {
           const aggregatedSignature = await bls.aggregateSignatures(signatures);
           expect(
             await bls.verifyBatch(
+              aggregatedSignature,
               messages,
-              publicKey,
-              aggregatedSignature as Uint8Array
+              publicKey
             )
           ).toBe(true);
         }
@@ -98,7 +89,7 @@ describe("bls12-381", () => {
       { numRuns: NUM_RUNS }
     );
   });
-  it("should verify multi-signaturez", async () => {
+  it("should batch verify multi-signatures", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.hexa(), 1, 100),
@@ -122,9 +113,9 @@ describe("bls12-381", () => {
           const aggregatedSignature = await bls.aggregateSignatures(signatures);
           expect(
             await bls.verifyBatch(
+              aggregatedSignature,
               wrongMessages,
-              publicKey,
-              aggregatedSignature as Uint8Array
+              publicKey
 
             )
           ).toBe(messages.every((m, i) => m === wrongMessages[i]));

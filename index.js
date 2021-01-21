@@ -50,6 +50,8 @@ function hexToNumberBE(hex) {
 }
 function bytesToNumberBE(bytes) {
     if (typeof bytes === 'string') {
+        if (!(/^[a-fA-F0-9]*$/.test(bytes)))
+            throw new Error('expected hex string or Uint8Array');
         return hexToNumberBE(bytes);
     }
     let value = 0n;
@@ -90,7 +92,7 @@ function hexToBytes(hexOrNum, padding = 0) {
         const str = hex[i] + hex[i + 1];
         const byte = byteMap[str];
         if (byte == null)
-            throw new Error(`Expected hex string or Uint8Array, got ${hex}`);
+            throw new Error(`expected hex string or Uint8Array, got ${hex}`);
         u8[j] = byte;
     }
     return padStart(u8, padding, 0);
@@ -194,6 +196,10 @@ class PointG1 extends math_1.ProjectivePoint {
         super(x, y, z, math_1.Fq);
     }
     static fromCompressedHex(hex) {
+        if ((typeof hex === 'string' && hex.length !== 96) ||
+            (hex instanceof Uint8Array && hex.length !== 48)) {
+            throw new Error('invalid public key, expected 48 bytes / 96 hex chars');
+        }
         const compressedValue = bytesToNumberBE(hex);
         const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
         if (bflag === 1n) {
@@ -259,8 +265,13 @@ class PointG2 extends math_1.ProjectivePoint {
         super(x, y, z, math_1.Fq2);
     }
     static async hashToCurve(msg) {
-        if (typeof msg === 'string')
+        if (typeof msg === 'string') {
+            if (!(/^[a-fA-F0-9]*$/.test(msg)))
+                throw new Error('expected hex string or Uint8Array');
             msg = hexToBytes(msg);
+        }
+        if (!(msg instanceof Uint8Array))
+            throw new Error('expected hex string or Uint8Array');
         const u = await hash_to_field(msg, 2);
         const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
         const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
@@ -271,7 +282,7 @@ class PointG2 extends math_1.ProjectivePoint {
     static fromSignature(hex) {
         const half = hex.length / 2;
         if (half !== 48 && half !== 96)
-            throw new Error('Invalid compressed signature length, must be 48/96');
+            throw new Error('invalid compressed signature length, must be 96 or 192');
         const z1 = bytesToNumberBE(hex.slice(0, half));
         const z2 = bytesToNumberBE(hex.slice(half));
         const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
@@ -354,7 +365,8 @@ async function normP2H(point) {
     return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
 }
 function getPublicKey(privateKey) {
-    return PointG1.fromPrivateKey(privateKey).toCompressedHex();
+    const bytes = PointG1.fromPrivateKey(privateKey).toCompressedHex();
+    return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
 }
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
@@ -383,7 +395,12 @@ function aggregatePublicKeys(publicKeys) {
     const agg = publicKeys
         .map(normP1)
         .reduce((sum, p) => sum.add(p), PointG1.ZERO);
-    return publicKeys[0] instanceof PointG1 ? agg : agg.toCompressedHex();
+    if (publicKeys[0] instanceof PointG1)
+        return agg;
+    const bytes = agg.toCompressedHex();
+    if (publicKeys[0] instanceof Uint8Array)
+        return bytes;
+    return bytesToHex(bytes);
 }
 exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
@@ -392,10 +409,15 @@ function aggregateSignatures(signatures) {
     const agg = signatures
         .map(normP2)
         .reduce((sum, s) => sum.add(s), PointG2.ZERO);
-    return signatures[0] instanceof PointG2 ? agg : agg.toSignature();
+    if (signatures[0] instanceof PointG2)
+        return agg;
+    const bytes = agg.toSignature();
+    if (signatures[0] instanceof Uint8Array)
+        return bytes;
+    return bytesToHex(bytes);
 }
 exports.aggregateSignatures = aggregateSignatures;
-async function verifyBatch(messages, publicKeys, signature) {
+async function verifyBatch(signature, messages, publicKeys) {
     if (!messages.length)
         throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)
