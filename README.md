@@ -21,8 +21,8 @@ Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-38
 
 - No dependencies
 - Easily auditable TypeScript/JS code
-- Uses es2020 bigint. Supported in Chrome, Firefox, Safari, node 10+
-- All releases are signed and trusted
+- Supported in all major browsers and stable node.js versions
+- All releases are signed with PGP keys
 - Check out all libraries:
   [secp256k1](https://github.com/paulmillr/noble-secp256k1),
   [ed25519](https://github.com/paulmillr/noble-ed25519),
@@ -65,7 +65,7 @@ const messages = ['d2', '0d98', '05caf3'];
   const isCorrect2 = await bls.verify(aggSignature2, message, aggPubKey2);
   console.log();
   console.log('signatures are', signatures2);
-  console.log('merged to aggregated signature', aggSignature2);
+  console.log('merged to one signature', aggSignature2);
   console.log('is correct:', isCorrect2);
 
   // Sign 3 msgs with 3 keys
@@ -75,7 +75,7 @@ const messages = ['d2', '0d98', '05caf3'];
   console.log();
   console.log('keys', publicKeys);
   console.log('signatures', signatures3);
-  console.log('merged to aggregate signature', aggSignature3);
+  console.log('merged to one signature', aggSignature3);
   console.log('is correct:', isCorrect3);
 })();
 ```
