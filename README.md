@@ -7,13 +7,9 @@
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-Matches following specs:
+Matches following specs: [pairing-friendly curves 09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09), [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash to curve 10](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10).
 
-- [Pairing-friendly curves 09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09)
-- [BLS signatures 04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
-- [Hash to curve 10](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10)
-
-Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c) to get started with the primitives.
+To learn more about internals, check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c).
 
 ### This library belongs to *noble* crypto
 
@@ -224,6 +220,13 @@ Formulas:
 - `S = pk x H(m)` - signing
 - `e(P, H(m)) == e(G,S)` - verification using pairings
 - `e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))` - signature aggregation
+
+The BLS parameters for the library are:
+
+- `PK_IN` `G1`
+- `HASH_OR_ENCODE` `true`
+- `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+- `RAND_BITS` `64`
 
 ## Speed
 
