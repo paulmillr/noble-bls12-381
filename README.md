@@ -1,6 +1,6 @@
 # noble-bls12-381 ![Node CI](https://github.com/paulmillr/noble-secp256k1/workflows/Node%20CI/badge.svg) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-The **[fastest](#speed)** implementation of BLS12-381 in a scripting language. The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
+**[Fastest](#speed)** implementation of BLS12-381 in a scripting language. The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
 
 - Construct [zk-SNARKs](https://z.cash/technology/zksnarks/) at the 128-bit security
 - Use [threshold signatures](https://medium.com/snigirev.stepan/bls-signatures-better-than-schnorr-5a7fe30ea716),
@@ -19,6 +19,7 @@ Check out [BLS12-381 For The Rest Of Us](https://hackmd.io/@benjaminion/bls12-38
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
 
+- Just two files
 - No dependencies
 - Easily auditable TypeScript/JS code
 - Supported in all major browsers and stable node.js versions
