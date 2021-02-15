@@ -238,51 +238,48 @@ export class PointG1 extends ProjectivePoint<Fq> {
     super(x, y, z, Fq);
   }
 
-  static fromHex(hex: Bytes) {
-    // Only compressed keys are supported for now
-    if (
-      (typeof hex === 'string' && hex.length !== 96) ||
-      (hex instanceof Uint8Array && hex.length !== 48)
-    ) {
-      throw new Error('invalid public key, expected 48 bytes / 96 hex chars')
-    }
-
-    const compressedValue = bytesToNumberBE(hex);
-    const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
-    if (bflag === 1n) {
-      return this.ZERO;
-    }
-    const x = mod(compressedValue, POW_2_381);
-    const fullY = mod(x ** 3n + new Fq(CURVE.b).value, P);
-    let y = powMod(fullY, (P + 1n) / 4n, P);
-    if (powMod(y, 2n, P) - fullY !== 0n) {
-      throw new Error('The given point is not on G1: y**2 = x**3 + b');
-    }
-    const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
-    if ((y * 2n) / P !== aflag) {
-      y = P - y;
-    }
-    const p = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
-    return p;
-  }
-  static fromUncompressed(bytes: Bytes) {
+  static fromHex(bytes: Bytes, isCompressed = false) {
     if (typeof bytes === "string") {
       bytes = hexToBytes(bytes);
     }
 
-    if (bytes instanceof Uint8Array && bytes.length !== 96) {
-      throw new Error('invalid point G1, expected 96 bytes')
+    const expectedLength = (isCompressed ? 1 : 2) * 48;
+    if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
+      throw new Error(`invalid point G1, expected ${expectedLength} bytes`)
     }
 
-    // Check if the infinity flag is set
-    if ((bytes[0] & (1 << 6)) !== 0) {
-      return PointG1.ZERO;
+    let point;
+    if (isCompressed) {
+      if (bytes instanceof Uint8Array && bytes.length !== 48) {
+        throw new Error('invalid point G1, expected 48 bytes')
+      }
+      const compressedValue = bytesToNumberBE(bytes);
+      const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
+      if (bflag === 1n) {
+        return this.ZERO;
+      }
+      const x = mod(compressedValue, POW_2_381);
+      const fullY = mod(x ** 3n + new Fq(CURVE.b).value, P);
+      let y = powMod(fullY, (P + 1n) / 4n, P);
+      if (powMod(y, 2n, P) - fullY !== 0n) {
+        throw new Error('The given point is not on G1: y**2 = x**3 + b');
+      }
+      const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
+      if ((y * 2n) / P !== aflag) {
+        y = P - y;
+      }
+      point = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
+    } else {
+      // Check if the infinity flag is set
+      if ((bytes[0] & (1 << 6)) !== 0) {
+        return PointG1.ZERO;
+      }
+
+      const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+      const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
+
+      point = new PointG1(new Fq(x), new Fq(y), Fq.ONE);
     }
-
-    const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
-    const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
-
-    const point = new PointG1(new Fq(x), new Fq(y), Fq.ONE);
     point.assertValidity();
     return point;
   }
@@ -407,26 +404,32 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return point;
   }
 
-  static fromUncompressed(bytes: Bytes) {
+  static fromHex(bytes: Bytes, isCompressed = false) {
     if (typeof bytes === "string") {
       bytes = hexToBytes(bytes);
     }
 
-    if (bytes instanceof Uint8Array && bytes.length !== 192) {
-      throw new Error('invalid point G2, expected 192 bytes')
+    const expectedLength = (isCompressed ? 1 : 2) * 96;
+    if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
+      throw new Error(`invalid point G2, expected ${expectedLength} bytes`)
     }
 
-    // Check if the infinity flag is set
-    if ((bytes[0] & (1 << 6)) !== 0) {
-      return PointG2.ZERO;
+    let point;
+    if (isCompressed) {
+      throw new Error('Not supported');
+    } else {
+      // Check if the infinity flag is set
+      if ((bytes[0] & (1 << 6)) !== 0) {
+        return PointG2.ZERO;
+      }
+
+      const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+      const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2*PUBLIC_KEY_LENGTH));
+      const y1 = bytesToNumberBE(bytes.slice(2*PUBLIC_KEY_LENGTH, 3*PUBLIC_KEY_LENGTH));
+      const y0 = bytesToNumberBE(bytes.slice(3*PUBLIC_KEY_LENGTH));
+
+      point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]), Fq2.ONE);
     }
-
-    const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
-    const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2*PUBLIC_KEY_LENGTH));
-    const y1 = bytesToNumberBE(bytes.slice(2*PUBLIC_KEY_LENGTH, 3*PUBLIC_KEY_LENGTH));
-    const y0 = bytesToNumberBE(bytes.slice(3*PUBLIC_KEY_LENGTH));
-
-    const point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]), Fq2.ONE);
     point.assertValidity();
     return point;
   }
@@ -510,7 +513,7 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
 type PB1 = Bytes | PointG1;
 type PB2 = Bytes | PointG2;
 function normP1(point: PB1): PointG1 {
-  return point instanceof PointG1 ? point : PointG1.fromHex(point);
+  return point instanceof PointG1 ? point : PointG1.fromHex(point, true);
 }
 function normP2(point: PB2): PointG2 {
   return point instanceof PointG2 ? point : PointG2.fromSignature(point);
