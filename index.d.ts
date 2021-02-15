@@ -14,7 +14,7 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     static BASE: PointG1;
     static ZERO: PointG1;
     constructor(x: Fq, y: Fq, z: Fq);
-    static fromHex(bytes: Bytes, isCompressed?: boolean): PointG1;
+    static fromHex(bytes: Bytes): PointG1;
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
@@ -31,7 +31,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     constructor(x: Fq2, y: Fq2, z: Fq2);
     static hashToCurve(msg: Bytes): Promise<PointG2>;
     static fromSignature(hex: Bytes): PointG2;
-    static fromHex(bytes: Bytes, isCompressed?: boolean): PointG2;
+    static fromHex(bytes: Bytes): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
     toRawBytes(isCompressed?: boolean): Uint8Array;

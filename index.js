@@ -195,19 +195,12 @@ class PointG1 extends math_1.ProjectivePoint {
     constructor(x, y, z) {
         super(x, y, z, math_1.Fq);
     }
-    static fromHex(bytes, isCompressed = false) {
+    static fromHex(bytes) {
         if (typeof bytes === "string") {
             bytes = hexToBytes(bytes);
         }
-        const expectedLength = isCompressed ? 48 : 96;
-        if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
-            throw new Error(`invalid point G1, expected ${expectedLength} bytes`);
-        }
         let point;
-        if (isCompressed) {
-            if (bytes instanceof Uint8Array && bytes.length !== 48) {
-                throw new Error('invalid point G1, expected 48 bytes');
-            }
+        if (bytes.length === 48) {
             const compressedValue = bytesToNumberBE(bytes);
             const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
             if (bflag === 1n) {
@@ -225,13 +218,16 @@ class PointG1 extends math_1.ProjectivePoint {
             }
             point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
         }
-        else {
+        else if (bytes.length === 96) {
             if ((bytes[0] & (1 << 6)) !== 0) {
                 return PointG1.ZERO;
             }
             const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
             const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
             point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), math_1.Fq.ONE);
+        }
+        else {
+            throw new Error('Invalid uncompressed point G1, expected 48/96 bytes');
         }
         point.assertValidity();
         return point;
@@ -341,19 +337,15 @@ class PointG2 extends math_1.ProjectivePoint {
         point.assertValidity();
         return point;
     }
-    static fromHex(bytes, isCompressed = false) {
+    static fromHex(bytes) {
         if (typeof bytes === "string") {
             bytes = hexToBytes(bytes);
         }
-        const expectedLength = isCompressed ? 96 : 192;
-        if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
-            throw new Error(`invalid point G2, expected ${expectedLength} bytes`);
-        }
         let point;
-        if (isCompressed) {
-            throw new Error('Not supported');
+        if (bytes.length === 96) {
+            throw new Error('Compressed format not supported yet.');
         }
-        else {
+        else if (bytes.length === 192) {
             if ((bytes[0] & (1 << 6)) !== 0) {
                 return PointG2.ZERO;
             }
@@ -362,6 +354,9 @@ class PointG2 extends math_1.ProjectivePoint {
             const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
             const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
             point = new PointG2(new math_1.Fq2([x0, x1]), new math_1.Fq2([y0, y1]), math_1.Fq2.ONE);
+        }
+        else {
+            throw new Error("Invalid uncompressed point G2, expected 192 bytes");
         }
         point.assertValidity();
         return point;
@@ -443,7 +438,7 @@ function pairing(P, Q, withFinalExponent = true) {
 }
 exports.pairing = pairing;
 function normP1(point) {
-    return point instanceof PointG1 ? point : PointG1.fromHex(point, true);
+    return point instanceof PointG1 ? point : PointG1.fromHex(point);
 }
 function normP2(point) {
     return point instanceof PointG2 ? point : PointG2.fromSignature(point);

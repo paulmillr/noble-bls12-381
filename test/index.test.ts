@@ -180,7 +180,7 @@ describe("bls12-381", () => {
   it("should compress and decompress G1 points", async () => {
     const priv = bls.PointG1.fromPrivateKey(42n);
     const publicKey = priv.toHex(true);
-    const decomp = bls.PointG1.fromHex(publicKey, true);
+    const decomp = bls.PointG1.fromHex(publicKey);
     expect(publicKey).toEqual(decomp.toHex(true));
   });
   it("should not compress and decompress zero G1 point", async () => {
