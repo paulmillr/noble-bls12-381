@@ -265,6 +265,27 @@ export class PointG1 extends ProjectivePoint<Fq> {
     const p = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
     return p;
   }
+  static fromUncompressed(bytes: Bytes) {
+    if (typeof bytes === "string") {
+      bytes = hexToBytes(bytes);
+    }
+
+    if (bytes instanceof Uint8Array && bytes.length !== 96) {
+      throw new Error('invalid point G1, expected 96 bytes')
+    }
+
+    // Check if the infinity flag is set
+    if ((bytes[0] & (1 << 6)) !== 0) {
+      return PointG1.ZERO;
+    }
+
+    const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+    const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
+
+    const point = new PointG1(new Fq(x), new Fq(y), Fq.ONE);
+    point.assertValidity();
+    return point;
+  }
 
   static fromPrivateKey(privateKey: PrivateKey) {
     return this.BASE.multiply(normalizePrivKey(privateKey));
@@ -382,6 +403,30 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
     if (isGreater || isZero) y = y.multiply(-1n);
     const point = new PointG2(x, y, Fq2.ONE);
+    point.assertValidity();
+    return point;
+  }
+
+  static fromUncompressed(bytes: Bytes) {
+    if (typeof bytes === "string") {
+      bytes = hexToBytes(bytes);
+    }
+
+    if (bytes instanceof Uint8Array && bytes.length !== 192) {
+      throw new Error('invalid point G2, expected 192 bytes')
+    }
+
+    // Check if the infinity flag is set
+    if ((bytes[0] & (1 << 6)) !== 0) {
+      return PointG2.ZERO;
+    }
+
+    const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+    const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2*PUBLIC_KEY_LENGTH));
+    const y1 = bytesToNumberBE(bytes.slice(2*PUBLIC_KEY_LENGTH, 3*PUBLIC_KEY_LENGTH));
+    const y0 = bytesToNumberBE(bytes.slice(3*PUBLIC_KEY_LENGTH));
+
+    const point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]), Fq2.ONE);
     point.assertValidity();
     return point;
   }
@@ -545,9 +590,7 @@ export async function verifyBatch(
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   const nMessages = await Promise.all(messages.map(normP2H));
-  const nPublicKeys = publicKeys.map((pub) =>
-    pub instanceof PointG1 ? pub : PointG1.fromHex(pub)
-  );
+  const nPublicKeys = publicKeys.map(normP1);
   try {
     const paired = [];
     for (const message of new Set(nMessages)) {

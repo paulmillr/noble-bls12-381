@@ -218,6 +218,22 @@ class PointG1 extends math_1.ProjectivePoint {
         const p = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
         return p;
     }
+    static fromUncompressed(bytes) {
+        if (typeof bytes === "string") {
+            bytes = hexToBytes(bytes);
+        }
+        if (bytes instanceof Uint8Array && bytes.length !== 96) {
+            throw new Error('invalid point G1, expected 96 bytes');
+        }
+        if ((bytes[0] & (1 << 6)) !== 0) {
+            return PointG1.ZERO;
+        }
+        const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+        const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
+        const point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), math_1.Fq.ONE);
+        point.assertValidity();
+        return point;
+    }
     static fromPrivateKey(privateKey) {
         return this.BASE.multiply(normalizePrivKey(privateKey));
     }
@@ -320,6 +336,24 @@ class PointG2 extends math_1.ProjectivePoint {
         if (isGreater || isZero)
             y = y.multiply(-1n);
         const point = new PointG2(x, y, math_1.Fq2.ONE);
+        point.assertValidity();
+        return point;
+    }
+    static fromUncompressed(bytes) {
+        if (typeof bytes === "string") {
+            bytes = hexToBytes(bytes);
+        }
+        if (bytes instanceof Uint8Array && bytes.length !== 192) {
+            throw new Error('invalid point G2, expected 192 bytes');
+        }
+        if ((bytes[0] & (1 << 6)) !== 0) {
+            return PointG2.ZERO;
+        }
+        const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+        const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2 * PUBLIC_KEY_LENGTH));
+        const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
+        const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
+        const point = new PointG2(new math_1.Fq2([x0, x1]), new math_1.Fq2([y0, y1]), math_1.Fq2.ONE);
         point.assertValidity();
         return point;
     }
@@ -467,7 +501,7 @@ async function verifyBatch(signature, messages, publicKeys) {
     if (publicKeys.length !== messages.length)
         throw new Error('Pubkey count should equal msg count');
     const nMessages = await Promise.all(messages.map(normP2H));
-    const nPublicKeys = publicKeys.map((pub) => pub instanceof PointG1 ? pub : PointG1.fromHex(pub));
+    const nPublicKeys = publicKeys.map(normP1);
     try {
         const paired = [];
         for (const message of new Set(nMessages)) {
