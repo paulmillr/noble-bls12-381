@@ -227,7 +227,7 @@ class PointG1 extends math_1.ProjectivePoint {
             point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), math_1.Fq.ONE);
         }
         else {
-            throw new Error('Invalid uncompressed point G1, expected 48/96 bytes');
+            throw new Error('Invalid point G1, expected 48/96 bytes');
         }
         point.assertValidity();
         return point;
