@@ -238,7 +238,8 @@ export class PointG1 extends ProjectivePoint<Fq> {
     super(x, y, z, Fq);
   }
 
-  static fromCompressedHex(hex: Bytes) {
+  static fromHex(hex: Bytes) {
+    // Only compressed keys are supported for now
     if (
       (typeof hex === 'string' && hex.length !== 96) ||
       (hex instanceof Uint8Array && hex.length !== 48)
@@ -269,30 +270,34 @@ export class PointG1 extends ProjectivePoint<Fq> {
     return this.BASE.multiply(normalizePrivKey(privateKey));
   }
 
-  toCompressedHex() {
-    let hex;
-    if (this.equals(PointG1.ZERO)) {
-      hex = POW_2_383 + POW_2_382;
+  toRawBytes(isCompressed = false) {
+    if (isCompressed) {
+      let hex;
+      if (this.equals(PointG1.ZERO)) {
+        hex = POW_2_383 + POW_2_382;
+      } else {
+        const [x, y] = this.toAffine();
+        const flag = (y.value * 2n) / P;
+        hex = x.value + flag * POW_2_381 + POW_2_383;
+      }
+      return hexToBytes(hex, PUBLIC_KEY_LENGTH);
     } else {
-      const [x, y] = this.toAffine();
-      const flag = (y.value * 2n) / P;
-      hex = x.value + flag * POW_2_381 + POW_2_383;
+      if (this.equals(PointG1.ZERO)) {
+        const bytes = new Uint8Array(2*PUBLIC_KEY_LENGTH);
+        bytes[0] |= 1 << 6;
+        return bytes;
+      } else {
+        const [x, y] = this.toAffine();
+        return new Uint8Array([
+          ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
+          ...hexToBytes(y.value, PUBLIC_KEY_LENGTH)
+        ]);
+      }
     }
-    return hexToBytes(hex, PUBLIC_KEY_LENGTH);
   }
 
-  toUncompressedHex() {
-    if (this.equals(PointG1.ZERO)) {
-      const bytes = new Uint8Array(2*PUBLIC_KEY_LENGTH);
-      bytes[0] |= 1 << 6;
-      return bytes;
-    } else {
-      const [x, y] = this.toAffine();
-      return new Uint8Array([
-        ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
-        ...hexToBytes(y.value, PUBLIC_KEY_LENGTH)
-      ]);
-    }
+  toHex(isCompressed = false) {
+    return bytesToHex(this.toRawBytes(isCompressed));
   }
 
   assertValidity() {
@@ -399,21 +404,29 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
   }
 
-  toUncompressedHex() {
-    if (this.equals(PointG2.ZERO)) {
-      const bytes = new Uint8Array(4*PUBLIC_KEY_LENGTH);
-      bytes[0] |= 1 << 6;
-      return bytes;
+  toRawBytes(isCompressed = false) {
+    if (isCompressed) {
+      throw new Error('Not supported');
     } else {
-      this.assertValidity();
-      const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
-      return new Uint8Array([
-        ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
-        ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
-        ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
-        ...hexToBytes(y0, PUBLIC_KEY_LENGTH)
-      ]);
+      if (this.equals(PointG2.ZERO)) {
+        const bytes = new Uint8Array(4*PUBLIC_KEY_LENGTH);
+        bytes[0] |= 1 << 6;
+        return bytes;
+      } else {
+        this.assertValidity();
+        const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+        return new Uint8Array([
+          ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
+          ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
+          ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
+          ...hexToBytes(y0, PUBLIC_KEY_LENGTH)
+        ]);
+      }
     }
+  }
+
+  toHex(isCompressed = false) {
+    return bytesToHex(this.toRawBytes(isCompressed));
   }
 
   assertValidity() {
@@ -452,7 +465,7 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
 type PB1 = Bytes | PointG1;
 type PB2 = Bytes | PointG2;
 function normP1(point: PB1): PointG1 {
-  return point instanceof PointG1 ? point : PointG1.fromCompressedHex(point);
+  return point instanceof PointG1 ? point : PointG1.fromHex(point);
 }
 function normP2(point: PB2): PointG2 {
   return point instanceof PointG2 ? point : PointG2.fromSignature(point);
@@ -463,7 +476,7 @@ async function normP2H(point: PB2): Promise<PointG2> {
 
 // P = pk x G
 export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
-  const bytes = PointG1.fromPrivateKey(privateKey).toCompressedHex();
+  const bytes = PointG1.fromPrivateKey(privateKey).toRawBytes(true);
   return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
 }
 
@@ -503,7 +516,7 @@ export function aggregatePublicKeys(publicKeys: PB1[]): Uint8Array | string | Po
     .map(normP1)
     .reduce((sum, p) => sum.add(p), PointG1.ZERO);
   if (publicKeys[0] instanceof PointG1) return agg;
-  const bytes = agg.toCompressedHex();
+  const bytes = agg.toRawBytes(true);
   if (publicKeys[0] instanceof Uint8Array) return bytes;
   return bytesToHex(bytes);
 }
@@ -533,7 +546,7 @@ export async function verifyBatch(
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   const nMessages = await Promise.all(messages.map(normP2H));
   const nPublicKeys = publicKeys.map((pub) =>
-    pub instanceof PointG1 ? pub : PointG1.fromCompressedHex(pub)
+    pub instanceof PointG1 ? pub : PointG1.fromHex(pub)
   );
   try {
     const paired = [];

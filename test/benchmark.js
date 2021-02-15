@@ -75,9 +75,9 @@ run(async () => {
   console.log('with compression / decompression disabled:');
   await mark('sign/nc', 10,  () => bls.sign(msgp, priv));
   await mark('verify/nc', 20, () => bls.verify(sigp, msgp, pubp));
-  const pub32 = pubs.slice(0, 32).map(bls.PointG1.fromCompressedHex);
-  const pub128 = pubs.slice(0, 128).map(bls.PointG1.fromCompressedHex);
-  const pub512 = pubs.slice(0, 512).map(bls.PointG1.fromCompressedHex);
+  const pub32 = pubs.slice(0, 32).map(bls.PointG1.fromHex);
+  const pub128 = pubs.slice(0, 128).map(bls.PointG1.fromHex);
+  const pub512 = pubs.slice(0, 512).map(bls.PointG1.fromHex);
   const pub2048 = pub512.concat(pub512, pub512, pub512);
   await mark('aggregatePublicKeys/32', 10, () => bls.aggregatePublicKeys(pub32));
   await mark('aggregatePublicKeys/128', 10, () => bls.aggregatePublicKeys(pub128));

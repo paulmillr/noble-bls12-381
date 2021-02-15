@@ -14,10 +14,10 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     static BASE: PointG1;
     static ZERO: PointG1;
     constructor(x: Fq, y: Fq, z: Fq);
-    static fromCompressedHex(hex: Bytes): PointG1;
+    static fromHex(hex: Bytes): PointG1;
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
-    toCompressedHex(): Uint8Array;
-    toUncompressedHex(): Uint8Array;
+    toRawBytes(isCompressed?: boolean): Uint8Array;
+    toHex(isCompressed?: boolean): string;
     assertValidity(): void;
     toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
@@ -33,7 +33,8 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     static fromSignature(hex: Bytes): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
     toSignature(): Uint8Array;
-    toUncompressedHex(): Uint8Array;
+    toRawBytes(isCompressed?: boolean): Uint8Array;
+    toHex(isCompressed?: boolean): string;
     assertValidity(): void;
     toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
