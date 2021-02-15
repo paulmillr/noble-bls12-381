@@ -1,5 +1,5 @@
-// To verify curve params, see pairing-friendly-curves spec:
-// https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-02
+// To verify curve parameters, see pairing-friendly-curves spec:
+// https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09
 // Basic math is done over finite fields over q.
 // More complicated math is done over polynominal extension fields.
 // To simplify calculations in Fq12, we construct extension tower:
@@ -9,12 +9,13 @@
 // Fq6(w) / (w2 - γ) where γ = v
 
 export const CURVE = {
-  // a characteristic
+  // characteristic
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
-  // an order
+  // order
   r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
-  // a cofactor
+  // cofactor
   h: 0x396c8c005555e1568c00aaab0000aaabn,
+  // generator's coordinates
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
   Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
   b: 4n,

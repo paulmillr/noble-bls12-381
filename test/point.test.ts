@@ -1,5 +1,6 @@
 import * as fc from "fast-check";
 import { Fq, Fq2, PointG1, PointG2, clearCofactorG2 } from "..";
+import { CURVE } from "../math";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 
@@ -409,8 +410,6 @@ describe("bls12-381 Point", () => {
       expect(G.multiply(k).equals(G.multiplyUnsafe(k))).toEqual(true)
     }
   });
-  // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-8.8.2
-  const H_EFF = 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n;
   it("PSI cofactor cleaning same as multiplication", () => {
     const points = [
       new PointG2(
@@ -449,7 +448,7 @@ describe("bls12-381 Point", () => {
           0x19fbb8b214bd1368a21fbe627574a25e0157459480bbd3a3e7febe5fec82b9ef1cdf49d4c2f12e68d44429403106aeden])),
     ];
     for (let p of points) {
-      expect(p.multiplyUnsafe(H_EFF).equals(clearCofactorG2(p))).toEqual(true);
+      expect(p.multiplyUnsafe(CURVE.h_eff).equals(clearCofactorG2(p))).toEqual(true);
     }
   });
 });
