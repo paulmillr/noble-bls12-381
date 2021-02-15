@@ -195,28 +195,42 @@ class PointG1 extends math_1.ProjectivePoint {
     constructor(x, y, z) {
         super(x, y, z, math_1.Fq);
     }
-    static fromHex(hex) {
-        if ((typeof hex === 'string' && hex.length !== 96) ||
-            (hex instanceof Uint8Array && hex.length !== 48)) {
-            throw new Error('invalid public key, expected 48 bytes / 96 hex chars');
+    static fromHex(bytes) {
+        if (typeof bytes === "string") {
+            bytes = hexToBytes(bytes);
         }
-        const compressedValue = bytesToNumberBE(hex);
-        const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
-        if (bflag === 1n) {
-            return this.ZERO;
+        let point;
+        if (bytes.length === 48) {
+            const compressedValue = bytesToNumberBE(bytes);
+            const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
+            if (bflag === 1n) {
+                return this.ZERO;
+            }
+            const x = math_1.mod(compressedValue, POW_2_381);
+            const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
+            let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
+            if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
+                throw new Error('The given point is not on G1: y**2 = x**3 + b');
+            }
+            const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
+            if ((y * 2n) / P !== aflag) {
+                y = P - y;
+            }
+            point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
         }
-        const x = math_1.mod(compressedValue, POW_2_381);
-        const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
-        let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
-        if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
-            throw new Error('The given point is not on G1: y**2 = x**3 + b');
+        else if (bytes.length === 96) {
+            if ((bytes[0] & (1 << 6)) !== 0) {
+                return PointG1.ZERO;
+            }
+            const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+            const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
+            point = new PointG1(new math_1.Fq(x), new math_1.Fq(y), math_1.Fq.ONE);
         }
-        const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
-        if ((y * 2n) / P !== aflag) {
-            y = P - y;
+        else {
+            throw new Error('Invalid uncompressed point G1, expected 48/96 bytes');
         }
-        const p = new PointG1(new math_1.Fq(x), new math_1.Fq(y), new math_1.Fq(1n));
-        return p;
+        point.assertValidity();
+        return point;
     }
     static fromPrivateKey(privateKey) {
         return this.BASE.multiply(normalizePrivKey(privateKey));
@@ -320,6 +334,30 @@ class PointG2 extends math_1.ProjectivePoint {
         if (isGreater || isZero)
             y = y.multiply(-1n);
         const point = new PointG2(x, y, math_1.Fq2.ONE);
+        point.assertValidity();
+        return point;
+    }
+    static fromHex(bytes) {
+        if (typeof bytes === "string") {
+            bytes = hexToBytes(bytes);
+        }
+        let point;
+        if (bytes.length === 96) {
+            throw new Error('Compressed format not supported yet.');
+        }
+        else if (bytes.length === 192) {
+            if ((bytes[0] & (1 << 6)) !== 0) {
+                return PointG2.ZERO;
+            }
+            const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+            const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2 * PUBLIC_KEY_LENGTH));
+            const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
+            const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
+            point = new PointG2(new math_1.Fq2([x0, x1]), new math_1.Fq2([y0, y1]), math_1.Fq2.ONE);
+        }
+        else {
+            throw new Error("Invalid uncompressed point G2, expected 192 bytes");
+        }
         point.assertValidity();
         return point;
     }
@@ -467,7 +505,7 @@ async function verifyBatch(signature, messages, publicKeys) {
     if (publicKeys.length !== messages.length)
         throw new Error('Pubkey count should equal msg count');
     const nMessages = await Promise.all(messages.map(normP2H));
-    const nPublicKeys = publicKeys.map((pub) => pub instanceof PointG1 ? pub : PointG1.fromHex(pub));
+    const nPublicKeys = publicKeys.map(normP1);
     try {
         const paired = [];
         for (const message of new Set(nMessages)) {
