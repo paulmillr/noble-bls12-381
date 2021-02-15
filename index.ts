@@ -281,6 +281,20 @@ export class PointG1 extends ProjectivePoint<Fq> {
     return hexToBytes(hex, PUBLIC_KEY_LENGTH);
   }
 
+  toUncompressedHex() {
+    if (this.equals(PointG1.ZERO)) {
+      const bytes = new Uint8Array(2*PUBLIC_KEY_LENGTH);
+      bytes[0] |= 1 << 6;
+      return bytes;
+    } else {
+      const [x, y] = this.toAffine();
+      return new Uint8Array([
+        ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
+        ...hexToBytes(y.value, PUBLIC_KEY_LENGTH)
+      ]);
+    }
+  }
+
   assertValidity() {
     const b = new Fq(CURVE.b);
     if (this.isZero()) return;
@@ -383,6 +397,23 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
     const z2 = x0;
     return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
+  }
+
+  toUncompressedHex() {
+    if (this.equals(PointG2.ZERO)) {
+      const bytes = new Uint8Array(4*PUBLIC_KEY_LENGTH);
+      bytes[0] |= 1 << 6;
+      return bytes;
+    } else {
+      this.assertValidity();
+      const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+      return new Uint8Array([
+        ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
+        ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
+        ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
+        ...hexToBytes(y0, PUBLIC_KEY_LENGTH)
+      ]);
+    }
   }
 
   assertValidity() {
