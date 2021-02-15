@@ -243,7 +243,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
       bytes = hexToBytes(bytes);
     }
 
-    const expectedLength = (isCompressed ? 1 : 2) * 48;
+    const expectedLength = isCompressed ? 48 : 96;
     if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
       throw new Error(`invalid point G1, expected ${expectedLength} bytes`)
     }
@@ -409,7 +409,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       bytes = hexToBytes(bytes);
     }
 
-    const expectedLength = (isCompressed ? 1 : 2) * 96;
+    const expectedLength = isCompressed ? 96 : 192;
     if (bytes instanceof Uint8Array && bytes.length !== expectedLength) {
       throw new Error(`invalid point G2, expected ${expectedLength} bytes`)
     }
