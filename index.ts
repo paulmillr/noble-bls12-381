@@ -272,7 +272,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
 
       point = new PointG1(new Fq(x), new Fq(y), Fq.ONE);
     } else {
-      throw new Error('Invalid uncompressed point G1, expected 48/96 bytes');
+      throw new Error('Invalid point G1, expected 48/96 bytes');
     }
 
     point.assertValidity();
