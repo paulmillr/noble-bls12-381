@@ -95,6 +95,8 @@ function getPublicKey(privateKey: string): string;
   integer. The result is another `Point(x, y)` which we will by default encode to hex Uint8Array.
 - Returns `Uint8Array`: encoded publicKey for signature verification
 
+**Note:** if you need spec-based `KeyGen`, use [paulmillr/bls12-381-keygen](https://github.com/paulmillr/bls12-381-keygen). It should work properly with ETH2 and FIL keys.
+
 ##### `sign(message, privateKey)`
 ```typescript
 function sign(
