@@ -228,6 +228,8 @@ The BLS parameters for the library are:
 - `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
 - `RAND_BITS` `64`
 
+Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
+
 ## Speed
 
 To achieve the best speed out of all JS / Python implementations, the library employs optimizations:
