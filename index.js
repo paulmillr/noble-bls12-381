@@ -14,7 +14,7 @@ const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
-const SHA256_DIGEST_SIZE = 32n;
+const SHA256_DIGEST_SIZE = 32;
 exports.utils = {
     async sha256(message) {
         if (typeof window == 'object' && 'crypto' in window) {
@@ -50,7 +50,7 @@ function hexToNumberBE(hex) {
 }
 function bytesToNumberBE(bytes) {
     if (typeof bytes === 'string') {
-        if (!(/^[a-fA-F0-9]*$/.test(bytes)))
+        if (!/^[a-fA-F0-9]*$/.test(bytes))
             throw new Error('expected hex string or Uint8Array');
         return hexToNumberBE(bytes);
     }
@@ -147,7 +147,7 @@ function strxor(a, b) {
 }
 async function expand_message_xmd(msg, DST, len_in_bytes) {
     const H = exports.utils.sha256;
-    const b_in_bytes = Number(SHA256_DIGEST_SIZE);
+    const b_in_bytes = SHA256_DIGEST_SIZE;
     const r_in_bytes = b_in_bytes * 2;
     const ell = Math.ceil(len_in_bytes / b_in_bytes);
     if (ell > 255)
@@ -196,7 +196,7 @@ class PointG1 extends math_1.ProjectivePoint {
         super(x, y, z, math_1.Fq);
     }
     static fromHex(bytes) {
-        if (typeof bytes === "string") {
+        if (typeof bytes === 'string') {
             bytes = hexToBytes(bytes);
         }
         let point;
@@ -258,7 +258,7 @@ class PointG1 extends math_1.ProjectivePoint {
                 const [x, y] = this.toAffine();
                 return new Uint8Array([
                     ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
-                    ...hexToBytes(y.value, PUBLIC_KEY_LENGTH)
+                    ...hexToBytes(y.value, PUBLIC_KEY_LENGTH),
                 ]);
             }
         }
@@ -277,7 +277,7 @@ class PointG1 extends math_1.ProjectivePoint {
             throw new Error('Invalid point: not on curve over Fq');
     }
     toRepr() {
-        return [this.x, this.y, this.z].map(v => v.value);
+        return [this.x, this.y, this.z].map((v) => v.value);
     }
     millerLoop(P) {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
@@ -299,7 +299,7 @@ class PointG2 extends math_1.ProjectivePoint {
     }
     static async hashToCurve(msg) {
         if (typeof msg === 'string') {
-            if (!(/^[a-fA-F0-9]*$/.test(msg)))
+            if (!/^[a-fA-F0-9]*$/.test(msg))
                 throw new Error('expected hex string or Uint8Array');
             msg = hexToBytes(msg);
         }
@@ -338,7 +338,7 @@ class PointG2 extends math_1.ProjectivePoint {
         return point;
     }
     static fromHex(bytes) {
-        if (typeof bytes === "string") {
+        if (typeof bytes === 'string') {
             bytes = hexToBytes(bytes);
         }
         let point;
@@ -356,7 +356,7 @@ class PointG2 extends math_1.ProjectivePoint {
             point = new PointG2(new math_1.Fq2([x0, x1]), new math_1.Fq2([y0, y1]), math_1.Fq2.ONE);
         }
         else {
-            throw new Error("Invalid uncompressed point G2, expected 192 bytes");
+            throw new Error('Invalid uncompressed point G2, expected 192 bytes');
         }
         point.assertValidity();
         return point;
@@ -394,7 +394,7 @@ class PointG2 extends math_1.ProjectivePoint {
                     ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
                     ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
                     ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
-                    ...hexToBytes(y0, PUBLIC_KEY_LENGTH)
+                    ...hexToBytes(y0, PUBLIC_KEY_LENGTH),
                 ]);
             }
         }
@@ -413,7 +413,7 @@ class PointG2 extends math_1.ProjectivePoint {
             throw new Error('Invalid point: not on curve over Fq2');
     }
     toRepr() {
-        return [this.x, this.y, this.z].map(v => v.values);
+        return [this.x, this.y, this.z].map((v) => v.values);
     }
     clearPairingPrecomputes() {
         this._PPRECOMPUTES = undefined;
@@ -474,9 +474,7 @@ exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
-    const agg = publicKeys
-        .map(normP1)
-        .reduce((sum, p) => sum.add(p), PointG1.ZERO);
+    const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
     if (publicKeys[0] instanceof PointG1)
         return agg;
     const bytes = agg.toRawBytes(true);
@@ -488,9 +486,7 @@ exports.aggregatePublicKeys = aggregatePublicKeys;
 function aggregateSignatures(signatures) {
     if (!signatures.length)
         throw new Error('Expected non-empty array');
-    const agg = signatures
-        .map(normP2)
-        .reduce((sum, s) => sum.add(s), PointG2.ZERO);
+    const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
     if (signatures[0] instanceof PointG2)
         return agg;
     const bytes = agg.toSignature();

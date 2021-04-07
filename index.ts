@@ -1,8 +1,15 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
-// bls12-381 is a construction of two curves.
-// 1. Fq: (x, y) - can be used for private keys
-// 2. Fq2: (x1, x2+i), (y1, y2+i) - (imaginary numbers) can be used for signatures
-// We can also get Fq12 by combining Fq & Fq2 using Ate pairing.
+// bls12-381 is a construction of two curves:
+// 1. Fq: (x, y)
+// 2. Fq2: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
+//
+// Bilinear Pairing (ate pairing) is used to combine both elements into a paired one:
+//   Fq12 = e(Fq, Fq2)
+//   where Fq12 = 12-degree polynomial
+// Pairing is used to verify signatures.
+//
+// We are using Fq for private keys (shorter) and Fq2 for signatures (longer).
+// Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
   Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint,
@@ -22,7 +29,7 @@ const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
-const SHA256_DIGEST_SIZE = 32n;
+const SHA256_DIGEST_SIZE = 32;
 
 export const utils = {
   async sha256(message: Uint8Array): Promise<Uint8Array> {
@@ -66,7 +73,7 @@ function hexToNumberBE(hex: string) {
 
 function bytesToNumberBE(bytes: Bytes) {
   if (typeof bytes === 'string') {
-    if (!(/^[a-fA-F0-9]*$/.test(bytes))) throw new Error('expected hex string or Uint8Array');
+    if (!/^[a-fA-F0-9]*$/.test(bytes)) throw new Error('expected hex string or Uint8Array');
     return hexToNumberBE(bytes);
   }
   let value = 0n;
@@ -179,7 +186,7 @@ async function expand_message_xmd(
   len_in_bytes: number
 ): Promise<Uint8Array> {
   const H = utils.sha256;
-  const b_in_bytes = Number(SHA256_DIGEST_SIZE);
+  const b_in_bytes = SHA256_DIGEST_SIZE;
   const r_in_bytes = b_in_bytes * 2;
 
   const ell = Math.ceil(len_in_bytes / b_in_bytes);
@@ -239,7 +246,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   static fromHex(bytes: Bytes) {
-    if (typeof bytes === "string") {
+    if (typeof bytes === 'string') {
       bytes = hexToBytes(bytes);
     }
 
@@ -296,14 +303,14 @@ export class PointG1 extends ProjectivePoint<Fq> {
       return hexToBytes(hex, PUBLIC_KEY_LENGTH);
     } else {
       if (this.equals(PointG1.ZERO)) {
-        const bytes = new Uint8Array(2*PUBLIC_KEY_LENGTH);
+        const bytes = new Uint8Array(2 * PUBLIC_KEY_LENGTH);
         bytes[0] |= 1 << 6;
         return bytes;
       } else {
         const [x, y] = this.toAffine();
         return new Uint8Array([
           ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(y.value, PUBLIC_KEY_LENGTH)
+          ...hexToBytes(y.value, PUBLIC_KEY_LENGTH),
         ]);
       }
     }
@@ -323,7 +330,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   toRepr() {
-    return [this.x, this.y, this.z].map(v => v.value);
+    return [this.x, this.y, this.z].map((v) => v.value);
   }
 
   // Sparse multiplication against precomputed coefficients
@@ -356,7 +363,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
     if (typeof msg === 'string') {
-      if (!(/^[a-fA-F0-9]*$/.test(msg))) throw new Error('expected hex string or Uint8Array');
+      if (!/^[a-fA-F0-9]*$/.test(msg)) throw new Error('expected hex string or Uint8Array');
       msg = hexToBytes(msg);
     }
     if (!(msg instanceof Uint8Array)) throw new Error('expected hex string or Uint8Array');
@@ -377,13 +384,14 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       throw new Error('invalid compressed signature length, must be 96 or 192');
     const z1 = bytesToNumberBE(hex.slice(0, half));
     const z2 = bytesToNumberBE(hex.slice(half));
-    // indicates the infinity point
+    // Indicates the infinity point
     const bflag1 = mod(z1, POW_2_383) / POW_2_382;
     if (bflag1 === 1n) return this.ZERO;
 
     const x1 = z1 % POW_2_381;
     const x2 = z2;
     const x = new Fq2([x2, x1]);
+    // The slow part
     let y = x.pow(3n).add(new Fq2(CURVE.b2)).sqrt();
     if (!y) throw new Error('Failed to find a square root');
 
@@ -400,27 +408,27 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   static fromHex(bytes: Bytes) {
-    if (typeof bytes === "string") {
+    if (typeof bytes === 'string') {
       bytes = hexToBytes(bytes);
     }
 
     let point;
     if (bytes.length === 96) {
       throw new Error('Compressed format not supported yet.');
-    } else if (bytes.length === 192)  {
+    } else if (bytes.length === 192) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) {
         return PointG2.ZERO;
       }
 
       const x1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
-      const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2*PUBLIC_KEY_LENGTH));
-      const y1 = bytesToNumberBE(bytes.slice(2*PUBLIC_KEY_LENGTH, 3*PUBLIC_KEY_LENGTH));
-      const y0 = bytesToNumberBE(bytes.slice(3*PUBLIC_KEY_LENGTH));
+      const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2 * PUBLIC_KEY_LENGTH));
+      const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
+      const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
 
       point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]), Fq2.ONE);
     } else {
-      throw new Error("Invalid uncompressed point G2, expected 192 bytes");
+      throw new Error('Invalid uncompressed point G2, expected 192 bytes');
     }
 
     point.assertValidity();
@@ -450,7 +458,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       throw new Error('Not supported');
     } else {
       if (this.equals(PointG2.ZERO)) {
-        const bytes = new Uint8Array(4*PUBLIC_KEY_LENGTH);
+        const bytes = new Uint8Array(4 * PUBLIC_KEY_LENGTH);
         bytes[0] |= 1 << 6;
         return bytes;
       } else {
@@ -460,7 +468,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
           ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
           ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
           ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(y0, PUBLIC_KEY_LENGTH)
+          ...hexToBytes(y0, PUBLIC_KEY_LENGTH),
         ]);
       }
     }
@@ -480,7 +488,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   toRepr() {
-    return [this.x, this.y, this.z].map(v => v.values);
+    return [this.x, this.y, this.z].map((v) => v.values);
   }
 
   clearPairingPrecomputes() {
@@ -515,12 +523,14 @@ async function normP2H(point: PB2): Promise<PointG2> {
   return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
 }
 
+// Multiplies generator by private key.
 // P = pk x G
 export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
   const bytes = PointG1.fromPrivateKey(privateKey).toRawBytes(true);
   return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
 }
 
+// Sign executes `hashToCurve` on the message and then multiplies the result by private key.
 // S = pk x H(m)
 export async function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: string, privateKey: PrivateKey): Promise<string>;
@@ -533,7 +543,8 @@ export async function sign(message: PB2, privateKey: PrivateKey): Promise<Bytes 
   return typeof message === 'string' ? bytesToHex(bytes) : bytes;
 }
 
-// e(P, H(m)) == e(G,S)
+// Verify checks if pairing of public key & hash is equal to pairing of generator & signature.
+// e(P, H(m)) == e(G, S)
 export async function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean> {
   const P = normP1(publicKey);
   const Hm = await normP2H(message);
@@ -547,30 +558,27 @@ export async function verify(signature: PB2, message: PB2, publicKey: PB1): Prom
   return exp.equals(Fq12.ONE);
 }
 
+// Adds a bunch of public key points together.
 // pk1 + pk2 + pk3 = pkA
 export function aggregatePublicKeys(publicKeys: Uint8Array[]): Uint8Array;
 export function aggregatePublicKeys(publicKeys: string[]): string;
 export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export function aggregatePublicKeys(publicKeys: PB1[]): Uint8Array | string | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
-  const agg = publicKeys
-    .map(normP1)
-    .reduce((sum, p) => sum.add(p), PointG1.ZERO);
+  const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
   if (publicKeys[0] instanceof PointG1) return agg;
   const bytes = agg.toRawBytes(true);
   if (publicKeys[0] instanceof Uint8Array) return bytes;
   return bytesToHex(bytes);
 }
 
-// e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
+// Adds a bunch of signature points together.
 export function aggregateSignatures(signatures: Uint8Array[]): Uint8Array;
 export function aggregateSignatures(signatures: string[]): string;
 export function aggregateSignatures(signatures: PointG2[]): PointG2;
 export function aggregateSignatures(signatures: PB2[]): Uint8Array | string | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
-  const agg = signatures
-    .map(normP2)
-    .reduce((sum, s) => sum.add(s), PointG2.ZERO);
+  const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
   if (signatures[0] instanceof PointG2) return agg;
   const bytes = agg.toSignature();
   if (signatures[0] instanceof Uint8Array) return bytes;
@@ -578,6 +586,7 @@ export function aggregateSignatures(signatures: PB2[]): Uint8Array | string | Po
 }
 
 // ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
+// e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
 export async function verifyBatch(
   signature: PB2,
   messages: PB2[],
