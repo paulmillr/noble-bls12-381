@@ -396,7 +396,7 @@ class Fq6 extends FQP {
         super();
         this.c = c;
         if (c.length !== 3)
-            throw new Error(`Expected array with 2 elements`);
+            throw new Error(`Expected array with 3 elements`);
     }
     static fromTuple(t) {
         return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);

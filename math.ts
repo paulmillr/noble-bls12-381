@@ -575,7 +575,7 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
 
   constructor(public readonly c: [Fq2, Fq2, Fq2]) {
     super();
-    if (c.length !== 3) throw new Error(`Expected array with 2 elements`);
+    if (c.length !== 3) throw new Error(`Expected array with 3 elements`);
   }
   init(triple: [Fq2, Fq2, Fq2]) {
     return new Fq6(triple);
