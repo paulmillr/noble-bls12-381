@@ -15,9 +15,9 @@ fc.configureGlobal({ numRuns: NUM_RUNS });
 const CURVE_ORDER = bls.CURVE.r;
 
 const FC_MSG = fc.hexaString(64, 64);
-const FC_MSG_15 = fc.array(FC_MSG, 5, 5);
+const FC_MSG_5 = fc.array(FC_MSG, 5, 5);
 const FC_BIGINT = fc.bigInt(1n, CURVE_ORDER - 1n);
-const FC_BIGINT_15 = fc.array(FC_BIGINT, 5, 5);
+const FC_BIGINT_5 = fc.array(FC_BIGINT, 5, 5);
 
 describe('bls12-381', () => {
   bls.PointG1.BASE.clearMultiplyPrecomputes();
@@ -316,7 +316,7 @@ describe('bls12-381', () => {
   });
   it('should verify multi-signature', async () => {
     await fc.assert(
-      fc.asyncProperty(FC_MSG_15, FC_BIGINT_15, async (messages, privateKeys) => {
+      fc.asyncProperty(FC_MSG_5, FC_BIGINT_5, async (messages, privateKeys) => {
         privateKeys = privateKeys.slice(0, messages.length);
         messages = messages.slice(0, privateKeys.length);
         const publicKey = privateKeys.map(bls.getPublicKey);
@@ -331,9 +331,9 @@ describe('bls12-381', () => {
   it('should batch verify multi-signatures', async () => {
     await fc.assert(
       fc.asyncProperty(
-        FC_MSG_15,
-        FC_MSG_15,
-        FC_BIGINT_15,
+        FC_MSG_5,
+        FC_MSG_5,
+        FC_BIGINT_5,
         async (messages, wrongMessages, privateKeys) => {
           privateKeys = privateKeys.slice(0, messages.length);
           messages = messages.slice(0, privateKeys.length);
@@ -355,9 +355,9 @@ describe('bls12-381', () => {
   it('should not verify multi-signature with wrong public keys', async () => {
     await fc.assert(
       fc.asyncProperty(
-        FC_MSG_15,
-        FC_BIGINT_15,
-        FC_BIGINT_15,
+        FC_MSG_5,
+        FC_BIGINT_5,
+        FC_BIGINT_5,
         async (messages, privateKeys, wrongPrivateKeys) => {
           privateKeys = privateKeys.slice(0, messages.length);
           wrongPrivateKeys = privateKeys.map((a, i) =>
@@ -378,7 +378,7 @@ describe('bls12-381', () => {
   });
   it('should verify multi-signature as simple signature', async () => {
     await fc.assert(
-      fc.asyncProperty(FC_MSG, FC_BIGINT_15, async (message, privateKeys) => {
+      fc.asyncProperty(FC_MSG, FC_BIGINT_5, async (message, privateKeys) => {
         const publicKey = (await Promise.all(privateKeys.map(bls.getPublicKey))) as Uint8Array[];
         const signatures = await Promise.all(
           privateKeys.map((privateKey) => bls.sign(message, privateKey))
