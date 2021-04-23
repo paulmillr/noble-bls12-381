@@ -25,11 +25,10 @@
   "devDependencies": {
     "@types/jest": "^26",
     "@types/node": "^14",
-    "benchmark": "^2.1.4",
-    "fast-check": "^1.24",
+    "fast-check": "^2.14",
     "jest": "^26.5.4",
-    "micro-bmark": "^0.1.2",
-    "prettier": "^2.1.2",
+    "micro-bmark": "^0.1.3",
+    "prettier": "^2.2.1",
     "ts-jest": "^26",
     "typescript": "^4"
   },
