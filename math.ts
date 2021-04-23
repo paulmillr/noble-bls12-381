@@ -124,6 +124,29 @@ function bitGet(n: bigint, pos: number) {
   return (n >> BigInt(pos)) & 1n;
 }
 
+// Inverses number over modulo
+function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
+  if (number === 0n || modulo <= 0n) {
+    throw new Error('invert: expected positive integers');
+  }
+  // Eucledian GCD https://brilliant.org/wiki/extended-euclidean-algorithm/
+  let a = mod(number, modulo);
+  let b = modulo;
+  let [x, y, u, v] = [0n, 1n, 1n, 0n];
+  while (a !== 0n) {
+    const q = b / a;
+    const r = b % a;
+    const m = x - u * q;
+    const n = y - v * q;
+    [b, a] = [a, r];
+    [x, y] = [u, v];
+    [u, v] = [m, n];
+  }
+  const gcd = b;
+  if (gcd !== 1n) throw new Error('invert: does not exist');
+  return mod(x, modulo);
+}
+
 // Finite field over q.
 export class Fq implements Field<Fq> {
   static readonly ORDER = CURVE.P;
@@ -149,16 +172,7 @@ export class Fq implements Field<Fq> {
   }
 
   invert(): Fq {
-    let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
-    let a = Fq.ORDER;
-    let b = this.value;
-    let q;
-    while (a !== 0n) {
-      [q, b, a] = [b / a, a, b % a];
-      [x0, x1] = [x1, x0 - q * x1];
-      [y0, y1] = [y1, y0 - q * y1];
-    }
-    return new Fq(x0);
+    return new Fq(invert(this.value, Fq.ORDER));
   }
 
   add(rhs: Fq): Fq {
@@ -221,16 +235,7 @@ export class Fr implements Field<Fr> {
   }
 
   invert(): Fr {
-    let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
-    let a = Fr.ORDER;
-    let b = this.value;
-    let q;
-    while (a !== 0n) {
-      [q, b, a] = [b / a, a, b % a];
-      [x0, x1] = [x1, x0 - q * x1];
-      [y0, y1] = [y1, y0 - q * y1];
-    }
-    return new Fr(x0);
+    return new Fr(invert(this.value, Fr.ORDER));
   }
 
   add(rhs: Fr): Fr {
@@ -266,20 +271,20 @@ export class Fr implements Field<Fr> {
     if (!this.legendre().equals(Fr.ONE)) return;
     const P = Fr.ORDER;
     let q, s, z;
-    for (q = P - 1n, s = 0; q % 2n == 0n; q /= 2n, s++);
-    if (s == 1) return this.pow((P + 1n) / 4n);
-    for (z = 2n; z < P && new Fr(z).legendre().value != P - 1n; z++);
+    for (q = P - 1n, s = 0; q % 2n === 0n; q /= 2n, s++);
+    if (s === 1) return this.pow((P + 1n) / 4n);
+    for (z = 2n; z < P && new Fr(z).legendre().value !== P - 1n; z++);
 
     let c = powMod(z, q, P);
     let r = powMod(this.value, (q + 1n) / 2n, P);
     let t = powMod(this.value, q, P);
 
     let t2 = 0n;
-    while (mod(t - 1n, P) != 0n) {
+    while (mod(t - 1n, P) !== 0n) {
       t2 = mod(t * t, P);
       let i;
       for (i = 1; i < s; i++) {
-        if (mod(t2 - 1n, P) == 0n) break;
+        if (mod(t2 - 1n, P) === 0n) break;
         t2 = mod(t2 * t2, P);
       }
       let b = powMod(c, BigInt(1 << (s - i - 1)), P);
@@ -476,7 +481,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     const x2 = x1.negate();
     const [re1, im1] = x1.values;
     const [re2, im2] = x2.values;
-    if (im1 > im2 || (im1 == im2 && re1 > re2)) return x1;
+    if (im1 > im2 || (im1 === im2 && re1 > re2)) return x1;
     return x2;
   }
 
@@ -891,7 +896,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
 
   // Compare one point to another.
   equals(rhs: ProjectivePoint<T>) {
-    if (this.constructor != rhs.constructor)
+    if (this.constructor !== rhs.constructor)
       throw new Error(
         `ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`
       );
@@ -959,7 +964,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-1998-cmo-2
   // Cost: 12M + 2S + 6add + 1*2.
   add(rhs: this): this {
-    if (this.constructor != rhs.constructor)
+    if (this.constructor !== rhs.constructor)
       throw new Error(
         `ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`
       );
@@ -993,7 +998,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   subtract(rhs: this): this {
-    if (this.constructor != rhs.constructor)
+    if (this.constructor !== rhs.constructor)
       throw new Error(
         `ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`
       );
@@ -1288,7 +1293,7 @@ export function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12 {
         ell[j][2].multiply(Py.value)
       );
     }
-    if (i != 0) f12 = f12.square();
+    if (i !== 0) f12 = f12.square();
   }
   return f12.conjugate();
 }

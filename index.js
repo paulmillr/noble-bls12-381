@@ -491,6 +491,7 @@ async function verifyBatch(signature, messages, publicKeys) {
         throw new Error('Expected non-empty messages array');
     if (publicKeys.length !== messages.length)
         throw new Error('Pubkey count should equal msg count');
+    const sig = normP2(signature);
     const nMessages = await Promise.all(messages.map(normP2H));
     const nPublicKeys = publicKeys.map(normP1);
     try {
@@ -499,7 +500,6 @@ async function verifyBatch(signature, messages, publicKeys) {
             const groupPublicKey = nMessages.reduce((groupPublicKey, subMessage, i) => subMessage === message ? groupPublicKey.add(nPublicKeys[i]) : groupPublicKey, PointG1.ZERO);
             paired.push(pairing(groupPublicKey, message, false));
         }
-        const sig = normP2(signature);
         paired.push(pairing(PointG1.BASE.negate(), sig, false));
         const product = paired.reduce((a, b) => a.multiply(b), math_1.Fq12.ONE);
         const exp = product.finalExponentiate();
