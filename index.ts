@@ -67,31 +67,12 @@ export const utils = {
   mod,
 };
 
-function hexToNumberBE(hex: string) {
-  return BigInt(`0x${hex}`);
-}
-
-function bytesToNumberBE(bytes: Bytes) {
-  if (typeof bytes === 'string') {
-    if (!/^[a-fA-F0-9]*$/.test(bytes)) throw new Error('expected hex string or Uint8Array');
-    return hexToNumberBE(bytes);
-  }
+function bytesToNumberBE(bytes: Uint8Array) {
   let value = 0n;
   for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
     value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
   }
   return value;
-}
-
-function padStart(bytes: Uint8Array, count: number, element: number): Uint8Array {
-  if (bytes.length >= count) {
-    return bytes;
-  }
-  const diff = count - bytes.length;
-  const elements = Array(diff)
-    .fill(element)
-    .map((i: number) => i);
-  return concatBytes(new Uint8Array(elements), bytes);
 }
 
 function bytesToHex(uint8a: Uint8Array): string {
@@ -103,41 +84,38 @@ function bytesToHex(uint8a: Uint8Array): string {
   return hex;
 }
 
-interface ByteMap {
-  [key: string]: number;
-}
-const byteMap: ByteMap = {};
-for (let i = 0; i < 256; i++) byteMap[i.toString(16).padStart(2, '0')] = i;
-// Converts hex or number to big endian array
-function hexToBytes(hexOrNum: string | number | bigint, padding: number = 0): Uint8Array {
-  let hex = typeof hexOrNum === 'string' ? hexOrNum.toLowerCase() : hexOrNum.toString(16);
-  if (!hex.length && !padding) return new Uint8Array([]);
-  if (hex.length & 1) hex = `0${hex}`;
-  const len = hex.length;
-  const u8 = new Uint8Array(len / 2);
-  for (let i = 0, j = 0; i < len - 1; i += 2, j++) {
-    const str = hex[i] + hex[i + 1];
-    const byte = byteMap[str];
-    if (byte == null) throw new Error(`expected hex string or Uint8Array, got ${hex}`);
-    u8[j] = byte;
+function hexToBytes(hex: string): Uint8Array {
+  if (typeof hex !== 'string' || hex.length % 2) throw new Error('Expected valid hex');
+  const array = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < array.length; i++) {
+    const j = i * 2;
+    array[i] = Number.parseInt(hex.slice(j, j + 2), 16);
   }
-  return padStart(u8, padding, 0);
+  return array;
 }
 
-function toBigInt(num: string | Uint8Array | bigint | number) {
-  if (typeof num === 'string') return hexToNumberBE(num);
-  if (typeof num === 'number') return BigInt(num);
-  if (num instanceof Uint8Array) return bytesToNumberBE(num);
-  return num;
+function toPaddedHex(num: bigint, padding: number) {
+  if (num < 0n) throw new Error('Expected valid number');
+  if (typeof padding !== 'number') throw new TypeError('Expected valid padding');
+  return num.toString(16).padStart(padding * 2, '0');
 }
 
-function concatBytes(...bytes: Bytes[]) {
-  return new Uint8Array(
-    bytes.reduce((res: number[], bytesView: Bytes) => {
-      bytesView = bytesView instanceof Uint8Array ? bytesView : hexToBytes(bytesView);
-      return [...res, ...bytesView];
-    }, [])
-  );
+function expectHex(item: unknown): void {
+  if (typeof item !== 'string' && !(item instanceof Uint8Array)) {
+    throw new TypeError('Expected hex string or Uint8Array');
+  }
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  if (arrays.length === 1) return arrays[0];
+  const length = arrays.reduce((a, arr) => a + arr.length, 0);
+  const result = new Uint8Array(length);
+  for (let i = 0, pad = 0; i < arrays.length; i++) {
+    const arr = arrays[i];
+    result.set(arr, pad);
+    pad += arr.length;
+  }
+  return result;
 }
 
 // UTF8 to ui8a
@@ -231,8 +209,14 @@ export async function hash_to_field(
   return u;
 }
 
-function normalizePrivKey(privateKey: PrivateKey): Fq {
-  const fq = new Fq(toBigInt(privateKey));
+function normalizePrivKey(key: PrivateKey): Fq {
+  let int: bigint;
+  if (key instanceof Uint8Array && key.length === 32) int = bytesToNumberBE(key);
+  else if (typeof key === 'string' && key.length === 64) int = BigInt(`0x${key}`);
+  else if (typeof key === 'number' && key > 0 && Number.isSafeInteger(key)) int = BigInt(key);
+  else if (typeof key === 'bigint' && key > 0n) int = key;
+  else throw new TypeError('Expected valid private key');
+  const fq = new Fq(int);
   if (fq.isZero()) throw new Error('Private key cannot be 0');
   return fq;
 }
@@ -246,9 +230,8 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   static fromHex(bytes: Bytes) {
-    if (typeof bytes === 'string') {
-      bytes = hexToBytes(bytes);
-    }
+    expectHex(bytes);
+    if (typeof bytes === 'string') bytes = hexToBytes(bytes);
 
     let point;
     if (bytes.length === 48) {
@@ -291,6 +274,10 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   toRawBytes(isCompressed = false) {
+    return hexToBytes(this.toHex(isCompressed));
+  }
+
+  toHex(isCompressed = false) {
     if (isCompressed) {
       let hex;
       if (this.equals(PointG1.ZERO)) {
@@ -300,24 +287,16 @@ export class PointG1 extends ProjectivePoint<Fq> {
         const flag = (y.value * 2n) / P;
         hex = x.value + flag * POW_2_381 + POW_2_383;
       }
-      return hexToBytes(hex, PUBLIC_KEY_LENGTH);
+      return toPaddedHex(hex, PUBLIC_KEY_LENGTH);
     } else {
       if (this.equals(PointG1.ZERO)) {
-        const bytes = new Uint8Array(2 * PUBLIC_KEY_LENGTH);
-        bytes[0] |= 1 << 6;
-        return bytes;
+        // 2x PUBLIC_KEY_LENGTH
+        return '4'.padEnd(2 * 2 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
       } else {
         const [x, y] = this.toAffine();
-        return new Uint8Array([
-          ...hexToBytes(x.value, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(y.value, PUBLIC_KEY_LENGTH),
-        ]);
+        return toPaddedHex(x.value, PUBLIC_KEY_LENGTH) + toPaddedHex(y.value, PUBLIC_KEY_LENGTH);
       }
     }
-  }
-
-  toHex(isCompressed = false) {
-    return bytesToHex(this.toRawBytes(isCompressed));
   }
 
   assertValidity() {
@@ -362,11 +341,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
-    if (typeof msg === 'string') {
-      if (!/^[a-fA-F0-9]*$/.test(msg)) throw new Error('expected hex string or Uint8Array');
-      msg = hexToBytes(msg);
-    }
-    if (!(msg instanceof Uint8Array)) throw new Error('expected hex string or Uint8Array');
+    expectHex(msg);
+    if (typeof msg === 'string') msg = hexToBytes(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
@@ -379,9 +355,11 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // TODO: Optimize, it's very slow because of sqrt.
   static fromSignature(hex: Bytes): PointG2 {
+    expectHex(hex);
+    if (typeof hex === 'string') hex = hexToBytes(hex);
     const half = hex.length / 2;
     if (half !== 48 && half !== 96)
-      throw new Error('invalid compressed signature length, must be 96 or 192');
+      throw new Error('Invalid compressed signature length, must be 96 or 192');
     const z1 = bytesToNumberBE(hex.slice(0, half));
     const z2 = bytesToNumberBE(hex.slice(half));
     // Indicates the infinity point
@@ -408,9 +386,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   static fromHex(bytes: Bytes) {
-    if (typeof bytes === 'string') {
-      bytes = hexToBytes(bytes);
-    }
+    expectHex(bytes);
+    if (typeof bytes === 'string') bytes = hexToBytes(bytes);
 
     let point;
     if (bytes.length === 96) {
@@ -442,7 +419,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   toSignature() {
     if (this.equals(PointG2.ZERO)) {
       const sum = POW_2_383 + POW_2_382;
-      return concatBytes(hexToBytes(sum, PUBLIC_KEY_LENGTH), hexToBytes(0n, PUBLIC_KEY_LENGTH));
+      return toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
     }
     this.assertValidity();
     const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
@@ -450,32 +427,30 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
     const z2 = x0;
-    return concatBytes(hexToBytes(z1, PUBLIC_KEY_LENGTH), hexToBytes(z2, PUBLIC_KEY_LENGTH));
+    return toPaddedHex(z1, PUBLIC_KEY_LENGTH) + toPaddedHex(z2, PUBLIC_KEY_LENGTH);
   }
 
   toRawBytes(isCompressed = false) {
+    return hexToBytes(this.toHex(isCompressed));
+  }
+
+  toHex(isCompressed = false) {
     if (isCompressed) {
       throw new Error('Not supported');
     } else {
       if (this.equals(PointG2.ZERO)) {
-        const bytes = new Uint8Array(4 * PUBLIC_KEY_LENGTH);
-        bytes[0] |= 1 << 6;
-        return bytes;
+        return '4'.padEnd(2 * 4 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
       } else {
         this.assertValidity();
         const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
-        return new Uint8Array([
-          ...hexToBytes(x1, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(x0, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(y1, PUBLIC_KEY_LENGTH),
-          ...hexToBytes(y0, PUBLIC_KEY_LENGTH),
-        ]);
+        return (
+          toPaddedHex(x1, PUBLIC_KEY_LENGTH) +
+          toPaddedHex(x0, PUBLIC_KEY_LENGTH) +
+          toPaddedHex(y1, PUBLIC_KEY_LENGTH) +
+          toPaddedHex(y0, PUBLIC_KEY_LENGTH)
+        );
       }
     }
-  }
-
-  toHex(isCompressed = false) {
-    return bytesToHex(this.toRawBytes(isCompressed));
   }
 
   assertValidity() {
@@ -514,13 +489,19 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
 type PB1 = Bytes | PointG1;
 type PB2 = Bytes | PointG2;
 function normP1(point: PB1): PointG1 {
-  return point instanceof PointG1 ? point : PointG1.fromHex(point);
+  if (point instanceof PointG1) return point;
+  expectHex(point);
+  return PointG1.fromHex(point);
 }
 function normP2(point: PB2): PointG2 {
-  return point instanceof PointG2 ? point : PointG2.fromSignature(point);
+  if (point instanceof PointG2) return point;
+  expectHex(point);
+  return PointG2.fromSignature(point);
 }
 async function normP2H(point: PB2): Promise<PointG2> {
-  return point instanceof PointG2 ? point : await PointG2.hashToCurve(point);
+  if (point instanceof PointG2) return point;
+  expectHex(point);
+  return await PointG2.hashToCurve(point);
 }
 
 // Multiplies generator by private key.
@@ -540,7 +521,7 @@ export async function sign(message: PB2, privateKey: PrivateKey): Promise<Bytes 
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   if (message instanceof PointG2) return sigPoint;
   const bytes = sigPoint.toSignature();
-  return typeof message === 'string' ? bytesToHex(bytes) : bytes;
+  return typeof message === 'string' ? bytes : hexToBytes(bytes);
 }
 
 // Verify checks if pairing of public key & hash is equal to pairing of generator & signature.
@@ -582,7 +563,7 @@ export function aggregateSignatures(signatures: PB2[]): Uint8Array | string | Po
   if (signatures[0] instanceof PointG2) return agg;
   const bytes = agg.toSignature();
   if (signatures[0] instanceof Uint8Array) return bytes;
-  return bytesToHex(bytes);
+  return bytes;
 }
 
 // ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407

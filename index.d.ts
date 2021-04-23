@@ -33,7 +33,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     static fromSignature(hex: Bytes): PointG2;
     static fromHex(bytes: Bytes): PointG2;
     static fromPrivateKey(privateKey: PrivateKey): PointG2;
-    toSignature(): Uint8Array;
+    toSignature(): string;
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
     assertValidity(): void;

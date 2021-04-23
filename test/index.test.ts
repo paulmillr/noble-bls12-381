@@ -13,6 +13,11 @@ const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten
 // @ts-ignore
 const CURVE_ORDER = bls.CURVE.r;
 
+const FC_MSG = fc.hexaString(64, 64);
+const FC_BIGINT = fc.bigInt(2n, CURVE_ORDER);
+
+fc.configureGlobal({ numRuns: NUM_RUNS })
+
 describe("bls12-381", () => {
   bls.PointG1.BASE.clearMultiplyPrecomputes();
   bls.PointG1.BASE.calcMultiplyPrecomputes(8);
@@ -216,7 +221,8 @@ describe("bls12-381", () => {
     for (let i = 0; i < NUM_RUNS; i++) {
       const [priv, msg] = G2_VECTORS[i];
       const sig = await bls.sign(msg, priv);
-      const invPub = bls.getPublicKey(G2_VECTORS[i + 1][1]);
+      const invPriv = G2_VECTORS[i + 1][1].padStart(64, '0');
+      const invPub = bls.getPublicKey(invPriv);
       const res = await bls.verify(sig, msg, invPub);
       expect(res).toBeFalsy();
     }
@@ -224,9 +230,8 @@ describe("bls12-381", () => {
   it("should verify multi-signature", async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.array(FC_MSG, 5, 20),
+        fc.array(FC_BIGINT, 5, 20),
         async (messages, privateKeys) => {
           privateKeys = privateKeys.slice(0, messages.length);
           messages = messages.slice(0, privateKeys.length);
@@ -245,17 +250,15 @@ describe("bls12-381", () => {
             )
           ).toBe(true);
         }
-      ),
-      { numRuns: NUM_RUNS }
+      )
     );
   });
   it("should batch verify multi-signatures", async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.hexa(), 1, 100),
-        fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-        fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
+        fc.array(FC_MSG, 15, 15),
+        fc.array(FC_MSG, 15, 15),
+        fc.array(FC_BIGINT, 15, 15),
         async (messages, wrongMessages, privateKeys) => {
           privateKeys = privateKeys.slice(0, messages.length);
           messages = messages.slice(0, privateKeys.length);
@@ -280,103 +283,94 @@ describe("bls12-381", () => {
             )
           ).toBe(messages.every((m, i) => m === wrongMessages[i]));
         }
-      ),
-      { numRuns: NUM_RUNS }
+      )
     );
   });
-  // it("should not verify multi-signature with wrong public keys", async () => {
-  //   await fc.assert(
-  //     fc.asyncProperty(
-  //       fc.array(fc.hexa(), 1, 100),
-  //       fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-  //       fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-  //       fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
-  //       async (messages, privateKeys, wrongPrivateKeys) => {
-  //         privateKeys = privateKeys.slice(0, messages.length);
-  //         wrongPrivateKeys = privateKeys.map((a, i) =>
-  //           wrongPrivateKeys[i] !== undefined ? wrongPrivateKeys[i] : a
-  //         );
-  //         messages = messages.slice(0, privateKeys.length);
-  //         const wrongPublicKeys = await Promise.all(
-  //           wrongPrivateKeys.map(bls.getPublicKey)
-  //         );
-  //         const signatures = await Promise.all(
-  //           messages.map((message, i) =>
-  //             bls.sign(message, privateKeys[i])
-  //           )
-  //         );
-  //         const aggregatedSignature = await bls.aggregateSignatures(signatures);
-  //         expect(
-  //           await bls.verifyBatch(
-  //             messages,
-  //             wrongPublicKeys,
-  //             aggregatedSignature
-
-  //           )
-  //         ).toBe(wrongPrivateKeys.every((p, i) => p === privateKeys[i]));
-  //       }
-  //     ),
-  //     { numRuns: NUM_RUNS }
-  //   );
-  // });
-  // it("should verify multi-signature as simple signature", async () => {
-  //   await fc.assert(
-  //     fc.asyncProperty(
-  //       fc.hexa(),
-  //       fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-  //       fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
-  //       async (message, privateKeys) => {
-  //         const publicKey = await Promise.all(
-  //           privateKeys.map(bls.getPublicKey)
-  //         );
-  //         const signatures = await Promise.all(
-  //           privateKeys.map((privateKey) =>
-  //             bls.sign(message, privateKey)
-  //           )
-  //         );
-  //         const aggregatedSignature = await bls.aggregateSignatures(signatures);
-  //         const aggregatedPublicKey = await bls.aggregatePublicKeys(publicKey);
-  //         expect(
-  //           await bls.verify(
-  //             message,
-  //             aggregatedPublicKey,
-  //             aggregatedSignature
-  //           )
-  //         ).toBe(true);
-  //       }
-  //     ),
-  //     { numRuns: NUM_RUNS }
-  //   );
-  // });
-  // it("should not verify multi-signature as simple signature", async () => {
-  //   await fc.assert(
-  //     fc.asyncProperty(
-  //       fc.hexa(),
-  //       fc.hexa(),
-  //       fc.array(fc.bigInt(1n, CURVE_ORDER), 1, 100),
-  //       fc.bigInt(1n, BigInt(Number.MAX_SAFE_INTEGER)),
-  //       async (message, wrongMessage, privateKeys) => {
-  //         const publicKey = await Promise.all(
-  //           privateKeys.map(bls.getPublicKey)
-  //         );
-  //         const signatures = await Promise.all(
-  //           privateKeys.map((privateKey) =>
-  //             bls.sign(message, privateKey)
-  //           )
-  //         );
-  //         const aggregatedSignature = await bls.aggregateSignatures(signatures);
-  //         const aggregatedPublicKey = await bls.aggregatePublicKeys(publicKey);
-  //         expect(
-  //           await bls.verify(
-  //             wrongMessage,
-  //             aggregatedPublicKey,
-  //             aggregatedSignature
-
-  //           )
-  //         ).toBe(message === wrongMessage);
-  //       }
-  //     ),
-  //     { numRuns: NUM_RUNS }
-  //   );
-  // });
+  it("should not verify multi-signature with wrong public keys", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(FC_MSG, 15, 15),
+        fc.array(FC_BIGINT, 15, 15),
+        fc.array(FC_BIGINT, 15, 15),
+        async (messages, privateKeys, wrongPrivateKeys) => {
+          privateKeys = privateKeys.slice(0, messages.length);
+          wrongPrivateKeys = privateKeys.map((a, i) =>
+            wrongPrivateKeys[i] !== undefined ? wrongPrivateKeys[i] : a
+          );
+          messages = messages.slice(0, privateKeys.length);
+          const wrongPublicKeys = await Promise.all(
+            wrongPrivateKeys.map(bls.getPublicKey)
+          );
+          const signatures = await Promise.all(
+            messages.map((message, i) =>
+              bls.sign(message, privateKeys[i])
+            )
+          );
+          const aggregatedSignature = await bls.aggregateSignatures(signatures);
+          expect(
+            await bls.verifyBatch(
+              aggregatedSignature,
+              messages,
+              wrongPublicKeys,
+            )
+          ).toBe(wrongPrivateKeys.every((p, i) => p === privateKeys[i]));
+        }
+      )
+    );
+  });
+  it("should verify multi-signature as simple signature", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        FC_MSG,
+        fc.array(FC_BIGINT, 15, 15),
+        async (message, privateKeys) => {
+          const publicKey = await Promise.all(
+            privateKeys.map(bls.getPublicKey)
+          ) as Uint8Array[];
+          const signatures = await Promise.all(
+            privateKeys.map((privateKey) =>
+              bls.sign(message, privateKey)
+            )
+          );
+          const aggregatedSignature = await bls.aggregateSignatures(signatures);
+          const aggregatedPublicKey = await bls.aggregatePublicKeys(publicKey);
+          expect(
+            await bls.verify(
+              aggregatedSignature,
+              message,
+              aggregatedPublicKey
+            )
+          ).toBe(true);
+        }
+      )
+    );
+  });
+  it("should not verify wrong multi-signature as simple signature", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        FC_MSG,
+        FC_MSG,
+        fc.array(FC_BIGINT, 1, 100),
+        async (message, wrongMessage, privateKeys) => {
+          const publicKey = await Promise.all(
+            privateKeys.map(bls.getPublicKey)
+          ) as Uint8Array[];
+          const signatures = await Promise.all(
+            privateKeys.map((privateKey) =>
+              bls.sign(message, privateKey)
+            )
+          );
+          const aggregatedSignature = await bls.aggregateSignatures(signatures);
+          const aggregatedPublicKey = await bls.aggregatePublicKeys(publicKey);
+          expect(
+            await bls.verify(
+              aggregatedSignature,
+              wrongMessage,
+              aggregatedPublicKey
+            )
+          ).toBe(message === wrongMessage);
+        }
+      )
+    );
+  });
 });

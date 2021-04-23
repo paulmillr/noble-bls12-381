@@ -39,7 +39,7 @@ run(async () => {
   const priv = '28b90deaf189015d3a325908c5e0e4bf00f84f7e639b056ff82d7e70b6eede4c';
   const pubs = G2_VECTORS.map(v => bls.getPublicKey(v[0]));
   const sigs = G2_VECTORS.map(v => v[2]);
-  await mark('getPublicKey (1-bit)', 1000, () => bls.getPublicKey('1'));
+  await mark('getPublicKey (1-bit)', 1000, () => bls.getPublicKey('2'.padStart(64, '0')));
   await mark('getPublicKey', 1000, () =>
     bls.getPublicKey(priv)
   );
