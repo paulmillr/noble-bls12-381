@@ -1105,17 +1105,13 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   // Constant time multiplication. Uses wNAF.
-  multiply(scalar: number | bigint | Fq): this {
-    let n = scalar;
-    if (n instanceof Fq) n = n.value;
-    if (typeof n === 'number') n = BigInt(n);
-    if (n <= 0)
+  multiply(scalar: bigint): this {
+    const big = typeof scalar === 'bigint';
+    if (big) scalar = mod(scalar, CURVE.r);
+    if (!big || scalar < 1n) {
       throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
-    if (bitLen(n) > this.maxBits())
-      throw new Error(
-        "ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen"
-      );
-    return this.wNAF(n)[0];
+    }
+    return this.wNAF(scalar)[0];
   }
 }
 

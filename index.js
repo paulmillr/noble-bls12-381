@@ -178,10 +178,10 @@ function normalizePrivKey(key) {
         int = key;
     else
         throw new TypeError('Expected valid private key');
-    const fq = new math_1.Fq(int);
-    if (fq.isZero())
-        throw new Error('Private key cannot be 0');
-    return fq;
+    int = math_1.mod(int, math_1.CURVE.r);
+    if (int < 1n)
+        throw new Error('Private key must be 0 < key < CURVE.r');
+    return int;
 }
 class PointG1 extends math_1.ProjectivePoint {
     constructor(x, y, z) {

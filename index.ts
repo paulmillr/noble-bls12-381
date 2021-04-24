@@ -209,16 +209,16 @@ export async function hash_to_field(
   return u;
 }
 
-function normalizePrivKey(key: PrivateKey): Fq {
+function normalizePrivKey(key: PrivateKey): bigint {
   let int: bigint;
   if (key instanceof Uint8Array && key.length === 32) int = bytesToNumberBE(key);
   else if (typeof key === 'string' && key.length === 64) int = BigInt(`0x${key}`);
   else if (typeof key === 'number' && key > 0 && Number.isSafeInteger(key)) int = BigInt(key);
   else if (typeof key === 'bigint' && key > 0n) int = key;
   else throw new TypeError('Expected valid private key');
-  const fq = new Fq(int);
-  if (fq.isZero()) throw new Error('Private key cannot be 0');
-  return fq;
+  int = mod(int, CURVE.r);
+  if (int < 1n) throw new Error('Private key must be 0 < key < CURVE.r');
+  return int;
 }
 
 export class PointG1 extends ProjectivePoint<Fq> {

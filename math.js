@@ -891,16 +891,13 @@ class ProjectivePoint {
         return [p, f];
     }
     multiply(scalar) {
-        let n = scalar;
-        if (n instanceof Fq)
-            n = n.value;
-        if (typeof n === 'number')
-            n = BigInt(n);
-        if (n <= 0)
+        const big = typeof scalar === 'bigint';
+        if (big)
+            scalar = mod(scalar, exports.CURVE.r);
+        if (!big || scalar < 1n) {
             throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
-        if (bitLen(n) > this.maxBits())
-            throw new Error("ProjectivePoint#multiply: scalar has more bits than maxBits, shoulnd't happen");
-        return this.wNAF(n)[0];
+        }
+        return this.wNAF(scalar)[0];
     }
 }
 exports.ProjectivePoint = ProjectivePoint;
