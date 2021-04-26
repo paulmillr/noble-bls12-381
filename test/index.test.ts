@@ -23,7 +23,7 @@ const B_384_40 = '40'.padEnd(384, '0'); // [0x40, 0, 0...]
 
 describe('bls12-381', () => {
   // bls.PointG1.BASE.clearMultiplyPrecomputes();
-  // bls.PointG1.BASE.calcMultiplyPrecomputes(8);
+  // bls.PointG1.BASE.calcMultiplyPrecomputes(4);
 
   it('should construct point G1 from its uncompressed form (Raw Bytes)', () => {
     // Test Zero

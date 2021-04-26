@@ -31,14 +31,13 @@ function mod(a, b) {
     return res >= 0n ? res : b + res;
 }
 exports.mod = mod;
-function powMod(a, power, m) {
+function powMod(a, power, modulo) {
     let res = 1n;
     while (power > 0n) {
-        if (power & 1n) {
-            res = mod(res * a, m);
-        }
+        if (power & 1n)
+            res = (res * a) % modulo;
+        a = (a * a) % modulo;
         power >>= 1n;
-        a = mod(a * a, m);
     }
     return res;
 }
@@ -818,8 +817,6 @@ class ProjectivePoint {
         if (n <= 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
-        if (n > Fq.ORDER)
-            n = mod(n, Fq.ORDER);
         let p = this.getZero();
         let d = this;
         while (n > 0n) {
@@ -835,12 +832,12 @@ class ProjectivePoint {
         if (typeof n !== 'bigint' || n <= 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
-        if (n > Fq.ORDER)
-            n = mod(n, Fq.ORDER);
         let p = this.getZero();
         let d = this;
         let f = this.getZero();
         let bits = Fq.ORDER;
+        if (n > bits)
+            throw new Error('higher:' + n);
         while (bits > 0n) {
             if (n & 1n) {
                 p = p.add(d);
@@ -917,8 +914,6 @@ class ProjectivePoint {
     }
     multiplyPrecomputed(scalar) {
         const big = typeof scalar === 'bigint';
-        if (big)
-            scalar = mod(scalar, exports.CURVE.r);
         if (!big || scalar < 1n) {
             throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
         }

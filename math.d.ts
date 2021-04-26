@@ -54,7 +54,7 @@ declare type FieldStatic<T extends Field<T>> = {
     ONE: T;
 };
 export declare function mod(a: bigint, b: bigint): bigint;
-export declare function powMod(a: bigint, power: bigint, m: bigint): bigint;
+export declare function powMod(a: bigint, power: bigint, modulo: bigint): bigint;
 export declare class Fq implements Field<Fq> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;

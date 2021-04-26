@@ -81,14 +81,12 @@ export function mod(a: bigint, b: bigint) {
   return res >= 0n ? res : b + res;
 }
 
-export function powMod(a: bigint, power: bigint, m: bigint) {
+export function powMod(a: bigint, power: bigint, modulo: bigint) {
   let res = 1n;
   while (power > 0n) {
-    if (power & 1n) {
-      res = mod(res * a, m);
-    }
+    if (power & 1n) res = (res * a) % modulo;
+    a = (a * a) % modulo;
     power >>= 1n;
-    a = mod(a * a, m);
   }
   return res;
 }
@@ -1014,7 +1012,6 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     if (n <= 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
-    if (n > Fq.ORDER) n = mod(n, Fq.ORDER);
     let p = this.getZero();
     let d: this = this;
     while (n > 0n) {
@@ -1031,11 +1028,11 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     if (typeof n !== 'bigint' || n <= 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
-    if (n > Fq.ORDER) n = mod(n, Fq.ORDER);
     let p = this.getZero();
     let d: this = this;
     let f = this.getZero();
     let bits = Fq.ORDER;
+    if (n > bits) throw new Error('higher:' + n);
     while (bits > 0n) {
       if (n & 1n) {
         p = p.add(d);
@@ -1132,7 +1129,6 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Constant time multiplication. Uses wNAF.
   multiplyPrecomputed(scalar: bigint): this {
     const big = typeof scalar === 'bigint';
-    if (big) scalar = mod(scalar, CURVE.r);
     if (!big || scalar < 1n) {
       throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
     }
