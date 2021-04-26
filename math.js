@@ -828,6 +828,28 @@ class ProjectivePoint {
         }
         return p;
     }
+    multiply(scalar) {
+        let n = scalar;
+        if (n <= 0) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer');
+        }
+        let p = this.getZero();
+        let d = this;
+        let f = this.getZero();
+        let bits = Fq.ORDER;
+        while (bits > 0n) {
+            if (n & 1n) {
+                p = p.add(d);
+            }
+            else {
+                f = f.add(d);
+            }
+            d = d.double();
+            n >>= 1n;
+            bits >>= 1n;
+        }
+        return p;
+    }
     maxBits() {
         return this.C.MAX_BITS;
     }
@@ -889,7 +911,7 @@ class ProjectivePoint {
         }
         return [p, f];
     }
-    multiply(scalar) {
+    multiplyPrecomputed(scalar) {
         const big = typeof scalar === 'bigint';
         if (big)
             scalar = mod(scalar, exports.CURVE.r);

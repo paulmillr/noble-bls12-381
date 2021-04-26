@@ -204,12 +204,13 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     add(rhs: this): this;
     subtract(rhs: this): this;
     multiplyUnsafe(scalar: number | bigint | Fq): this;
+    multiply(scalar: bigint): this;
     private maxBits;
     private precomputeWindow;
     calcMultiplyPrecomputes(W: number): void;
     clearMultiplyPrecomputes(): void;
     private wNAF;
-    multiply(scalar: bigint): this;
+    multiplyPrecomputed(scalar: bigint): this;
 }
 export declare function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2];
 export declare function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2];

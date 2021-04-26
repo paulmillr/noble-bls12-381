@@ -225,7 +225,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return point;
     }
     static fromPrivateKey(privateKey) {
-        return this.BASE.multiply(normalizePrivKey(privateKey));
+        return this.BASE.multiplyPrecomputed(normalizePrivKey(privateKey));
     }
     toRawBytes(isCompressed = false) {
         return hexToBytes(this.toHex(isCompressed));
@@ -348,7 +348,7 @@ class PointG2 extends math_1.ProjectivePoint {
         return point;
     }
     static fromPrivateKey(privateKey) {
-        return this.BASE.multiply(normalizePrivKey(privateKey));
+        return this.BASE.multiplyPrecomputed(normalizePrivKey(privateKey));
     }
     toSignature() {
         if (this.equals(PointG2.ZERO)) {

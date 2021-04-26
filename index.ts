@@ -270,7 +270,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   static fromPrivateKey(privateKey: PrivateKey) {
-    return this.BASE.multiply(normalizePrivKey(privateKey));
+    return this.BASE.multiplyPrecomputed(normalizePrivKey(privateKey));
   }
 
   toRawBytes(isCompressed = false) {
@@ -413,7 +413,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   static fromPrivateKey(privateKey: PrivateKey) {
-    return this.BASE.multiply(normalizePrivKey(privateKey));
+    return this.BASE.multiplyPrecomputed(normalizePrivKey(privateKey));
   }
 
   toSignature() {

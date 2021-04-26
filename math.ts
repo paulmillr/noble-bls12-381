@@ -1003,6 +1003,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
       );
     return this.add(rhs.negate());
   }
+
   // Non-constant-time multiplication. Uses double-and-add algorithm.
   // It's faster, but should only be used when you don't care about
   // an exposed private key e.g. sig verification.
@@ -1019,6 +1020,30 @@ export abstract class ProjectivePoint<T extends Field<T>> {
       if (n & 1n) p = p.add(d);
       d = d.double();
       n >>= 1n;
+    }
+    return p;
+  }
+
+  // Constant-time multiplication
+  multiply(scalar: bigint): this {
+    let n = scalar;
+    //  || n >= CURVE.r
+    if (n <= 0) {
+      throw new Error('Point#multiply: invalid scalar, expected positive integer');
+    }
+    let p = this.getZero();
+    let d: this = this;
+    let f = this.getZero();
+    let bits = Fq.ORDER;
+    while (bits > 0n) {
+      if (n & 1n) {
+        p = p.add(d);
+      } else {
+        f = f.add(d);
+      }
+      d = d.double();
+      n >>= 1n;
+      bits >>= 1n;
     }
     return p;
   }
@@ -1104,7 +1129,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   // Constant time multiplication. Uses wNAF.
-  multiply(scalar: bigint): this {
+  multiplyPrecomputed(scalar: bigint): this {
     const big = typeof scalar === 'bigint';
     if (big) scalar = mod(scalar, CURVE.r);
     if (!big || scalar < 1n) {
