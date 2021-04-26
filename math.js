@@ -818,6 +818,8 @@ class ProjectivePoint {
         if (n <= 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
+        if (n > Fq.ORDER)
+            n = mod(n, Fq.ORDER);
         let p = this.getZero();
         let d = this;
         while (n > 0n) {
@@ -830,9 +832,11 @@ class ProjectivePoint {
     }
     multiply(scalar) {
         let n = scalar;
-        if (n <= 0) {
+        if (typeof n !== 'bigint' || n <= 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
+        if (n > Fq.ORDER)
+            n = mod(n, Fq.ORDER);
         let p = this.getZero();
         let d = this;
         let f = this.getZero();

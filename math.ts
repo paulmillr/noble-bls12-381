@@ -1014,6 +1014,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     if (n <= 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
+    if (n > Fq.ORDER) n = mod(n, Fq.ORDER);
     let p = this.getZero();
     let d: this = this;
     while (n > 0n) {
@@ -1027,10 +1028,10 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Constant-time multiplication
   multiply(scalar: bigint): this {
     let n = scalar;
-    //  || n >= CURVE.r
-    if (n <= 0) {
+    if (typeof n !== 'bigint' || n <= 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
+    if (n > Fq.ORDER) n = mod(n, Fq.ORDER);
     let p = this.getZero();
     let d: this = this;
     let f = this.getZero();
