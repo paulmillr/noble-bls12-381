@@ -846,24 +846,23 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   // https://eprint.iacr.org/2010/354.pdf
   // https://eprint.iacr.org/2009/565.pdf
   finalExponentiate() {
+    const { x } = CURVE;
     // this^(q^6) / this
-    let t0 = this.frobeniusMap(6).div(this);
+    const t0 = this.frobeniusMap(6).div(this);
     // t0^(q^2) * t0
-    let t1 = t0.frobeniusMap(2).multiply(t0);
-    let t2 = t1.cyclotomicExp(CURVE.x).conjugate();
-    let t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
-    let t4 = t3.cyclotomicExp(CURVE.x).conjugate();
-    let t5 = t4.cyclotomicExp(CURVE.x).conjugate();
-    let t6 = t5.cyclotomicExp(CURVE.x).conjugate().multiply(t2.cyclotomicSquare());
-    // (t2 * t5)^(q^2) * (t4 * t1)^(q^3) * (t6 * (t1.conj))^(q^1) * (t6^X).conj * t3.conj * t1
-    return t2
-      .multiply(t5)
-      .frobeniusMap(2)
-      .multiply(t4.multiply(t1).frobeniusMap(3))
-      .multiply(t6.multiply(t1.conjugate()).frobeniusMap(1))
-      .multiply(t6.cyclotomicExp(CURVE.x).conjugate())
-      .multiply(t3.conjugate())
-      .multiply(t1);
+    const t1 = t0.frobeniusMap(2).multiply(t0);
+    const t2 = t1.cyclotomicExp(x).conjugate();
+    const t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
+    const t4 = t3.cyclotomicExp(x).conjugate();
+    const t5 = t4.cyclotomicExp(x).conjugate();
+    const t6 = t5.cyclotomicExp(x).conjugate().multiply(t2.cyclotomicSquare());
+    const t7 = t6.cyclotomicExp(x).conjugate();
+    const t2_t5_pow_q2 = t2.multiply(t5).frobeniusMap(2);
+    const t4_t1_pow_q3 = t4.multiply(t1).frobeniusMap(3);
+    const t6_t1c_pow_q1 = t6.multiply(t1.conjugate()).frobeniusMap(1);
+    const t7_t3c_t1 = t7.multiply(t3.conjugate()).multiply(t1);
+    // (t2 * t5)^(q^2) * (t4 * t1)^(q^3) * (t6 * t1.conj)^(q^1) * t7 * t3.conj * t1
+    return t2_t5_pow_q2.multiply(t4_t1_pow_q3).multiply(t6_t1c_pow_q1).multiply(t7_t3c_t1);
   }
 }
 
@@ -1128,8 +1127,9 @@ const P_MINUS_9_DIV_16 = (CURVE.P ** 2n - 9n) / 16n;
 // Returns uv^7 * (uv^15)^((p^2 - 9) / 16) * root of unity
 // if valid square root is found
 function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
-  const uv7 = u.multiply(v.pow(7n));
-  const uv15 = uv7.multiply(v.pow(8n));
+  const v7 = v.pow(7n);
+  const uv7 = u.multiply(v7);
+  const uv15 = uv7.multiply(v7.multiply(v));
   // gamma =  uv^7 * (uv^15)^((p^2 - 9) / 16)
   const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
   let success = false;
