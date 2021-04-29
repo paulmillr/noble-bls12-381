@@ -305,7 +305,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq);
-    if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq');
+    if (!left.subtract(right).equals(Fq.ZERO)) throw new Error('Invalid point: not on curve Fq');
   }
 
   toRepr() {
@@ -459,7 +459,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq2);
-    if (!left.equals(right)) throw new Error('Invalid point: not on curve over Fq2');
+    if (!left.subtract(right).equals(Fq2.ZERO)) throw new Error('Invalid point: not on curve Fq2');
   }
 
   toRepr() {
@@ -518,6 +518,7 @@ export async function sign(message: string, privateKey: PrivateKey): Promise<str
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
 export async function sign(message: PB2, privateKey: PrivateKey): Promise<Bytes | PointG2> {
   const msgPoint = await normP2H(message);
+  msgPoint.assertValidity();
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   if (message instanceof PointG2) return sigPoint;
   const bytes = sigPoint.toSignature();

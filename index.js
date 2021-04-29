@@ -260,8 +260,8 @@ class PointG1 extends math_1.ProjectivePoint {
         const { x, y, z } = this;
         const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
         const right = b.multiply(z.pow(3n));
-        if (!left.equals(right))
-            throw new Error('Invalid point: not on curve over Fq');
+        if (!left.subtract(right).equals(math_1.Fq.ZERO))
+            throw new Error('Invalid point: not on curve Fq');
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.value);
@@ -391,8 +391,8 @@ class PointG2 extends math_1.ProjectivePoint {
         const { x, y, z } = this;
         const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
         const right = b.multiply(z.pow(3n));
-        if (!left.equals(right))
-            throw new Error('Invalid point: not on curve over Fq2');
+        if (!left.subtract(right).equals(math_1.Fq2.ZERO))
+            throw new Error('Invalid point: not on curve Fq2');
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.values);
@@ -444,6 +444,7 @@ function getPublicKey(privateKey) {
 exports.getPublicKey = getPublicKey;
 async function sign(message, privateKey) {
     const msgPoint = await normP2H(message);
+    msgPoint.assertValidity();
     const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
     if (message instanceof PointG2)
         return sigPoint;
