@@ -1009,7 +1009,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     let n = scalar;
     if (n instanceof Fq) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
-    if (n <= 0) {
+    if (n < 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
     let p = this.getZero();
@@ -1025,7 +1025,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Constant-time multiplication
   multiply(scalar: bigint): this {
     let n = scalar;
-    if (typeof n !== 'bigint' || n <= 0) {
+    if (typeof n !== 'bigint' || n < 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
     }
     let p = this.getZero();

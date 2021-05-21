@@ -472,4 +472,8 @@ describe('bls12-381 Point', () => {
       expect(p.multiplyUnsafe(CURVE.h_eff).equals(clearCofactorG2(p))).toEqual(true);
     }
   });
+  it('Allow point multiplication by zero.', () => {
+    expect(PointG1.BASE.multiply(0n)).toEqual(PointG1.ZERO);
+    expect(PointG2.BASE.multiply(0n)).toEqual(PointG2.ZERO)
+  });
 });

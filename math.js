@@ -814,7 +814,7 @@ class ProjectivePoint {
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
-        if (n <= 0) {
+        if (n < 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
         let p = this.getZero();
@@ -829,7 +829,7 @@ class ProjectivePoint {
     }
     multiply(scalar) {
         let n = scalar;
-        if (typeof n !== 'bigint' || n <= 0) {
+        if (typeof n !== 'bigint' || n < 0) {
             throw new Error('Point#multiply: invalid scalar, expected positive integer');
         }
         let p = this.getZero();
