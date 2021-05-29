@@ -35,6 +35,7 @@ Use NPM in node.js / browser, or include single file from
 
 ```js
 const bls = require('noble-bls12-381');
+// if you're using single file, use global variable nobleBls12381
 
 // You can use Uint8Array, or hex string for readability
 const privateKey = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c';
