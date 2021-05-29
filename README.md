@@ -28,7 +28,8 @@ To learn more about internals, check out [BLS12-381 for the rest of us](https://
 
 ## Usage
 
-Node.js and browser:
+Use NPM in node.js / browser, or include single file from
+[GitHub's releases page](https://github.com/paulmillr/noble-bls12-381/releases):
 
 > npm install noble-bls12-381
 
