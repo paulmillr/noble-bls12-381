@@ -229,7 +229,7 @@ The BLS parameters for the library are:
 
 - `PK_IN` `G1`
 - `HASH_OR_ENCODE` `true`
-- `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+- `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`
 - `RAND_BITS` `64`
 
 Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
