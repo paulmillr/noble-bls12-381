@@ -120,7 +120,7 @@ function sign(
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
 - Returns `Uint8Array | string | PointG2`: encoded signature
 
-Default domain (DST) is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`, use `bls.DST` to change it.
+Default domain separation tag (DST) is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`, use `bls.DST_LABEL = "..."` to change it.
 
 ##### `verify(signature, message, publicKey)`
 ```typescript
