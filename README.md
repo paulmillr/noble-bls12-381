@@ -267,7 +267,7 @@ aggregateSignatures/2048 x 21 ops/sec @ 46ms/op
 
 ## Security
 
-Noble is production-ready. A few facts about the library:
+Noble is production-ready.
 
 1. No public audits have been done yet. Our goal is to crowdfund the audit.
 2. It was developed in a similar fashion to
