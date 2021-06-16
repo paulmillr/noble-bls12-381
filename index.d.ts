@@ -22,13 +22,13 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
 }
-export declare function clearCofactorG2(P: PointG2): PointG2;
 declare type EllCoefficients = [Fq2, Fq2, Fq2];
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
     static ZERO: PointG2;
     private _PPRECOMPUTES;
     constructor(x: Fq2, y: Fq2, z: Fq2);
+    _clearCofactorG2(): PointG2;
     static hashToCurve(msg: Bytes): Promise<PointG2>;
     static fromSignature(hex: Bytes): PointG2;
     static fromHex(bytes: Bytes): PointG2;

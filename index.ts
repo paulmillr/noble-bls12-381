@@ -318,15 +318,6 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 }
 
-export function clearCofactorG2(P: PointG2) {
-  // BLS_X is negative number
-  const t1 = P.multiplyUnsafe(CURVE.x).negate();
-  const t2 = P.fromAffineTuple(psi(...P.toAffine()));
-  // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
-  const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
-  return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(CURVE.x).negate()).subtract(t1).subtract(P);
-}
-
 type EllCoefficients = [Fq2, Fq2, Fq2];
 
 export class PointG2 extends ProjectivePoint<Fq2> {
@@ -339,6 +330,17 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     super(x, y, z, Fq2);
   }
 
+  // clearCofactorG2 from spec
+  _clearCofactorG2(): PointG2 {
+    const P = this;
+    // BLS_X is negative number
+    const t1 = P.multiplyUnsafe(CURVE.x).negate();
+    const t2 = P.fromAffineTuple(psi(...P.toAffine()));
+    // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
+    const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
+    return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(CURVE.x).negate()).subtract(t1).subtract(P);
+  }
+
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
     expectHex(msg);
@@ -348,7 +350,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
     const Q1 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[1])));
     const R = Q0.add(Q1);
-    const P = clearCofactorG2(R);
+    const P = R._clearCofactorG2();
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
     return P;
   }

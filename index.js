@@ -1,7 +1,7 @@
 "use strict";
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
 Object.defineProperty(exports, "Fr", { enumerable: true, get: function () { return math_1.Fr; } });
@@ -273,16 +273,16 @@ class PointG1 extends math_1.ProjectivePoint {
 exports.PointG1 = PointG1;
 PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
 PointG1.ZERO = new PointG1(math_1.Fq.ONE, math_1.Fq.ONE, math_1.Fq.ZERO);
-function clearCofactorG2(P) {
-    const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
-    const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
-    const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
-    return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate()).subtract(t1).subtract(P);
-}
-exports.clearCofactorG2 = clearCofactorG2;
 class PointG2 extends math_1.ProjectivePoint {
     constructor(x, y, z) {
         super(x, y, z, math_1.Fq2);
+    }
+    _clearCofactorG2() {
+        const P = this;
+        const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
+        const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
+        const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
+        return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate()).subtract(t1).subtract(P);
     }
     static async hashToCurve(msg) {
         expectHex(msg);
@@ -292,7 +292,7 @@ class PointG2 extends math_1.ProjectivePoint {
         const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
         const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
         const R = Q0.add(Q1);
-        const P = clearCofactorG2(R);
+        const P = R._clearCofactorG2();
         return P;
     }
     static fromSignature(hex) {

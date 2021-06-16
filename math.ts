@@ -41,8 +41,6 @@ export const CURVE = {
   h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 
-//export let DST_LABEL = 'BLS12381G2_XMD:SHA-256_SSWU_RO_';
-export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const BLS_X_LEN = bitLen(CURVE.x);
 
 type BigintTuple = [bigint, bigint];

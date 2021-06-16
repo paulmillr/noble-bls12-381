@@ -1,5 +1,5 @@
 import * as fc from 'fast-check';
-import { Fq, Fq2, PointG1, PointG2, clearCofactorG2 } from '..';
+import { Fq, Fq2, PointG1, PointG2 } from '..';
 import { CURVE } from '../math';
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
@@ -469,7 +469,7 @@ describe('bls12-381 Point', () => {
       ),
     ];
     for (let p of points) {
-      expect(p.multiplyUnsafe(CURVE.h_eff).equals(clearCofactorG2(p))).toEqual(true);
+      expect(p.multiplyUnsafe(CURVE.h_eff).equals(p._clearCofactorG2())).toEqual(true);
     }
   });
 });

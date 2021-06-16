@@ -13,7 +13,6 @@ export declare const CURVE: {
     x: bigint;
     h_eff: bigint;
 };
-export declare let DST_LABEL: string;
 declare type BigintTuple = [bigint, bigint];
 declare type BigintSix = [
     bigint,
