@@ -17,13 +17,11 @@ import {
   millerLoop, psi, psi2, calcPairingPrecomputes,
   mod, powMod
 } from './math';
-
-const P = CURVE.P;
+export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 type Bytes = Uint8Array | string;
 type PrivateKey = Bytes | bigint | number;
-export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -232,6 +230,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   static fromHex(bytes: Bytes) {
     expectHex(bytes);
     if (typeof bytes === 'string') bytes = hexToBytes(bytes);
+    const {P} = CURVE;
 
     let point;
     if (bytes.length === 48) {
@@ -278,6 +277,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   toHex(isCompressed = false) {
+    const {P} = CURVE;
     if (isCompressed) {
       let hex;
       if (this.equals(PointG1.ZERO)) {
@@ -359,6 +359,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   static fromSignature(hex: Bytes): PointG2 {
     expectHex(hex);
     if (typeof hex === 'string') hex = hexToBytes(hex);
+    const {P} = CURVE;
     const half = hex.length / 2;
     if (half !== 48 && half !== 96)
       throw new Error('Invalid compressed signature length, must be 96 or 192');

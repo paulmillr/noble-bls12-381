@@ -1,14 +1,13 @@
 "use strict";
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.DST_LABEL = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
 Object.defineProperty(exports, "Fr", { enumerable: true, get: function () { return math_1.Fr; } });
 Object.defineProperty(exports, "Fq2", { enumerable: true, get: function () { return math_1.Fq2; } });
 Object.defineProperty(exports, "Fq12", { enumerable: true, get: function () { return math_1.Fq12; } });
 Object.defineProperty(exports, "CURVE", { enumerable: true, get: function () { return math_1.CURVE; } });
-const P = math_1.CURVE.P;
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
@@ -191,6 +190,7 @@ class PointG1 extends math_1.ProjectivePoint {
         expectHex(bytes);
         if (typeof bytes === 'string')
             bytes = hexToBytes(bytes);
+        const { P } = math_1.CURVE;
         let point;
         if (bytes.length === 48) {
             const compressedValue = bytesToNumberBE(bytes);
@@ -231,6 +231,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return hexToBytes(this.toHex(isCompressed));
     }
     toHex(isCompressed = false) {
+        const { P } = math_1.CURVE;
         if (isCompressed) {
             let hex;
             if (this.equals(PointG1.ZERO)) {
@@ -299,6 +300,7 @@ class PointG2 extends math_1.ProjectivePoint {
         expectHex(hex);
         if (typeof hex === 'string')
             hex = hexToBytes(hex);
+        const { P } = math_1.CURVE;
         const half = hex.length / 2;
         if (half !== 48 && half !== 96)
             throw new Error('Invalid compressed signature length, must be 96 or 192');

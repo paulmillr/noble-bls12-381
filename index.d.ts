@@ -1,9 +1,9 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 import { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint, mod } from './math';
+export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
-export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
     randomPrivateKey: (bytesLength?: number) => Uint8Array;
