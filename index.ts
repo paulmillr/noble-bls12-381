@@ -12,7 +12,8 @@
 // Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
-  Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint,
+  Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, BigintTwelve,
+  ProjectivePoint,
   map_to_curve_SSWU_G2, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes,
   mod, powMod
@@ -230,7 +231,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   static fromHex(bytes: Bytes) {
     expectHex(bytes);
     if (typeof bytes === 'string') bytes = hexToBytes(bytes);
-    const {P} = CURVE;
+    const { P } = CURVE;
 
     let point;
     if (bytes.length === 48) {
@@ -277,7 +278,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   toHex(isCompressed = false) {
-    const {P} = CURVE;
+    const { P } = CURVE;
     if (isCompressed) {
       let hex;
       if (this.equals(PointG1.ZERO)) {
@@ -318,8 +319,6 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 }
 
-type EllCoefficients = [Fq2, Fq2, Fq2];
-
 export class PointG2 extends ProjectivePoint<Fq2> {
   static BASE = new PointG2(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE);
   static ZERO = new PointG2(Fq2.ONE, Fq2.ONE, Fq2.ZERO);
@@ -338,7 +337,11 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const t2 = P.fromAffineTuple(psi(...P.toAffine()));
     // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
     const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
-    return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(CURVE.x).negate()).subtract(t1).subtract(P);
+    return p2
+      .subtract(t2)
+      .add(t1.add(t2).multiplyUnsafe(CURVE.x).negate())
+      .subtract(t1)
+      .subtract(P);
   }
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
@@ -359,7 +362,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   static fromSignature(hex: Bytes): PointG2 {
     expectHex(hex);
     if (typeof hex === 'string') hex = hexToBytes(hex);
-    const {P} = CURVE;
+    const { P } = CURVE;
     const half = hex.length / 2;
     if (half !== 48 && half !== 96)
       throw new Error('Invalid compressed signature length, must be 96 or 192');

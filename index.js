@@ -283,7 +283,11 @@ class PointG2 extends math_1.ProjectivePoint {
         const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
         const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
         const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
-        return p2.subtract(t2).add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate()).subtract(t1).subtract(P);
+        return p2
+            .subtract(t2)
+            .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
+            .subtract(t1)
+            .subtract(P);
     }
     static async hashToCurve(msg) {
         expectHex(msg);

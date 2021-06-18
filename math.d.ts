@@ -213,7 +213,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
 }
 export declare function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2];
 export declare function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2];
-declare type EllCoefficients = [Fq2, Fq2, Fq2];
+export declare type EllCoefficients = [Fq2, Fq2, Fq2];
 export declare function calcPairingPrecomputes(x: Fq2, y: Fq2): EllCoefficients[];
 export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
 export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];

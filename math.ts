@@ -38,7 +38,8 @@ export const CURVE = {
   b2: [4n, 4n],
   // The BLS parameter x for BLS12-381
   x: 0xd201000000010000n,
-  h_eff: 0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
+  h_eff:
+    0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 
 const BLS_X_LEN = bitLen(CURVE.x);
@@ -300,7 +301,8 @@ export class Fr implements Field<Fr> {
 // Abstract class for a field over polynominal.
 // TT - ThisType, CT - ChildType, TTT - Tuple Type
 abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT extends CT[]>
-  implements Field<TT> {
+  implements Field<TT>
+{
   public abstract readonly c: CT[];
   abstract init(c: TTT): TT;
   abstract multiply(rhs: TT | bigint): TT;
@@ -430,10 +432,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   }
 
   multiply(rhs: Fq2 | bigint): Fq2 {
-    if (typeof rhs === 'bigint')
-      return new Fq2(
-        this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs))
-      );
+    if (typeof rhs === 'bigint') return new Fq2(this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs)));
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     const [c0, c1] = this.c;
     const [r0, r1] = rhs.c;
@@ -1250,7 +1249,7 @@ export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
   return [x2, y2, z2];
 }
 
-type EllCoefficients = [Fq2, Fq2, Fq2];
+export type EllCoefficients = [Fq2, Fq2, Fq2];
 
 // Pre-compute coefficients for sparse multiplication
 // Point addition and point double calculations is reused for coefficients
@@ -1329,7 +1328,8 @@ export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
 }
 
 // 1 / F2(2)^((p - 1) / 3) in GF(p^2)
-const PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+const PSI2_C1 =
+  0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
 export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }

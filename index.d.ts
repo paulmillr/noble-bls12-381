@@ -1,5 +1,5 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
-import { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve, ProjectivePoint, mod } from './math';
+import { Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, BigintTwelve, ProjectivePoint, mod } from './math';
 export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
@@ -22,7 +22,6 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
 }
-declare type EllCoefficients = [Fq2, Fq2, Fq2];
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
     static ZERO: PointG2;
