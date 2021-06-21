@@ -36,6 +36,8 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
     assertValidity(): void;
+    psi(): this;
+    isTorsionFree(): this;
     toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];

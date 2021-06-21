@@ -281,7 +281,7 @@ class PointG2 extends math_1.ProjectivePoint {
     _clearCofactorG2() {
         const P = this;
         const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
-        const t2 = P.fromAffineTuple(math_1.psi(...P.toAffine()));
+        const t2 = P.psi();
         const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
         return p2
             .subtract(t2)
@@ -399,6 +399,15 @@ class PointG2 extends math_1.ProjectivePoint {
         const right = b.multiply(z.pow(3n));
         if (!left.subtract(right).equals(math_1.Fq2.ZERO))
             throw new Error('Invalid point: not on curve Fq2');
+    }
+    psi() {
+        return this.fromAffineTuple(math_1.psi(...this.toAffine()));
+    }
+    isTorsionFree() {
+        const psi1 = this.psi();
+        const psi2 = psi1.psi();
+        const psi3 = psi2.psi();
+        return psi3.add(psi2).negate().add(this);
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.values);

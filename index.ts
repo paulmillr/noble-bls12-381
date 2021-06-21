@@ -334,7 +334,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const P = this;
     // BLS_X is negative number
     const t1 = P.multiplyUnsafe(CURVE.x).negate();
-    const t2 = P.fromAffineTuple(psi(...P.toAffine()));
+    const t2 = P.psi();
     // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
     const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
     return p2
@@ -466,6 +466,19 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq2);
     if (!left.subtract(right).equals(Fq2.ZERO)) throw new Error('Invalid point: not on curve Fq2');
+  }
+
+  psi() {
+    return this.fromAffineTuple(psi(...this.toAffine()));
+  }
+
+  // Checks is the point resides in prime-order subgroup.
+  // https://eprint.iacr.org/2019/814.pdf
+  isTorsionFree() {
+    const psi1 = this.psi();
+    const psi2 = psi1.psi();
+    const psi3 = psi2.psi();
+    return psi3.add(psi2).negate().add(this);
   }
 
   toRepr() {
