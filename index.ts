@@ -475,10 +475,11 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   // Checks is the point resides in prime-order subgroup.
   // https://eprint.iacr.org/2019/814.pdf
   isTorsionFree() {
-    const psi1 = this.psi();
-    const psi2 = psi1.psi();
-    const psi3 = psi2.psi();
-    return psi3.add(psi2).negate().add(this);
+    const psi1 = this.psi(); // Ψ(P)
+    const psi2 = psi1.psi(); // Ψ²(P)
+    const psi3 = psi2.psi(); // Ψ³(P)
+    const zPsi3 = psi3.multiplyUnsafe(CURVE.x).negate(); // [z]Ψ³(P) where z = -x
+    return zPsi3.subtract(psi2).add(this).isZero(); // [z]Ψ³(P) - Ψ²(P) + P == O
   }
 
   toRepr() {

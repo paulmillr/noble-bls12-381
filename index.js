@@ -407,7 +407,8 @@ class PointG2 extends math_1.ProjectivePoint {
         const psi1 = this.psi();
         const psi2 = psi1.psi();
         const psi3 = psi2.psi();
-        return psi3.add(psi2).negate().add(this);
+        const zPsi3 = psi3.multiplyUnsafe(math_1.CURVE.x).negate();
+        return zPsi3.subtract(psi2).add(this).isZero();
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.values);
