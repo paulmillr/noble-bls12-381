@@ -55,23 +55,23 @@ declare type FieldStatic<T extends Field<T>> = {
 };
 export declare function mod(a: bigint, b: bigint): bigint;
 export declare function powMod(a: bigint, power: bigint, modulo: bigint): bigint;
-export declare class Fq implements Field<Fq> {
+export declare class Fp implements Field<Fp> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
-    static readonly ZERO: Fq;
-    static readonly ONE: Fq;
+    static readonly ZERO: Fp;
+    static readonly ONE: Fp;
     readonly value: bigint;
     constructor(value: bigint);
     isZero(): boolean;
-    equals(rhs: Fq): boolean;
-    negate(): Fq;
-    invert(): Fq;
-    add(rhs: Fq): Fq;
-    square(): Fq;
-    pow(n: bigint): Fq;
-    subtract(rhs: Fq): Fq;
-    multiply(rhs: Fq | bigint): Fq;
-    div(rhs: Fq | bigint): Fq;
+    equals(rhs: Fp): boolean;
+    negate(): Fp;
+    invert(): Fp;
+    add(rhs: Fp): Fp;
+    square(): Fp;
+    pow(n: bigint): Fp;
+    subtract(rhs: Fp): Fp;
+    multiply(rhs: Fp | bigint): Fp;
+    div(rhs: Fp | bigint): Fp;
     toString(): string;
 }
 export declare class Fr implements Field<Fr> {
@@ -115,60 +115,60 @@ declare abstract class FQP<TT extends {
     pow(n: bigint): TT;
     div(rhs: TT | bigint): TT;
 }
-export declare class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
+export declare class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
-    static readonly ZERO: Fq2;
-    static readonly ONE: Fq2;
-    readonly c: [Fq, Fq];
-    constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]);
-    init(tuple: [Fq, Fq]): Fq2;
+    static readonly ZERO: Fp2;
+    static readonly ONE: Fp2;
+    readonly c: [Fp, Fp];
+    constructor(coeffs: [Fp, Fp] | [bigint, bigint] | bigint[]);
+    init(tuple: [Fp, Fp]): Fp2;
     toString(): string;
     get values(): BigintTuple;
-    multiply(rhs: Fq2 | bigint): Fq2;
-    mulByNonresidue(): Fq2;
-    square(): Fq2;
-    sqrt(): Fq2 | undefined;
-    invert(): Fq2;
-    frobeniusMap(power: number): Fq2;
-    multiplyByB(): Fq2;
+    multiply(rhs: Fp2 | bigint): Fp2;
+    mulByNonresidue(): Fp2;
+    square(): Fp2;
+    sqrt(): Fp2 | undefined;
+    invert(): Fp2;
+    frobeniusMap(power: number): Fp2;
+    multiplyByB(): Fp2;
 }
-export declare class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
-    readonly c: [Fq2, Fq2, Fq2];
-    static readonly ZERO: Fq6;
-    static readonly ONE: Fq6;
-    static fromTuple(t: BigintSix): Fq6;
-    constructor(c: [Fq2, Fq2, Fq2]);
-    init(triple: [Fq2, Fq2, Fq2]): Fq6;
+export declare class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
+    readonly c: [Fp2, Fp2, Fp2];
+    static readonly ZERO: Fp6;
+    static readonly ONE: Fp6;
+    static fromTuple(t: BigintSix): Fp6;
+    constructor(c: [Fp2, Fp2, Fp2]);
+    init(triple: [Fp2, Fp2, Fp2]): Fp6;
     toString(): string;
     conjugate(): any;
-    multiply(rhs: Fq6 | bigint): Fq6;
-    mulByNonresidue(): Fq6;
-    multiplyBy1(b1: Fq2): Fq6;
-    multiplyBy01(b0: Fq2, b1: Fq2): Fq6;
-    multiplyByFq2(rhs: Fq2): Fq6;
-    square(): Fq6;
-    invert(): Fq6;
-    frobeniusMap(power: number): Fq6;
+    multiply(rhs: Fp6 | bigint): Fp6;
+    mulByNonresidue(): Fp6;
+    multiplyBy1(b1: Fp2): Fp6;
+    multiplyBy01(b0: Fp2, b1: Fp2): Fp6;
+    multiplyByFp2(rhs: Fp2): Fp6;
+    square(): Fp6;
+    invert(): Fp6;
+    frobeniusMap(power: number): Fp6;
 }
-export declare class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
-    readonly c: [Fq6, Fq6];
-    static readonly ZERO: Fq12;
-    static readonly ONE: Fq12;
-    static fromTuple(t: BigintTwelve): Fq12;
-    constructor(c: [Fq6, Fq6]);
-    init(c: [Fq6, Fq6]): Fq12;
+export declare class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
+    readonly c: [Fp6, Fp6];
+    static readonly ZERO: Fp12;
+    static readonly ONE: Fp12;
+    static fromTuple(t: BigintTwelve): Fp12;
+    constructor(c: [Fp6, Fp6]);
+    init(c: [Fp6, Fp6]): Fp12;
     toString(): string;
-    multiply(rhs: Fq12 | bigint): Fq12;
-    multiplyBy014(o0: Fq2, o1: Fq2, o4: Fq2): Fq12;
-    multiplyByFq2(rhs: Fq2): Fq12;
-    square(): Fq12;
-    invert(): Fq12;
-    frobeniusMap(power: number): Fq12;
-    private Fq4Square;
+    multiply(rhs: Fp12 | bigint): Fp12;
+    multiplyBy014(o0: Fp2, o1: Fp2, o4: Fp2): Fp12;
+    multiplyByFp2(rhs: Fp2): Fp12;
+    square(): Fp12;
+    invert(): Fp12;
+    frobeniusMap(power: number): Fp12;
+    private Fp4Square;
     private cyclotomicSquare;
     private cyclotomicExp;
-    finalExponentiate(): Fq12;
+    finalExponentiate(): Fp12;
 }
 declare type Constructor<T extends Field<T>> = {
     new (...args: any[]): T;
@@ -195,7 +195,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     double(): this;
     add(rhs: this): this;
     subtract(rhs: this): this;
-    multiplyUnsafe(scalar: number | bigint | Fq): this;
+    multiplyUnsafe(scalar: number | bigint | Fp): this;
     multiply(scalar: bigint): this;
     private maxBits;
     private precomputeWindow;
@@ -204,11 +204,11 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     private wNAF;
     multiplyPrecomputed(scalar: bigint): this;
 }
-export declare function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2];
-export declare function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2];
-export declare type EllCoefficients = [Fq2, Fq2, Fq2];
-export declare function calcPairingPrecomputes(x: Fq2, y: Fq2): EllCoefficients[];
-export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
-export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];
-export declare function psi2(x: Fq2, y: Fq2): [Fq2, Fq2];
+export declare function map_to_curve_SSWU_G2(t: bigint[] | Fp2): [Fp2, Fp2, Fp2];
+export declare function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2];
+export declare type EllCoefficients = [Fp2, Fp2, Fp2];
+export declare function calcPairingPrecomputes(x: Fp2, y: Fp2): EllCoefficients[];
+export declare function millerLoop(ell: EllCoefficients[], g1: [Fp, Fp]): Fp12;
+export declare function psi(x: Fp2, y: Fp2): [Fp2, Fp2];
+export declare function psi2(x: Fp2, y: Fp2): [Fp2, Fp2];
 export {};

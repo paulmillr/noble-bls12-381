@@ -1,12 +1,12 @@
 "use strict";
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.DST_LABEL = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.DST_LABEL = exports.CURVE = exports.Fp12 = exports.Fp2 = exports.Fr = exports.Fp = void 0;
 const math_1 = require("./math");
-Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
+Object.defineProperty(exports, "Fp", { enumerable: true, get: function () { return math_1.Fp; } });
 Object.defineProperty(exports, "Fr", { enumerable: true, get: function () { return math_1.Fr; } });
-Object.defineProperty(exports, "Fq2", { enumerable: true, get: function () { return math_1.Fq2; } });
-Object.defineProperty(exports, "Fq12", { enumerable: true, get: function () { return math_1.Fq12; } });
+Object.defineProperty(exports, "Fp2", { enumerable: true, get: function () { return math_1.Fp2; } });
+Object.defineProperty(exports, "Fp12", { enumerable: true, get: function () { return math_1.Fp12; } });
 Object.defineProperty(exports, "CURVE", { enumerable: true, get: function () { return math_1.CURVE; } });
 exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const POW_2_381 = 2n ** 381n;
@@ -190,8 +190,8 @@ function normalizePrivKey(key) {
     return int;
 }
 class PointG1 extends math_1.ProjectivePoint {
-    constructor(x, y, z = math_1.Fq.ONE) {
-        super(x, y, z, math_1.Fq);
+    constructor(x, y, z = math_1.Fp.ONE) {
+        super(x, y, z, math_1.Fp);
     }
     static fromHex(bytes) {
         bytes = ensureBytes(bytes);
@@ -213,14 +213,14 @@ class PointG1 extends math_1.ProjectivePoint {
             if ((y * 2n) / P !== aflag) {
                 y = P - y;
             }
-            point = new PointG1(new math_1.Fq(x), new math_1.Fq(y));
+            point = new PointG1(new math_1.Fp(x), new math_1.Fp(y));
         }
         else if (bytes.length === 96) {
             if ((bytes[0] & (1 << 6)) !== 0)
                 return PointG1.ZERO;
             const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
             const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
-            point = new PointG1(new math_1.Fq(x), new math_1.Fq(y));
+            point = new PointG1(new math_1.Fp(x), new math_1.Fp(y));
         }
         else {
             throw new Error('Invalid point G1, expected 48/96 bytes');
@@ -262,7 +262,7 @@ class PointG1 extends math_1.ProjectivePoint {
         if (this.isZero())
             return;
         if (!this.isOnCurve())
-            throw new Error('Invalid G1 point: not on curve Fq');
+            throw new Error('Invalid G1 point: not on curve Fp');
         if (!this.isTorsionFree())
             throw new Error('Invalid G1 point: must be of prime-order subgroup');
     }
@@ -273,22 +273,22 @@ class PointG1 extends math_1.ProjectivePoint {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
     }
     isOnCurve() {
-        const b = new math_1.Fq(math_1.CURVE.b);
+        const b = new math_1.Fp(math_1.CURVE.b);
         const { x, y, z } = this;
         const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
         const right = b.multiply(z.pow(3n));
-        return left.subtract(right).equals(math_1.Fq.ZERO);
+        return left.subtract(right).equals(math_1.Fp.ZERO);
     }
     isTorsionFree() {
         return !this.multiplyUnsafe(math_1.CURVE.hEff).isZero();
     }
 }
 exports.PointG1 = PointG1;
-PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
-PointG1.ZERO = new PointG1(math_1.Fq.ONE, math_1.Fq.ONE, math_1.Fq.ZERO);
+PointG1.BASE = new PointG1(new math_1.Fp(math_1.CURVE.Gx), new math_1.Fp(math_1.CURVE.Gy), math_1.Fp.ONE);
+PointG1.ZERO = new PointG1(math_1.Fp.ONE, math_1.Fp.ONE, math_1.Fp.ZERO);
 class PointG2 extends math_1.ProjectivePoint {
-    constructor(x, y, z = math_1.Fq2.ONE) {
-        super(x, y, z, math_1.Fq2);
+    constructor(x, y, z = math_1.Fp2.ONE) {
+        super(x, y, z, math_1.Fp2);
     }
     static async hashToCurve(msg) {
         msg = ensureBytes(msg);
@@ -312,8 +312,8 @@ class PointG2 extends math_1.ProjectivePoint {
             return this.ZERO;
         const x1 = z1 % POW_2_381;
         const x2 = z2;
-        const x = new math_1.Fq2([x2, x1]);
-        let y = x.pow(3n).add(new math_1.Fq2(math_1.CURVE.b2)).sqrt();
+        const x = new math_1.Fp2([x2, x1]);
+        let y = x.pow(3n).add(new math_1.Fp2(math_1.CURVE.b2)).sqrt();
         if (!y)
             throw new Error('Failed to find a square root');
         const [y0, y1] = y.values;
@@ -322,7 +322,7 @@ class PointG2 extends math_1.ProjectivePoint {
         const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
         if (isGreater || isZero)
             y = y.multiply(-1n);
-        const point = new PointG2(x, y, math_1.Fq2.ONE);
+        const point = new PointG2(x, y, math_1.Fp2.ONE);
         point.assertValidity();
         return point;
     }
@@ -340,7 +340,7 @@ class PointG2 extends math_1.ProjectivePoint {
             const x0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH, 2 * PUBLIC_KEY_LENGTH));
             const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
             const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
-            point = new PointG2(new math_1.Fq2([x0, x1]), new math_1.Fq2([y0, y1]));
+            point = new PointG2(new math_1.Fp2([x0, x1]), new math_1.Fp2([y0, y1]));
         }
         else {
             throw new Error('Invalid uncompressed point G2, expected 192 bytes');
@@ -387,7 +387,7 @@ class PointG2 extends math_1.ProjectivePoint {
         if (this.isZero())
             return;
         if (!this.isOnCurve())
-            throw new Error('Invalid G2 point: not on curve Fq2');
+            throw new Error('Invalid G2 point: not on curve Fp2');
         if (!this.isTorsionFree())
             throw new Error('Invalid G2 point: must be of prime-order subgroup');
     }
@@ -412,11 +412,11 @@ class PointG2 extends math_1.ProjectivePoint {
         return Q;
     }
     isOnCurve() {
-        const b = new math_1.Fq2(math_1.CURVE.b2);
+        const b = new math_1.Fp2(math_1.CURVE.b2);
         const { x, y, z } = this;
         const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
         const right = b.multiply(z.pow(3n));
-        return left.subtract(right).equals(math_1.Fq2.ZERO);
+        return left.subtract(right).equals(math_1.Fp2.ZERO);
     }
     isTorsionFree() {
         const psi2 = this.psi2();
@@ -438,8 +438,8 @@ class PointG2 extends math_1.ProjectivePoint {
     }
 }
 exports.PointG2 = PointG2;
-PointG2.BASE = new PointG2(new math_1.Fq2(math_1.CURVE.G2x), new math_1.Fq2(math_1.CURVE.G2y), math_1.Fq2.ONE);
-PointG2.ZERO = new PointG2(math_1.Fq2.ONE, math_1.Fq2.ONE, math_1.Fq2.ZERO);
+PointG2.BASE = new PointG2(new math_1.Fp2(math_1.CURVE.G2x), new math_1.Fp2(math_1.CURVE.G2y), math_1.Fp2.ONE);
+PointG2.ZERO = new PointG2(math_1.Fp2.ONE, math_1.Fp2.ONE, math_1.Fp2.ZERO);
 function pairing(P, Q, withFinalExponent = true) {
     if (P.isZero() || Q.isZero())
         throw new Error('No pairings at point of Infinity');
@@ -481,7 +481,7 @@ async function verify(signature, message, publicKey) {
     const ePHm = pairing(P.negate(), Hm, false);
     const eGS = pairing(G, S, false);
     const exp = eGS.multiply(ePHm).finalExponentiate();
-    return exp.equals(math_1.Fq12.ONE);
+    return exp.equals(math_1.Fp12.ONE);
 }
 exports.verify = verify;
 function aggregatePublicKeys(publicKeys) {
@@ -523,9 +523,9 @@ async function verifyBatch(signature, messages, publicKeys) {
             paired.push(pairing(groupPublicKey, message, false));
         }
         paired.push(pairing(PointG1.BASE.negate(), sig, false));
-        const product = paired.reduce((a, b) => a.multiply(b), math_1.Fq12.ONE);
+        const product = paired.reduce((a, b) => a.multiply(b), math_1.Fp12.ONE);
         const exp = product.finalExponentiate();
-        return exp.equals(math_1.Fq12.ONE);
+        return exp.equals(math_1.Fp12.ONE);
     }
     catch {
         return false;

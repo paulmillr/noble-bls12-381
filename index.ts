@@ -1,24 +1,24 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 // bls12-381 is a construction of two curves:
-// 1. Fq: (x, y)
-// 2. Fq₂: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
+// 1. Fp: (x, y)
+// 2. Fp₂: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
 //
 // Bilinear Pairing (ate pairing) is used to combine both elements into a paired one:
-//   Fq₁₂ = e(Fq, Fq2)
-//   where Fq₁₂ = 12-degree polynomial
+//   Fp₁₂ = e(Fp, Fp2)
+//   where Fp₁₂ = 12-degree polynomial
 // Pairing is used to verify signatures.
 //
-// We are using Fq for private keys (shorter) and Fq2 for signatures (longer).
+// We are using Fp for private keys (shorter) and Fp2 for signatures (longer).
 // Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
-  Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients,
+  Fp, Fr, Fp2, Fp12, CURVE, EllCoefficients,
   ProjectivePoint,
   map_to_curve_SSWU_G2, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes,
   mod, powMod
 } from './math';
-export { Fq, Fr, Fq2, Fq12, CURVE };
+export { Fp, Fr, Fp2, Fp12, CURVE };
 
 // Use utils.setDSTLabel() instead
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
@@ -226,12 +226,12 @@ function normalizePrivKey(key: PrivateKey): bigint {
   return int;
 }
 
-export class PointG1 extends ProjectivePoint<Fq> {
-  static BASE = new PointG1(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE);
-  static ZERO = new PointG1(Fq.ONE, Fq.ONE, Fq.ZERO);
+export class PointG1 extends ProjectivePoint<Fp> {
+  static BASE = new PointG1(new Fp(CURVE.Gx), new Fp(CURVE.Gy), Fp.ONE);
+  static ZERO = new PointG1(Fp.ONE, Fp.ONE, Fp.ZERO);
 
-  constructor(x: Fq, y: Fq, z: Fq = Fq.ONE) {
-    super(x, y, z, Fq);
+  constructor(x: Fp, y: Fp, z: Fp = Fp.ONE) {
+    super(x, y, z, Fp);
   }
 
   static fromHex(bytes: Bytes) {
@@ -254,13 +254,13 @@ export class PointG1 extends ProjectivePoint<Fq> {
       if ((y * 2n) / P !== aflag) {
         y = P - y;
       }
-      point = new PointG1(new Fq(x), new Fq(y));
+      point = new PointG1(new Fp(x), new Fp(y));
     } else if (bytes.length === 96) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) return PointG1.ZERO;
       const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
       const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
-      point = new PointG1(new Fq(x), new Fq(y));
+      point = new PointG1(new Fp(x), new Fp(y));
     } else {
       throw new Error('Invalid point G1, expected 48/96 bytes');
     }
@@ -302,7 +302,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
 
   assertValidity() {
     if (this.isZero()) return;
-    if (!this.isOnCurve()) throw new Error('Invalid G1 point: not on curve Fq');
+    if (!this.isOnCurve()) throw new Error('Invalid G1 point: not on curve Fp');
     if (!this.isTorsionFree()) throw new Error('Invalid G1 point: must be of prime-order subgroup');
   }
 
@@ -311,17 +311,17 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   // Sparse multiplication against precomputed coefficients
-  millerLoop(P: PointG2): Fq12 {
+  millerLoop(P: PointG2): Fp12 {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
   }
 
   // Checks for equation y² = x³ + 4
   private isOnCurve(): boolean {
-    const b = new Fq(CURVE.b);
+    const b = new Fp(CURVE.b);
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n));
-    return left.subtract(right).equals(Fq.ZERO);
+    return left.subtract(right).equals(Fp.ZERO);
   }
 
   // Checks is the point resides in prime-order subgroup.
@@ -333,21 +333,21 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 }
 
-export class PointG2 extends ProjectivePoint<Fq2> {
-  static BASE = new PointG2(new Fq2(CURVE.G2x), new Fq2(CURVE.G2y), Fq2.ONE);
-  static ZERO = new PointG2(Fq2.ONE, Fq2.ONE, Fq2.ZERO);
+export class PointG2 extends ProjectivePoint<Fp2> {
+  static BASE = new PointG2(new Fp2(CURVE.G2x), new Fp2(CURVE.G2y), Fp2.ONE);
+  static ZERO = new PointG2(Fp2.ONE, Fp2.ONE, Fp2.ZERO);
 
   private _PPRECOMPUTES: EllCoefficients[] | undefined;
 
-  constructor(x: Fq2, y: Fq2, z: Fq2 = Fq2.ONE) {
-    super(x, y, z, Fq2);
+  constructor(x: Fp2, y: Fp2, z: Fp2 = Fp2.ONE) {
+    super(x, y, z, Fp2);
   }
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
     msg = ensureBytes(msg);
     const u = await hash_to_field(msg, 2);
-    //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
+    //console.log(`hash_to_curve(msg}) u0=${new Fp2(u[0])} u1=${new Fp2(u[1])}`);
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
     const Q1 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[1])));
     const R = Q0.add(Q1);
@@ -371,9 +371,9 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
     const x1 = z1 % POW_2_381;
     const x2 = z2;
-    const x = new Fq2([x2, x1]);
+    const x = new Fp2([x2, x1]);
     // The slow part
-    let y = x.pow(3n).add(new Fq2(CURVE.b2)).sqrt();
+    let y = x.pow(3n).add(new Fp2(CURVE.b2)).sqrt();
     if (!y) throw new Error('Failed to find a square root');
 
     // Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
@@ -383,7 +383,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
     const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
     if (isGreater || isZero) y = y.multiply(-1n);
-    const point = new PointG2(x, y, Fq2.ONE);
+    const point = new PointG2(x, y, Fp2.ONE);
     point.assertValidity();
     return point;
   }
@@ -404,7 +404,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
       const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
 
-      point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]));
+      point = new PointG2(new Fp2([x0, x1]), new Fp2([y0, y1]));
     } else {
       throw new Error('Invalid uncompressed point G2, expected 192 bytes');
     }
@@ -455,7 +455,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   assertValidity() {
     if (this.isZero()) return;
-    if (!this.isOnCurve()) throw new Error('Invalid G2 point: not on curve Fq2');
+    if (!this.isOnCurve()) throw new Error('Invalid G2 point: not on curve Fp2');
     if (!this.isTorsionFree()) throw new Error('Invalid G2 point: must be of prime-order subgroup');
   }
 
@@ -488,11 +488,11 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // Checks for equation y² = x³ + 4
   private isOnCurve(): boolean {
-    const b = new Fq2(CURVE.b2);
+    const b = new Fp2(CURVE.b2);
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-    const right = b.multiply(z.pow(3n) as Fq2);
-    return left.subtract(right).equals(Fq2.ZERO);
+    const right = b.multiply(z.pow(3n) as Fp2);
+    return left.subtract(right).equals(Fp2.ZERO);
   }
 
   // Checks is the point resides in prime-order subgroup.
@@ -521,7 +521,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 }
 
-export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = true): Fq12 {
+export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = true): Fp12 {
   if (P.isZero() || Q.isZero()) throw new Error('No pairings at point of Infinity');
   P.assertValidity();
   Q.assertValidity();
@@ -575,7 +575,7 @@ export async function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex)
   const ePHm = pairing(P.negate(), Hm, false);
   const eGS = pairing(G, S, false);
   const exp = eGS.multiply(ePHm).finalExponentiate();
-  return exp.equals(Fq12.ONE);
+  return exp.equals(Fp12.ONE);
 }
 
 // Adds a bunch of public key points together.
@@ -630,9 +630,9 @@ export async function verifyBatch(
       paired.push(pairing(groupPublicKey, message, false));
     }
     paired.push(pairing(PointG1.BASE.negate(), sig, false));
-    const product = paired.reduce((a, b) => a.multiply(b), Fq12.ONE);
+    const product = paired.reduce((a, b) => a.multiply(b), Fp12.ONE);
     const exp = product.finalExponentiate();
-    return exp.equals(Fq12.ONE);
+    return exp.equals(Fp12.ONE);
   } catch {
     return false;
   }

@@ -7,7 +7,7 @@ describe('pairing', () => {
   it('should create negative G1 pairing', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = bls.pairing(G1.negate(), G2);
-    expect(p1.multiply(p2)).toEqual(bls.Fq12.ONE);
+    expect(p1.multiply(p2)).toEqual(bls.Fp12.ONE);
   });
   it('should create negative G2 pairing', () => {
     const p2 = bls.pairing(G1.negate(), G2);
@@ -17,7 +17,7 @@ describe('pairing', () => {
   it('should create proper pairing output order', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = p1.pow(CURVE_ORDER);
-    expect(p2).toEqual(bls.Fq12.ONE);
+    expect(p2).toEqual(bls.Fp12.ONE);
   });
   it('should create right pairing with bilinearity on G1', () => {
     const p1 = bls.pairing(G1, G2);
@@ -45,7 +45,7 @@ describe('pairing', () => {
   it('test pairing results against https://github.com/zkcrypto/pairing', () => {
     const p1 = bls.pairing(G1, G2);
     expect(p1).toEqual(
-      bls.Fq12.fromTuple([
+      bls.Fp12.fromTuple([
         0x1250ebd871fc0a92a7b2d83168d0d727272d441befa15c503dd8e90ce98db3e7b6d194f60839c508a84305aaca1789b6n,
         0x089a1c5b46e5110b86750ec6a532348868a84045483c92b7af5af689452eafabf1a8943e50439f1d59882a98eaa0170fn,
         0x1368bb445c7c2d209703f239689ce34c0378a68e72a6b3b216da0e22a5031b54ddff57309396b38c881c4c849ec23e87n,
@@ -62,7 +62,7 @@ describe('pairing', () => {
     );
   });
   it('test finalExponentiate', () => {
-    const p1 = bls.Fq12.fromTuple([
+    const p1 = bls.Fp12.fromTuple([
       690392658038414015999440694435086329841032295415825549843130960252222448232974816207293269712691075396080336239827n,
       1673244384695948045466836192250093912021245353707563547917201356526057153141766171738038843400145227470982267854187n,
       2521701268183363687370344286906817113258663667920912959304741393298699171323721428784215127759799558353547063603791n,
@@ -77,7 +77,7 @@ describe('pairing', () => {
       2975309739982292949472410540684863862532494446476557866806093059134361887381947558323102825622690771432446161524562n,
     ]);
     expect(p1.finalExponentiate()).toEqual(
-      bls.Fq12.fromTuple([
+      bls.Fp12.fromTuple([
         0x09d72c189ba2fd4b09b63da857f321b791b45f8ec589858bc6d41c8f4eb05244ad7a22aea1119a958d890a19f6cacedan,
         0x153f579b44547ee81c5d1603571b4776a065e86b4e3da0bba32afedafcca10f0a40005e63c9408785761da689b4b7338n,
         0x00bb1efcca23009c3638ae9ec0ee5153fa94b4edca88c3438029bcd5909e838da44483f0bfb5877609dace3bfa7d4ff3n,

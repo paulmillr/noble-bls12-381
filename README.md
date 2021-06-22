@@ -172,12 +172,12 @@ function pairing(
   g1Point: PointG1,
   g2Point: PointG2,
   withFinalExponent: boolean = true
-): Fq12
+): Fp12
 ```
 - `g1Point: PointG1` - simple point, `x, y` are bigints
 - `g2Point: PointG2` - point over curve with imaginary numbers (`(x, x_1), (y, y_1)`)
 - `withFinalExponent: boolean` - should the result be powered by curve order. Very slow.
-- Returns `Fq12`: paired point over 12-degree extension field.
+- Returns `Fp12`: paired point over 12-degree extension field.
 
 ##### Helpers
 
@@ -199,9 +199,9 @@ bls.CURVE.Gy
 // y = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582, 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
 
 // Classes
-bls.Fq
-bls.Fq2
-bls.Fq12
+bls.Fp
+bls.Fp2
+bls.Fp12
 bls.G1Point
 bls.G2Point
 ```
@@ -215,7 +215,7 @@ The library uses G1 for public keys and G2 for signatures. Adding support for G1
 - Public Keys: 48 bytes: 381 bit affine x coordinate, encoded into 48 big-endian bytes.
 - Signatures: 96 bytes: two 381 bit integers (affine x coordinate), encoded into two 48 big-endian byte arrays.
     - The signature is a point on the G2 subgroup, which is defined over a finite field
-    with elements twice as big as the G1 curve (G2 is over Fq2 rather than Fq. Fq2 is analogous to the complex numbers).
+    with elements twice as big as the G1 curve (G2 is over Fp2 rather than Fp. Fp2 is analogous to the complex numbers).
 - The 12 stands for the Embedding degree.
 
 Formulas:

@@ -2,11 +2,11 @@
 // https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09
 // Basic math is done over finite fields over q.
 // More complicated math is done over polynominal extension fields.
-// To simplify calculations in Fq12, we construct extension tower:
-// Fq₁₂ = Fq₆² => Fq₂³
-// Fq(u) / (u² - β) where β = -1
-// Fq₂(v) / (v³ - ξ) where ξ = u + 1
-// Fq₆(w) / (w² - γ) where γ = v
+// To simplify calculations in Fp12, we construct extension tower:
+// Fp₁₂ = Fp₆² => Fp₂³
+// Fp(u) / (u² - β) where β = -1
+// Fp₂(v) / (v³ - ξ) where ξ = u + 1
+// Fp₆(w) / (w² - γ) where γ = v
 
 export const CURVE = {
   // G1 is the order-q subgroup of E1(Fp) : y² = x³ + 4, #E1(Fp) = h1q, where
@@ -150,56 +150,56 @@ function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
 }
 
 // Finite field over q.
-export class Fq implements Field<Fq> {
+export class Fp implements Field<Fp> {
   static readonly ORDER = CURVE.P;
   static readonly MAX_BITS = bitLen(CURVE.P);
-  static readonly ZERO = new Fq(0n);
-  static readonly ONE = new Fq(1n);
+  static readonly ZERO = new Fp(0n);
+  static readonly ONE = new Fp(1n);
   readonly value: bigint;
 
   constructor(value: bigint) {
-    this.value = mod(value, Fq.ORDER);
+    this.value = mod(value, Fp.ORDER);
   }
 
   isZero(): boolean {
     return this.value === 0n;
   }
 
-  equals(rhs: Fq): boolean {
+  equals(rhs: Fp): boolean {
     return this.value === rhs.value;
   }
 
-  negate(): Fq {
-    return new Fq(-this.value);
+  negate(): Fp {
+    return new Fp(-this.value);
   }
 
-  invert(): Fq {
-    return new Fq(invert(this.value, Fq.ORDER));
+  invert(): Fp {
+    return new Fp(invert(this.value, Fp.ORDER));
   }
 
-  add(rhs: Fq): Fq {
-    return new Fq(this.value + rhs.value);
+  add(rhs: Fp): Fp {
+    return new Fp(this.value + rhs.value);
   }
 
-  square(): Fq {
-    return new Fq(this.value * this.value);
+  square(): Fp {
+    return new Fp(this.value * this.value);
   }
 
-  pow(n: bigint): Fq {
-    return new Fq(powMod(this.value, n, Fq.ORDER));
+  pow(n: bigint): Fp {
+    return new Fp(powMod(this.value, n, Fp.ORDER));
   }
 
-  subtract(rhs: Fq): Fq {
-    return new Fq(this.value - rhs.value);
+  subtract(rhs: Fp): Fp {
+    return new Fp(this.value - rhs.value);
   }
 
-  multiply(rhs: Fq | bigint): Fq {
-    if (rhs instanceof Fq) rhs = rhs.value;
-    return new Fq(this.value * rhs);
+  multiply(rhs: Fp | bigint): Fp {
+    if (rhs instanceof Fp) rhs = rhs.value;
+    return new Fp(this.value * rhs);
   }
 
-  div(rhs: Fq | bigint): Fq {
-    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+  div(rhs: Fp | bigint): Fp {
+    const inv = typeof rhs === 'bigint' ? new Fp(rhs).invert().value : rhs.invert();
     return this.multiply(inv);
   }
 
@@ -210,6 +210,7 @@ export class Fq implements Field<Fq> {
 }
 
 // Finite field over r.
+// This particular field is not used anywhere in bls12-381, but it is still useful.
 export class Fr implements Field<Fr> {
   static readonly ORDER = CURVE.r;
   static readonly ZERO = new Fr(0n);
@@ -347,9 +348,9 @@ abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT 
   private one(): TT {
     const el = this;
     let one: unknown;
-    if (el instanceof Fq2) one = Fq2.ONE;
-    if (el instanceof Fq6) one = Fq6.ONE;
-    if (el instanceof Fq12) one = Fq12.ONE;
+    if (el instanceof Fp2) one = Fp2.ONE;
+    if (el instanceof Fp6) one = Fp6.ONE;
+    if (el instanceof Fp12) one = Fp12.ONE;
     return one as TT;
   }
   pow(n: bigint): TT {
@@ -367,51 +368,51 @@ abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT 
     return p;
   }
   div(rhs: TT | bigint): TT {
-    const inv = typeof rhs === 'bigint' ? new Fq(rhs).invert().value : rhs.invert();
+    const inv = typeof rhs === 'bigint' ? new Fp(rhs).invert().value : rhs.invert();
     return this.multiply(inv);
   }
 }
 
-export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
+export class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
-  static readonly ZERO = new Fq2([0n, 0n]);
-  static readonly ONE = new Fq2([1n, 0n]);
-  readonly c: [Fq, Fq];
+  static readonly ZERO = new Fp2([0n, 0n]);
+  static readonly ONE = new Fp2([1n, 0n]);
+  readonly c: [Fp, Fp];
 
-  constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]) {
+  constructor(coeffs: [Fp, Fp] | [bigint, bigint] | bigint[]) {
     super();
     if (coeffs.length !== 2) throw new Error(`Expected array with 2 elements`);
     coeffs.forEach((c: any, i: any) => {
-      if (typeof c === 'bigint') coeffs[i] = new Fq(c);
+      if (typeof c === 'bigint') coeffs[i] = new Fp(c);
     });
-    this.c = coeffs as [Fq, Fq];
+    this.c = coeffs as [Fp, Fp];
   }
-  init(tuple: [Fq, Fq]) {
-    return new Fq2(tuple);
+  init(tuple: [Fp, Fp]) {
+    return new Fp2(tuple);
   }
   toString() {
-    return `Fq2(${this.c[0]} + ${this.c[1]}×i)`;
+    return `Fp2(${this.c[0]} + ${this.c[1]}×i)`;
   }
   get values(): BigintTuple {
     return this.c.map((c) => c.value) as BigintTuple;
   }
 
-  multiply(rhs: Fq2 | bigint): Fq2 {
-    if (typeof rhs === 'bigint') return new Fq2(this.map<Fq, [Fq, Fq]>((c) => c.multiply(rhs)));
+  multiply(rhs: Fp2 | bigint): Fp2 {
+    if (typeof rhs === 'bigint') return new Fp2(this.map<Fp, [Fp, Fp]>((c) => c.multiply(rhs)));
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
     const [c0, c1] = this.c;
     const [r0, r1] = rhs.c;
     let t1 = c0.multiply(r0); // c0 * o0
     let t2 = c1.multiply(r1); // c1 * o1
     // (T1 - T2) + ((c0 + c1) * (r0 + r1) - (T1 + T2))*i
-    return new Fq2([t1.subtract(t2), c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2))]);
+    return new Fp2([t1.subtract(t2), c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2))]);
   }
   // multiply by u + 1
   mulByNonresidue() {
     const c0 = this.c[0];
     const c1 = this.c[1];
-    return new Fq2([c0.subtract(c1), c0.add(c1)]);
+    return new Fp2([c0.subtract(c1), c0.add(c1)]);
   }
 
   square() {
@@ -420,19 +421,19 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     const a = c0.add(c1);
     const b = c0.subtract(c1);
     const c = c0.add(c0);
-    return new Fq2([a.multiply(b), c.multiply(c1)]);
+    return new Fp2([a.multiply(b), c.multiply(c1)]);
   }
 
-  sqrt(): Fq2 | undefined {
+  sqrt(): Fp2 | undefined {
     // TODO: Optimize this line. It's extremely slow.
     // Speeding this up would boost aggregateSignatures.
     // https://eprint.iacr.org/2012/685.pdf applicable?
     // https://github.com/zkcrypto/bls12_381/blob/080eaa74ec0e394377caa1ba302c8c121df08b07/src/fp2.rs#L250
     // https://github.com/supranational/blst/blob/aae0c7d70b799ac269ff5edf29d8191dbd357876/src/exp2.c#L1
     // Inspired by https://github.com/dalek-cryptography/curve25519-dalek/blob/17698df9d4c834204f83a3574143abacb4fc81a5/src/field.rs#L99
-    const candidateSqrt = this.pow((Fq2.ORDER + 8n) / 16n);
+    const candidateSqrt = this.pow((Fp2.ORDER + 8n) / 16n);
     const check = candidateSqrt.square().div(this);
-    const R = FQ2_ROOTS_OF_UNITY;
+    const R = FP2_ROOTS_OF_UNITY;
     const divisor = [R[0], R[2], R[4], R[6]].find((r) => r.equals(check));
     if (!divisor) return;
     const index = R.indexOf(divisor);
@@ -461,55 +462,55 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   // only a single inversion in Fp.
   invert() {
     const [a, b] = this.values;
-    const factor = new Fq(a * a + b * b).invert();
-    return new Fq2([factor.multiply(new Fq(a)), factor.multiply(new Fq(-b))]);
+    const factor = new Fp(a * a + b * b).invert();
+    return new Fp2([factor.multiply(new Fp(a)), factor.multiply(new Fp(-b))]);
   }
 
   // Raises to q**i -th power
-  frobeniusMap(power: number): Fq2 {
-    return new Fq2([this.c[0], this.c[1].multiply(FQ2_FROBENIUS_COEFFICIENTS[power % 2])]);
+  frobeniusMap(power: number): Fp2 {
+    return new Fp2([this.c[0], this.c[1].multiply(FP2_FROBENIUS_COEFFICIENTS[power % 2])]);
   }
   multiplyByB() {
     let [c0, c1] = this.c;
     let t0 = c0.multiply(4n); // 4 * c0
     let t1 = c1.multiply(4n); // 4 * c1
     // (T0-T1) + (T0+T1)*i
-    return new Fq2([t0.subtract(t1), t0.add(t1)]);
+    return new Fp2([t0.subtract(t1), t0.add(t1)]);
   }
 }
 
 // Finite extension field over irreducible polynominal.
-// Fq2(v) / (v³ - ξ) where ξ = u + 1
-export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
-  static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
-  static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
-  static fromTuple(t: BigintSix): Fq6 {
-    if (!Array.isArray(t) || t.length !== 6) throw new Error('Invalid Fq6 usage');
-    return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
+// Fp2(v) / (v³ - ξ) where ξ = u + 1
+export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
+  static readonly ZERO = new Fp6([Fp2.ZERO, Fp2.ZERO, Fp2.ZERO]);
+  static readonly ONE = new Fp6([Fp2.ONE, Fp2.ZERO, Fp2.ZERO]);
+  static fromTuple(t: BigintSix): Fp6 {
+    if (!Array.isArray(t) || t.length !== 6) throw new Error('Invalid Fp6 usage');
+    return new Fp6([new Fp2(t.slice(0, 2)), new Fp2(t.slice(2, 4)), new Fp2(t.slice(4, 6))]);
   }
 
-  constructor(public readonly c: [Fq2, Fq2, Fq2]) {
+  constructor(public readonly c: [Fp2, Fp2, Fp2]) {
     super();
     if (c.length !== 3) throw new Error(`Expected array with 3 elements`);
   }
-  init(triple: [Fq2, Fq2, Fq2]) {
-    return new Fq6(triple);
+  init(triple: [Fp2, Fp2, Fp2]) {
+    return new Fp6(triple);
   }
   toString() {
-    return `Fq6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
+    return `Fp6(${this.c[0]} + ${this.c[1]} * v, ${this.c[2]} * v^2)`;
   }
   conjugate(): any {
-    throw new TypeError('No conjugate on Fq6');
+    throw new TypeError('No conjugate on Fp6');
   }
-  multiply(rhs: Fq6 | bigint) {
+  multiply(rhs: Fp6 | bigint) {
     if (typeof rhs === 'bigint')
-      return new Fq6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
+      return new Fp6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
     let [c0, c1, c2] = this.c;
     const [r0, r1, r2] = rhs.c;
     let t0 = c0.multiply(r0); // c0 * o0
     let t1 = c1.multiply(r1); // c1 * o1
     let t2 = c2.multiply(r2); // c2 * o2
-    return new Fq6([
+    return new Fp6([
       // t0 + (c1 + c2) * (r1 * r2) - (T1 + T2) * (u + 1)
       t0.add(c1.add(c2).multiply(r1.add(r2)).subtract(t1.add(t2)).mulByNonresidue()),
       // (c0 + c1) * (r0 + r1) - (T0 + T1) + T2 * (u + 1)
@@ -520,22 +521,22 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   }
   // Multiply by quadratic nonresidue v.
   mulByNonresidue() {
-    return new Fq6([this.c[2].mulByNonresidue(), this.c[0], this.c[1]]);
+    return new Fp6([this.c[2].mulByNonresidue(), this.c[0], this.c[1]]);
   }
   // Sparse multiplication
-  multiplyBy1(b1: Fq2): Fq6 {
-    return new Fq6([
+  multiplyBy1(b1: Fp2): Fp6 {
+    return new Fp6([
       this.c[2].multiply(b1).mulByNonresidue(),
       this.c[0].multiply(b1),
       this.c[1].multiply(b1),
     ]);
   }
   // Sparse multiplication
-  multiplyBy01(b0: Fq2, b1: Fq2): Fq6 {
+  multiplyBy01(b0: Fp2, b1: Fp2): Fp6 {
     let [c0, c1, c2] = this.c;
     let t0 = c0.multiply(b0); // c0 * b0
     let t1 = c1.multiply(b1); // c1 * b1
-    return new Fq6([
+    return new Fp6([
       // ((c1 + c2) * b1 - T1) * (u + 1) + T0
       c1.add(c2).multiply(b1).subtract(t1).mulByNonresidue().add(t0),
       // (b0 + b1) * (c0 + c1) - T0 - T1
@@ -545,8 +546,8 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     ]);
   }
 
-  multiplyByFq2(rhs: Fq2): Fq6 {
-    return new Fq6(this.map((c) => c.multiply(rhs)));
+  multiplyByFp2(rhs: Fp2): Fp6 {
+    return new Fp6(this.map((c) => c.multiply(rhs)));
   }
 
   square() {
@@ -555,7 +556,7 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1
     let t3 = c1.multiply(c2).multiply(2n); // 2 * c1 * c2
     let t4 = c2.square(); // c2²
-    return new Fq6([
+    return new Fp6([
       t3.mulByNonresidue().add(t0), // T3 * (u + 1) + T0
       t4.mulByNonresidue().add(t1), // T4 * (u + 1) + T1
       // T1 + (c0 - c1 + c2)² + T3 - T0 - T4
@@ -570,71 +571,71 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     let t2 = c1.square().subtract(c0.multiply(c2)); // c1² - c0 * c2
     // 1/(((c2 * T1 + c1 * T2) * v) + c0 * T0)
     let t4 = c2.multiply(t1).add(c1.multiply(t2)).mulByNonresidue().add(c0.multiply(t0)).invert();
-    return new Fq6([t4.multiply(t0), t4.multiply(t1), t4.multiply(t2)]);
+    return new Fp6([t4.multiply(t0), t4.multiply(t1), t4.multiply(t2)]);
   }
   // Raises to q**i -th power
   frobeniusMap(power: number) {
-    return new Fq6([
+    return new Fp6([
       this.c[0].frobeniusMap(power),
-      this.c[1].frobeniusMap(power).multiply(FQ6_FROBENIUS_COEFFICIENTS_1[power % 6]),
-      this.c[2].frobeniusMap(power).multiply(FQ6_FROBENIUS_COEFFICIENTS_2[power % 6]),
+      this.c[1].frobeniusMap(power).multiply(FP6_FROBENIUS_COEFFICIENTS_1[power % 6]),
+      this.c[2].frobeniusMap(power).multiply(FP6_FROBENIUS_COEFFICIENTS_2[power % 6]),
     ]);
   }
 }
 
 // Finite extension field over irreducible polynominal.
-// Fq6(w) / (w2 - γ) where γ = v
-export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
-  static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
-  static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
-  static fromTuple(t: BigintTwelve): Fq12 {
-    return new Fq12([
-      Fq6.fromTuple(t.slice(0, 6) as BigintSix),
-      Fq6.fromTuple(t.slice(6, 12) as BigintSix),
+// Fp6(w) / (w2 - γ) where γ = v
+export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
+  static readonly ZERO = new Fp12([Fp6.ZERO, Fp6.ZERO]);
+  static readonly ONE = new Fp12([Fp6.ONE, Fp6.ZERO]);
+  static fromTuple(t: BigintTwelve): Fp12 {
+    return new Fp12([
+      Fp6.fromTuple(t.slice(0, 6) as BigintSix),
+      Fp6.fromTuple(t.slice(6, 12) as BigintSix),
     ]);
   }
-  constructor(public readonly c: [Fq6, Fq6]) {
+  constructor(public readonly c: [Fp6, Fp6]) {
     super();
     if (c.length !== 2) throw new Error(`Expected array with 2 elements`);
   }
-  init(c: [Fq6, Fq6]) {
-    return new Fq12(c);
+  init(c: [Fp6, Fp6]) {
+    return new Fp12(c);
   }
   toString() {
-    return `Fq12(${this.c[0]} + ${this.c[1]} * w)`;
+    return `Fp12(${this.c[0]} + ${this.c[1]} * w)`;
   }
-  multiply(rhs: Fq12 | bigint) {
+  multiply(rhs: Fp12 | bigint) {
     if (typeof rhs === 'bigint')
-      return new Fq12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
+      return new Fp12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
     let [c0, c1] = this.c;
     const [r0, r1] = rhs.c;
     let t1 = c0.multiply(r0); // c0 * r0
     let t2 = c1.multiply(r1); // c1 * r1
-    return new Fq12([
+    return new Fp12([
       t1.add(t2.mulByNonresidue()), // T1 + T2 * v
       // (c0 + c1) * (r0 + r1) - (T1 + T2)
       c0.add(c1).multiply(r0.add(r1)).subtract(t1.add(t2)),
     ]);
   }
   // Sparse multiplication
-  multiplyBy014(o0: Fq2, o1: Fq2, o4: Fq2) {
+  multiplyBy014(o0: Fp2, o1: Fp2, o4: Fp2) {
     let [c0, c1] = this.c;
     let [t0, t1] = [c0.multiplyBy01(o0, o1), c1.multiplyBy1(o4)];
-    return new Fq12([
+    return new Fp12([
       t1.mulByNonresidue().add(t0), // T1 * v + T0
       // (c1 + c0) * [o0, o1+o4] - T0 - T1
       c1.add(c0).multiplyBy01(o0, o1.add(o4)).subtract(t0).subtract(t1),
     ]);
   }
 
-  multiplyByFq2(rhs: Fq2): Fq12 {
-    return this.init(this.map((c) => c.multiplyByFq2(rhs)));
+  multiplyByFp2(rhs: Fp2): Fp12 {
+    return this.init(this.map((c) => c.multiplyByFp2(rhs)));
   }
 
   square() {
     let [c0, c1] = this.c;
     let ab = c0.multiply(c1); // c0 * c1
-    return new Fq12([
+    return new Fp12([
       // (c1 * v + c0) * (c0 + c1) - AB - AB * v
       c1.mulByNonresidue().add(c0).multiply(c0.add(c1)).subtract(ab).subtract(ab.mulByNonresidue()),
       ab.add(ab),
@@ -644,21 +645,21 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   invert() {
     let [c0, c1] = this.c;
     let t = c0.square().subtract(c1.square().mulByNonresidue()).invert(); // 1 / (c0² - c1² * v)
-    return new Fq12([c0.multiply(t), c1.multiply(t).negate()]); // ((C0 * T) * T) + (-C1 * T) * w
+    return new Fp12([c0.multiply(t), c1.multiply(t).negate()]); // ((C0 * T) * T) + (-C1 * T) * w
   }
   // Raises to q**i -th power
   frobeniusMap(power: number) {
     const [c0, c1] = this.c;
     let r0 = c0.frobeniusMap(power);
     let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
-    const coeff = FQ12_FROBENIUS_COEFFICIENTS[power % 12];
-    return new Fq12([
+    const coeff = FP12_FROBENIUS_COEFFICIENTS[power % 12];
+    return new Fp12([
       r0,
-      new Fq6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
+      new Fp6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
     ]);
   }
 
-  private Fq4Square(a: Fq2, b: Fq2): [Fq2, Fq2] {
+  private Fp4Square(a: Fp2, b: Fp2): [Fp2, Fp2] {
     const a2 = a.square(),
       b2 = b.square();
     return [
@@ -668,21 +669,21 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   }
 
   // https://eprint.iacr.org/2009/565.pdf
-  private cyclotomicSquare(): Fq12 {
+  private cyclotomicSquare(): Fp12 {
     const [c0, c1] = this.c;
     const [c0c0, c0c1, c0c2] = c0.c;
     const [c1c0, c1c1, c1c2] = c1.c;
-    let [t3, t4] = this.Fq4Square(c0c0, c1c1);
-    let [t5, t6] = this.Fq4Square(c1c0, c0c2);
-    let [t7, t8] = this.Fq4Square(c0c1, c1c2);
+    let [t3, t4] = this.Fp4Square(c0c0, c1c1);
+    let [t5, t6] = this.Fp4Square(c1c0, c0c2);
+    let [t7, t8] = this.Fp4Square(c0c1, c1c2);
     let t9 = t8.mulByNonresidue(); // T8 * (u + 1)
-    return new Fq12([
-      new Fq6([
+    return new Fp12([
+      new Fp6([
         t3.subtract(c0c0).multiply(2n).add(t3), // 2 * (T3 - c0c0)  + T3
         t5.subtract(c0c1).multiply(2n).add(t5), // 2 * (T5 - c0c1)  + T5
         t7.subtract(c0c2).multiply(2n).add(t7),
       ]), // 2 * (T7 - c0c2)  + T7
-      new Fq6([
+      new Fp6([
         t9.add(c1c0).multiply(2n).add(t9), // 2 * (T9 + c1c0) + T9
         t4.add(c1c1).multiply(2n).add(t4), // 2 * (T4 + c1c1) + T4
         t6.add(c1c2).multiply(2n).add(t6),
@@ -691,7 +692,7 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   }
 
   private cyclotomicExp(n: bigint) {
-    let z = Fq12.ONE;
+    let z = Fp12.ONE;
     for (let i = BLS_X_LEN - 1; i >= 0; i--) {
       z = z.cyclotomicSquare();
       if (bitGet(n, i)) z = z.multiply(this);
@@ -863,9 +864,9 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Non-constant-time multiplication. Uses double-and-add algorithm.
   // It's faster, but should only be used when you don't care about
   // an exposed private key e.g. sig verification.
-  multiplyUnsafe(scalar: number | bigint | Fq): this {
+  multiplyUnsafe(scalar: number | bigint | Fp): this {
     let n = scalar;
-    if (n instanceof Fq) n = n.value;
+    if (n instanceof Fp) n = n.value;
     if (typeof n === 'number') n = BigInt(n);
     if (n <= 0) {
       throw new Error('Point#multiply: invalid scalar, expected positive integer');
@@ -889,7 +890,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     let p = this.getZero();
     let d: this = this;
     let f = this.getZero();
-    let bits = Fq.ORDER;
+    let bits = Fp.ORDER;
     if (n > bits) throw new Error('higher:' + n);
     while (bits > 0n) {
       if (n & 1n) {
@@ -994,7 +995,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 }
 
-function sgn0(x: Fq2) {
+function sgn0(x: Fp2) {
   const [x0, x1] = x.values;
   const sign_0 = x0 % 2n;
   const zero_0 = x0 === 0n;
@@ -1006,7 +1007,7 @@ const P_MINUS_9_DIV_16 = (CURVE.P ** 2n - 9n) / 16n;
 // Does not return a square root.
 // Returns uv⁷ * (uv¹⁵)^((p² - 9) / 16) * root of unity
 // if valid square root is found
-function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
+function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
   const v7 = v.pow(7n);
   const uv7 = u.multiply(v7);
   const uv15 = uv7.multiply(v7.multiply(v));
@@ -1015,7 +1016,7 @@ function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
   let success = false;
   let result = gamma;
   // Constant-time routine, so we do not early-return.
-  const positiveRootsOfUnity = FQ2_ROOTS_OF_UNITY.slice(0, 4);
+  const positiveRootsOfUnity = FP2_ROOTS_OF_UNITY.slice(0, 4);
   for (const root of positiveRootsOfUnity) {
     // Valid if (root * gamma)² * v - u == 0
     const candidate = root.multiply(gamma);
@@ -1027,20 +1028,20 @@ function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
   return [success, result];
 }
 
-// Optimized SWU Map - FQ2 to G2': y² = x³ + 240i * x + 1012 + 1012i
+// Optimized SWU Map - Fp2 to G2': y² = x³ + 240i * x + 1012 + 1012i
 // Found in Section 4 of https://eprint.iacr.org/2019/403
 // Note: it's constant-time
-export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
-  const iso_3_a = new Fq2([0n, 240n]);
-  const iso_3_b = new Fq2([1012n, 1012n]);
-  const iso_3_z = new Fq2([-2n, -1n]);
-  if (Array.isArray(t)) t = new Fq2(t as BigintTuple);
+export function map_to_curve_SSWU_G2(t: bigint[] | Fp2): [Fp2, Fp2, Fp2] {
+  const iso_3_a = new Fp2([0n, 240n]);
+  const iso_3_b = new Fp2([1012n, 1012n]);
+  const iso_3_z = new Fp2([-2n, -1n]);
+  if (Array.isArray(t)) t = new Fp2(t as BigintTuple);
 
   const t2 = t.pow(2n);
   const iso_3_z_t2 = iso_3_z.multiply(t2);
   const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n)); // (Z * t² + Z² * t⁴)
   let denominator = iso_3_a.multiply(ztzt).negate(); // -a(Z * t² + Z² * t⁴)
-  let numerator = iso_3_b.multiply(ztzt.add(Fq2.ONE)); // b(Z * t² + Z² * t⁴ + 1)
+  let numerator = iso_3_b.multiply(ztzt.add(Fp2.ONE)); // b(Z * t² + Z² * t⁴ + 1)
 
   // Exceptional case
   if (denominator.isZero()) denominator = iso_3_z.multiply(iso_3_a);
@@ -1053,7 +1054,7 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
     .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
     .add(iso_3_b.multiply(v));
   // Attempt y = sqrt(u / v)
-  const [success, sqrtCandidateOrGamma] = sqrt_div_fq2(u, v);
+  const [success, sqrtCandidateOrGamma] = sqrt_div_fp2(u, v);
   let y;
   if (success) y = sqrtCandidateOrGamma;
   // Handle case where (u / v) is not square
@@ -1063,7 +1064,7 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
   // u(x1) = Z³ * t⁶ * u(x0)
   u = iso_3_z_t2.pow(3n).multiply(u);
   let success2 = false;
-  for (const eta of FQ2_ETAs) {
+  for (const eta of FP2_ETAs) {
     // Valid solution if (eta * sqrt_candidate(x1))² * v - u == 0
     const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
     const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
@@ -1075,7 +1076,7 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
 
   if (!success && !success2) throw new Error('Hash to Curve - Optimized SWU failure');
   if (success2) numerator = numerator.multiply(iso_3_z_t2);
-  y = y as Fq2;
+  y = y as Fp2;
   if (sgn0(t) !== sgn0(y)) y = y.negate();
   y = y.multiply(denominator);
   return [numerator, y, denominator];
@@ -1084,13 +1085,13 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
 // 3-isogeny map from E' to E
 // Converts from Jacobi (xyz) to Projective (xyz) coordinates.
 // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#appendix-C.3
-export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
+export function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2] {
   const [x, y, z] = xyz;
   const zz = z.multiply(z);
   const zzz = zz.multiply(z);
   const zPowers = [z, zz, zzz];
   // x-numerator, x-denominator, y-numerator, y-denominator
-  const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
+  const mapped = [Fp2.ZERO, Fp2.ZERO, Fp2.ZERO, Fp2.ZERO];
 
   // Horner Polynomial Evaluation
   for (let i = 0; i < ISOGENY_COEFFICIENTS.length; i++) {
@@ -1112,13 +1113,13 @@ export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
   return [x2, y2, z2];
 }
 
-export type EllCoefficients = [Fq2, Fq2, Fq2];
+export type EllCoefficients = [Fp2, Fp2, Fp2];
 
 // Pre-compute coefficients for sparse multiplication
 // Point addition and point double calculations is reused for coefficients
-export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
+export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
   //const [x, y] = this.toAffine();
-  const [Qx, Qy, Qz] = [x, y, Fq2.ONE];
+  const [Qx, Qy, Qz] = [x, y, Fp2.ONE];
   let [Rx, Ry, Rz] = [Qx, Qy, Qz];
   let ell_coeff: EllCoefficients[] = [];
   for (let i = BLS_X_LEN - 2; i >= 0; i--) {
@@ -1157,10 +1158,10 @@ export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
   return ell_coeff;
 }
 
-export function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12 {
-  let f12 = Fq12.ONE;
+export function millerLoop(ell: EllCoefficients[], g1: [Fp, Fp]): Fp12 {
+  let f12 = Fp12.ONE;
   const [x, y] = g1;
-  const [Px, Py] = [x as Fq, y as Fq];
+  const [Px, Py] = [x as Fp, y as Fp];
   for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
     f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
     if (bitGet(CURVE.x, i)) {
@@ -1176,23 +1177,23 @@ export function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12 {
   return f12.conjugate();
 }
 
-const ut_root = new Fq6([Fq2.ZERO, Fq2.ONE, Fq2.ZERO]);
-const wsq = new Fq12([ut_root, Fq6.ZERO]);
+const ut_root = new Fp6([Fp2.ZERO, Fp2.ONE, Fp2.ZERO]);
+const wsq = new Fp12([ut_root, Fp6.ZERO]);
 const wsq_inv = wsq.invert();
-const wcu = new Fq12([Fq6.ZERO, ut_root]);
+const wcu = new Fp12([Fp6.ZERO, ut_root]);
 const wcu_inv = wcu.invert();
 
 // Ψ(P) endomorphism
-export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
+export function psi(x: Fp2, y: Fp2): [Fp2, Fp2] {
   //const [x, y] = P.toAffine();
-  // Untwist Fq2->Fq12 && frobenius(1) && twist back
-  const x2 = wsq_inv.multiplyByFq2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
-  const y2 = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
+  // Untwist Fp2->Fp12 && frobenius(1) && twist back
+  const x2 = wsq_inv.multiplyByFp2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
+  const y2 = wcu_inv.multiplyByFp2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
   return [x2, y2];
 }
 
 // Ψ²(P) endomorphism
-export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
+export function psi2(x: Fp2, y: Fp2): [Fp2, Fp2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }
 
@@ -1200,7 +1201,7 @@ export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
 const PSI2_C1 =
   0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
 
-// For Fq2 roots of unity.
+// For Fp2 roots of unity.
 const rv1 =
   0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
 const ev1 =
@@ -1213,16 +1214,16 @@ const ev4 =
   0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 
 // Finite extension field over irreducible polynominal.
-// Fq(u) / (u² - β) where β = -1
-const FQ2_FROBENIUS_COEFFICIENTS = [
+// Fp(u) / (u² - β) where β = -1
+const FP2_FROBENIUS_COEFFICIENTS = [
   0x1n,
   0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-].map((item) => new Fq(item));
+].map((item) => new Fp(item));
 
-// Eighth roots of unity, used for computing square roots in Fq2.
+// Eighth roots of unity, used for computing square roots in Fp2.
 // To verify or re-calculate:
-// Array(8).fill(new Fq2([1n, 1n])).map((fq2, k) => fq2.pow(Fq2.ORDER * BigInt(k) / 8n))
-const FQ2_ROOTS_OF_UNITY = [
+// Array(8).fill(new Fp2([1n, 1n])).map((fp2, k) => fp2.pow(Fp2.ORDER * BigInt(k) / 8n))
+const FP2_ROOTS_OF_UNITY = [
   [1n, 0n],
   [rv1, -rv1],
   [0n, 1n],
@@ -1231,16 +1232,16 @@ const FQ2_ROOTS_OF_UNITY = [
   [-rv1, rv1],
   [0n, -1n],
   [-rv1, -rv1],
-].map((pair) => new Fq2(pair));
+].map((pair) => new Fp2(pair));
 // eta values, used for computing sqrt(g(X1(t)))
-const FQ2_ETAs = [
+const FP2_ETAs = [
   [ev1, ev2],
   [-ev2, ev1],
   [ev3, ev4],
   [-ev4, ev3],
-].map((pair) => new Fq2(pair));
+].map((pair) => new Fp2(pair));
 
-const FQ6_FROBENIUS_COEFFICIENTS_1 = [
+const FP6_FROBENIUS_COEFFICIENTS_1 = [
   [0x1n, 0x0n],
   [
     0x0n,
@@ -1259,8 +1260,8 @@ const FQ6_FROBENIUS_COEFFICIENTS_1 = [
     0x0n,
     0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
   ],
-].map((pair) => new Fq2(pair));
-const FQ6_FROBENIUS_COEFFICIENTS_2 = [
+].map((pair) => new Fp2(pair));
+const FP6_FROBENIUS_COEFFICIENTS_2 = [
   [0x1n, 0x0n],
   [
     0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
@@ -1282,8 +1283,8 @@ const FQ6_FROBENIUS_COEFFICIENTS_2 = [
     0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
     0x0n,
   ],
-].map((pair) => new Fq2(pair));
-const FQ12_FROBENIUS_COEFFICIENTS = [
+].map((pair) => new Fp2(pair));
+const FP12_FROBENIUS_COEFFICIENTS = [
   [0x1n, 0x0n],
   [
     0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
@@ -1329,10 +1330,10 @@ const FQ12_FROBENIUS_COEFFICIENTS = [
     0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
     0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
   ],
-].map((pair) => new Fq2(pair));
+].map((pair) => new Fp2(pair));
 
 // Utilities for 3-isogeny map from E' to E.
-type Fq2_4 = [Fq2, Fq2, Fq2, Fq2];
+type Fp2_4 = [Fp2, Fp2, Fp2, Fp2];
 const xnum = [
   [
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
@@ -1350,7 +1351,7 @@ const xnum = [
     0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
     0x0n,
   ],
-].map((pair) => new Fq2(pair)) as Fq2_4;
+].map((pair) => new Fp2(pair)) as Fp2_4;
 const xden = [
   [
     0x0n,
@@ -1362,7 +1363,7 @@ const xden = [
   ],
   [0x1n, 0x0n],
   [0x0n, 0x0n],
-].map((pair) => new Fq2(pair)) as Fq2_4;
+].map((pair) => new Fp2(pair)) as Fp2_4;
 const ynum = [
   [
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
@@ -1380,7 +1381,7 @@ const ynum = [
     0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
     0x0n,
   ],
-].map((pair) => new Fq2(pair)) as Fq2_4;
+].map((pair) => new Fp2(pair)) as Fp2_4;
 const yden = [
   [
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
@@ -1395,5 +1396,5 @@ const yden = [
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n,
   ],
   [0x1n, 0x0n],
-].map((pair) => new Fq2(pair)) as Fq2_4;
-const ISOGENY_COEFFICIENTS: [Fq2_4, Fq2_4, Fq2_4, Fq2_4] = [xnum, xden, ynum, yden];
+].map((pair) => new Fp2(pair)) as Fp2_4;
+const ISOGENY_COEFFICIENTS: [Fp2_4, Fp2_4, Fp2_4, Fp2_4] = [xnum, xden, ynum, yden];

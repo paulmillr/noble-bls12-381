@@ -1,6 +1,6 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
-import { Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, ProjectivePoint, mod } from './math';
-export { Fq, Fr, Fq2, Fq12, CURVE };
+import { Fp, Fr, Fp2, Fp12, CURVE, EllCoefficients, ProjectivePoint, mod } from './math';
+export { Fp, Fr, Fp2, Fp12, CURVE };
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
@@ -11,24 +11,24 @@ export declare const utils: {
     setDSTLabel(newLabel: string): void;
 };
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
-export declare class PointG1 extends ProjectivePoint<Fq> {
+export declare class PointG1 extends ProjectivePoint<Fp> {
     static BASE: PointG1;
     static ZERO: PointG1;
-    constructor(x: Fq, y: Fq, z?: Fq);
+    constructor(x: Fp, y: Fp, z?: Fp);
     static fromHex(bytes: Bytes): PointG1;
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
     assertValidity(): void;
-    millerLoop(P: PointG2): Fq12;
+    millerLoop(P: PointG2): Fp12;
     private isOnCurve;
     private isTorsionFree;
 }
-export declare class PointG2 extends ProjectivePoint<Fq2> {
+export declare class PointG2 extends ProjectivePoint<Fp2> {
     static BASE: PointG2;
     static ZERO: PointG2;
     private _PPRECOMPUTES;
-    constructor(x: Fq2, y: Fq2, z?: Fq2);
+    constructor(x: Fp2, y: Fp2, z?: Fp2);
     static hashToCurve(msg: Bytes): Promise<PointG2>;
     static fromSignature(hex: Bytes): PointG2;
     static fromHex(bytes: Bytes): PointG2;
@@ -45,7 +45,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];
 }
-export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fq12;
+export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fp12;
 declare type G1Hex = Bytes | PointG1;
 declare type G2Hex = Bytes | PointG2;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array | string;
