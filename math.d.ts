@@ -118,12 +118,8 @@ declare abstract class FQP<TT extends {
 export declare class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     static readonly ORDER: bigint;
     static readonly MAX_BITS: number;
-    static readonly ROOT: Fq;
     static readonly ZERO: Fq2;
     static readonly ONE: Fq2;
-    static readonly COFACTOR: bigint;
-    static readonly ROOTS_OF_UNITY: Fq2[];
-    static readonly ETAs: Fq2[];
     readonly c: [Fq, Fq];
     constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]);
     init(tuple: [Fq, Fq]): Fq2;
@@ -215,6 +211,6 @@ export declare function calcPairingPrecomputes(x: Fq2, y: Fq2): EllCoefficients[
 export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
 export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];
 export declare function psi2(x: Fq2, y: Fq2): [Fq2, Fq2];
-declare type Numerators = [Fq2, Fq2, Fq2, Fq2];
-export declare const isogenyCoefficients: Numerators[];
+declare type Fq2_4 = [Fq2, Fq2, Fq2, Fq2];
+export declare const isogenyCoefficients: [Fq2_4, Fq2_4, Fq2_4, Fq2_4];
 export {};

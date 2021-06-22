@@ -372,52 +372,13 @@ abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT 
   }
 }
 
-// For Fq2 roots of unity.
-const rv1 = 0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
-const ev1 = 0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
-const ev2 = 0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
-const ev3 = 0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
-const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
-
-// Finite extension field over irreducible polynominal.
-// Fq(u) / (u^2 - β) where β = -1
-const FQ2_FROBENIUS_COEFFICIENTS = [
-  new Fq(
-    0x1n
-  ),
-  new Fq(
-    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan
-  ),
-];
 export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
-  static readonly ROOT = new Fq(-1n);
   static readonly ZERO = new Fq2([0n, 0n]);
   static readonly ONE = new Fq2([1n, 0n]);
-  static readonly COFACTOR = CURVE.h2;
-  // Eighth roots of unity, used for computing square roots in Fq2.
-  // To verify or re-calculate:
-  // Array(8).fill(new Fq2([1n, 1n])).map((fq2, k) => fq2.pow(Fq2.ORDER * BigInt(k) / 8n))
-  static readonly ROOTS_OF_UNITY = [
-    new Fq2([1n, 0n]),
-    new Fq2([rv1, -rv1]),
-    new Fq2([0n, 1n]),
-    new Fq2([rv1, rv1]),
-    new Fq2([-1n, 0n]),
-    new Fq2([-rv1, rv1]),
-    new Fq2([0n, -1n]),
-    new Fq2([-rv1, -rv1]),
-  ];
-  // eta values, used for computing sqrt(g(X1(t)))
-  static readonly ETAs = [
-    new Fq2([ev1, ev2]),
-    new Fq2([-ev2, ev1]),
-    new Fq2([ev3, ev4]),
-    new Fq2([-ev4, ev3]),
-  ];
-
   public readonly c: [Fq, Fq];
+
   constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]) {
     super();
     if (coeffs.length !== 2) throw new Error(`Expected array with 2 elements`);
@@ -471,7 +432,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     // Inspired by https://github.com/dalek-cryptography/curve25519-dalek/blob/17698df9d4c834204f83a3574143abacb4fc81a5/src/field.rs#L99
     const candidateSqrt = this.pow((Fq2.ORDER + 8n) / 16n);
     const check = candidateSqrt.square().div(this);
-    const R = Fq2.ROOTS_OF_UNITY;
+    const R = FQ2_ROOTS_OF_UNITY;
     const divisor = [R[0], R[2], R[4], R[6]].find((r) => r.equals(check));
     if (!divisor) return;
     const index = R.indexOf(divisor);
@@ -519,60 +480,6 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
 
 // Finite extension field over irreducible polynominal.
 // Fq2(v) / (v^3 - ξ) where ξ = u + 1
-
-const FQ6_FROBENIUS_COEFFICIENTS_1 = [
-  new Fq2([
-    0x1n,
-    0x0n,
-  ]),
-  new Fq2([
-    0x0n,
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-  ]),
-  new Fq2([
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-    0x0n,
-  ]),
-  new Fq2([
-    0x0n,
-    0x1n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x0n,
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-  ]),
-];
-const FQ6_FROBENIUS_COEFFICIENTS_2 = [
-  new Fq2([
-    0x1n,
-    0x0n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-    0x0n,
-  ]),
-  new Fq2([
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-    0x0n,
-  ]),
-  new Fq2([
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-    0x0n,
-  ]),
-];
-
 export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
@@ -677,58 +584,6 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
 
 // Finite extension field over irreducible polynominal.
 // Fq6(w) / (w2 - γ) where γ = v
-
-const FQ12_FROBENIUS_COEFFICIENTS = [
-  new Fq2([
-    0x1n,
-    0x0n,
-  ]),
-  new Fq2([
-    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
-    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
-  ]),
-  new Fq2([
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
-    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
-  ]),
-  new Fq2([
-    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-    0x0n,
-  ]),
-  new Fq2([
-    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
-    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-    0x0n,
-  ]),
-  new Fq2([
-    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
-    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
-    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
-  ]),
-  new Fq2([
-    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-    0x0n,
-  ]),
-  new Fq2([
-    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
-    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
-  ]),
-];
-
 export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
   static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
@@ -798,7 +653,8 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
     const coeff = FQ12_FROBENIUS_COEFFICIENTS[power % 12];
     return new Fq12([
-      r0, new Fq6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
+      r0,
+      new Fq6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
     ]);
   }
 
@@ -867,8 +723,8 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
 }
 
 type Constructor<T extends Field<T>> = { new (...args: any[]): T } & FieldStatic<T> & {
-  MAX_BITS: number;
-};
+    MAX_BITS: number;
+  };
 //type PointConstructor<TT extends Field<T>, T extends ProjectivePoint<TT>> = { new(...args: any[]): T };
 
 // x=X/Z, y=Y/Z
@@ -1159,7 +1015,7 @@ function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
   let success = false;
   let result = gamma;
   // Constant-time routine, so we do not early-return.
-  const positiveRootsOfUnity = Fq2.ROOTS_OF_UNITY.slice(0, 4);
+  const positiveRootsOfUnity = FQ2_ROOTS_OF_UNITY.slice(0, 4);
   for (const root of positiveRootsOfUnity) {
     // Valid if (root * gamma)^2 * v - u == 0
     const candidate = root.multiply(gamma);
@@ -1207,7 +1063,7 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
   // u(x1) = Z^3 * t^6 * u(x0)
   u = iso_3_z_t2.pow(3n).multiply(u);
   let success2 = false;
-  for (const eta of Fq2.ETAs) {
+  for (const eta of FQ2_ETAs) {
     // Valid solution if (eta * sqrt_candidate(x1))^2 * v - u == 0
     const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
     const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
@@ -1332,77 +1188,210 @@ export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
   const y2 = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
   return [x2, y2];
 }
-// 1 / F2(2)^((p-1)/3) in GF(p²)
-const PSI2_C1 =
-  0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+
 // Ψ²(P) endomorphism
 export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }
 
+// 1 / F2(2)^((p-1)/3) in GF(p²)
+const PSI2_C1 =
+  0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+
+// For Fq2 roots of unity.
+const rv1 =
+  0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n;
+const ev1 =
+  0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90n;
+const ev2 =
+  0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5n;
+const ev3 =
+  0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17n;
+const ev4 =
+  0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
+
+// Finite extension field over irreducible polynominal.
+// Fq(u) / (u^2 - β) where β = -1
+const FQ2_FROBENIUS_COEFFICIENTS = [
+  0x1n,
+  0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+].map((item) => new Fq(item));
+
+// Eighth roots of unity, used for computing square roots in Fq2.
+// To verify or re-calculate:
+// Array(8).fill(new Fq2([1n, 1n])).map((fq2, k) => fq2.pow(Fq2.ORDER * BigInt(k) / 8n))
+const FQ2_ROOTS_OF_UNITY = [
+  [1n, 0n],
+  [rv1, -rv1],
+  [0n, 1n],
+  [rv1, rv1],
+  [-1n, 0n],
+  [-rv1, rv1],
+  [0n, -1n],
+  [-rv1, -rv1],
+].map((pair) => new Fq2(pair));
+// eta values, used for computing sqrt(g(X1(t)))
+const FQ2_ETAs = [
+  [ev1, ev2],
+  [-ev2, ev1],
+  [ev3, ev4],
+  [-ev4, ev3],
+].map((pair) => new Fq2(pair));
+
+const FQ6_FROBENIUS_COEFFICIENTS_1 = [
+  [0x1n, 0x0n],
+  [
+    0x0n,
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+  ],
+  [
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ],
+  [0x0n, 0x1n],
+  [
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ],
+  [
+    0x0n,
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+  ],
+].map((pair) => new Fq2(pair));
+const FQ6_FROBENIUS_COEFFICIENTS_2 = [
+  [0x1n, 0x0n],
+  [
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+    0x0n,
+  ],
+  [
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ],
+  [
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+    0x0n,
+  ],
+  [
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ],
+  [
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+    0x0n,
+  ],
+].map((pair) => new Fq2(pair));
+const FQ12_FROBENIUS_COEFFICIENTS = [
+  [0x1n, 0x0n],
+  [
+    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+  ],
+  [
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+    0x0n,
+  ],
+  [
+    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+  ],
+  [
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ],
+  [
+    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+  ],
+  [
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+    0x0n,
+  ],
+  [
+    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+  ],
+  [
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ],
+  [
+    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+  ],
+  [
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+    0x0n,
+  ],
+  [
+    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+  ],
+].map((pair) => new Fq2(pair));
+
 // Utilities for 3-isogeny map from E' to E.
-type Numerators = [Fq2, Fq2, Fq2, Fq2];
-const xnum: Numerators = [
-  new Fq2([
+type Fq2_4 = [Fq2, Fq2, Fq2, Fq2];
+const xnum = [
+  [
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6n,
-  ]),
-  new Fq2([
+  ],
+  [
     0x0n,
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71an,
-  ]),
-  new Fq2([
+  ],
+  [
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71en,
     0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38dn,
-  ]),
-  new Fq2([
+  ],
+  [
     0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1n,
     0x0n,
-  ]),
-];
-const xden: Numerators = [
-  new Fq2([
+  ],
+].map((pair) => new Fq2(pair)) as Fq2_4;
+const xden = [
+  [
     0x0n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63n,
-  ]),
-  new Fq2([
+  ],
+  [
     0xcn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9fn,
-  ]),
-  Fq2.ONE,
-  Fq2.ZERO,
-];
-const ynum: Numerators = [
-  new Fq2([
+  ],
+  [0x1n, 0x0n],
+  [0x0n, 0x0n],
+].map((pair) => new Fq2(pair)) as Fq2_4;
+const ynum = [
+  [
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
     0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706n,
-  ]),
-  new Fq2([
+  ],
+  [
     0x0n,
     0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97ben,
-  ]),
-  new Fq2([
+  ],
+  [
     0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71cn,
     0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38fn,
-  ]),
-  new Fq2([
+  ],
+  [
     0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10n,
     0x0n,
-  ]),
-];
-const yden: Numerators = [
-  new Fq2([
+  ],
+].map((pair) => new Fq2(pair)) as Fq2_4;
+const yden = [
+  [
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fbn,
-  ]),
-  new Fq2([
+  ],
+  [
     0x0n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3n,
-  ]),
-  new Fq2([
+  ],
+  [
     0x12n,
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99n,
-  ]),
-  new Fq2([0x1n, 0x0n]),
-];
-export const isogenyCoefficients = [xnum, xden, ynum, yden];
+  ],
+  [0x1n, 0x0n],
+].map((pair) => new Fq2(pair)) as Fq2_4;
+export const isogenyCoefficients: [Fq2_4, Fq2_4, Fq2_4, Fq2_4] = [xnum, xden, ynum, yden];
