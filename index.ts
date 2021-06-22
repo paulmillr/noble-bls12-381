@@ -329,7 +329,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   // It returns false for shitty points.
   // We can also use https://eprint.iacr.org/2019/814.pdf
   isTorsionFree(): boolean {
-    return !this.multiplyUnsafe(CURVE.h).isZero();
+    return !this.subtract(this.multiplyUnsafe(CURVE.x)).isZero();
   }
 }
 

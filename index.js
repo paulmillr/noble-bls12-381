@@ -276,7 +276,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return left.subtract(right).equals(math_1.Fq.ZERO);
     }
     isTorsionFree() {
-        return !this.multiplyUnsafe(math_1.CURVE.h).isZero();
+        return !this.subtract(this.multiplyUnsafe(math_1.CURVE.x)).isZero();
     }
 }
 exports.PointG1 = PointG1;
