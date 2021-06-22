@@ -861,7 +861,9 @@ exports.map_to_curve_SSWU_G2 = map_to_curve_SSWU_G2;
 function isogenyMapG2(xyz) {
     const [x, y, z] = xyz;
     const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
-    const zPowers = [z, z.pow(2n), z.pow(3n)];
+    const zz = z.multiply(z);
+    console.log('zz');
+    const zPowers = [z, zz, zz.multiply(z)];
     for (let i = 0; i < exports.isogenyCoefficients.length; i++) {
         const k_i = exports.isogenyCoefficients[i];
         mapped[i] = k_i.slice(-1)[0];

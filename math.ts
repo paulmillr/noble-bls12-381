@@ -1086,9 +1086,11 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
 // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#appendix-C.3
 export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
   const [x, y, z] = xyz;
+  const zz = z.multiply(z);
+  const zzz = zz.multiply(z);
+  const zPowers = [z, zz, zzz];
   // x-numerator, x-denominator, y-numerator, y-denominator
   const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
-  const zPowers = [z, z.pow(2n), z.pow(3n)];
 
   // Horner Polynomial Evaluation
   for (let i = 0; i < isogenyCoefficients.length; i++) {
