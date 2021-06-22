@@ -409,6 +409,9 @@ class PointG2 extends math_1.ProjectivePoint {
     psi() {
         return this.fromAffineTuple(math_1.psi(...this.toAffine()));
     }
+    psi2() {
+        return this.fromAffineTuple(math_1.psi2(...this.toAffine()));
+    }
     isOnCurve() {
         const b = new math_1.Fq2(math_1.CURVE.b2);
         const { x, y, z } = this;
@@ -417,8 +420,7 @@ class PointG2 extends math_1.ProjectivePoint {
         return left.subtract(right).equals(math_1.Fq2.ZERO);
     }
     isTorsionFree() {
-        const psi1 = this.psi();
-        const psi2 = psi1.psi();
+        const psi2 = this.psi2();
         const psi3 = psi2.psi();
         const zPsi3 = psi3.multiplyUnsafe(math_1.CURVE.x).negate();
         return zPsi3.subtract(psi2).add(this).isZero();

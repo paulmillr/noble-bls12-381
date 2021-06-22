@@ -315,6 +315,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
   }
 
+  // Checks for equation y² = x³ + 4
   private isOnCurve(): boolean {
     const b = new Fq(CURVE.b);
     const { x, y, z } = this;
@@ -323,6 +324,10 @@ export class PointG1 extends ProjectivePoint<Fq> {
     return left.subtract(right).equals(Fq.ZERO);
   }
 
+  // Checks is the point resides in prime-order subgroup.
+  // point.isTorsionFree() should return true for valid points
+  // It returns false for shitty points.
+  // We can also use https://eprint.iacr.org/2019/814.pdf
   isTorsionFree(): boolean {
     return !this.multiplyUnsafe(CURVE.h).isZero();
   }
@@ -474,10 +479,15 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup');
   }
 
-  psi() {
+  // Ψ
+  private psi() {
     return this.fromAffineTuple(psi(...this.toAffine()));
   }
+  private psi2() {
+    return this.fromAffineTuple(psi2(...this.toAffine()))
+  }
 
+  // Checks for equation y² = x³ + 4
   private isOnCurve(): boolean {
     const b = new Fq2(CURVE.b2);
     const { x, y, z } = this;
@@ -491,8 +501,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   // It returns false for shitty points.
   // https://eprint.iacr.org/2019/814.pdf
   isTorsionFree(): boolean {
-    const psi1 = this.psi(); // Ψ(P)
-    const psi2 = psi1.psi(); // Ψ²(P)
+    const psi2 = this.psi2(); // Ψ²(P)
     const psi3 = psi2.psi(); // Ψ³(P)
     const zPsi3 = psi3.multiplyUnsafe(CURVE.x).negate(); // [z]Ψ³(P) where z = -x
     return zPsi3.subtract(psi2).add(this).isZero(); // [z]Ψ³(P) - Ψ²(P) + P == O

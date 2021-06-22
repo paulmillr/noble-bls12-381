@@ -9,23 +9,27 @@
 // Fq6(w) / (w2 - γ) where γ = v
 
 export const CURVE = {
-  // characteristic
+  // G1 is the order-q subgroup of E1(Fp) : y² = x³ + 4, #E1(Fp) = h1q, where
+  // characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
   P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
-  // order
+  // order; z⁴ − z² + 1
   r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
-  // cofactor
+  // cofactor; (z - 1)²/3
   h: 0x396c8c005555e1568c00aaab0000aaabn,
   // generator's coordinates
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
   Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
   b: 4n,
 
-  // G2
+  // G2 is the order-q subgroup of E2(Fp²) : y² = x³+4(1+√−1),
+  // where Fp2 is Fp[√−1]/(x2+1). #E2(Fp2 ) = h2q, where
   // G^2 - 1
+  // h2q
   P2:
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
       2n -
     1n,
+  // cofactor
   h2: 0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5n,
   G2x: [
     0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n,
@@ -1319,6 +1323,7 @@ const wsq_inv = wsq.invert();
 const wcu = new Fq12([Fq6.ZERO, ut_root]);
 const wcu_inv = wcu.invert();
 
+// Ψ(P)
 export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
   //const [x, y] = P.toAffine();
   // Untwist Fq2->Fq12 && frobenius(1) && twist back
@@ -1326,10 +1331,10 @@ export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
   const y2 = wcu_inv.multiplyByFq2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
   return [x2, y2];
 }
-
-// 1 / F2(2)^((p - 1) / 3) in GF(p^2)
+// 1 / F2(2)^((p-1)/3) in GF(p²)
 const PSI2_C1 =
   0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+// Ψ²(P)
 export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }
