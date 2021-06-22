@@ -469,19 +469,21 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return this.fromAffineTuple(psi2(...this.toAffine()));
   }
 
-  // clearCofactorG2 from spec
+  // Maps the point into the prime-order subgroup G2.
+  // clear_cofactor_bls12381_g2 from cfrg-hash-to-curve-11
   clearCofactor(): PointG2 {
     const P = this;
-    // BLS_X is negative number
-    const t1 = P.multiplyUnsafe(CURVE.x).negate();
-    const t2 = P.psi();
-    // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
-    const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
-    return p2
-      .subtract(t2)
-      .add(t1.add(t2).multiplyUnsafe(CURVE.x).negate())
-      .subtract(t1)
-      .subtract(P);
+    let t1 = P.multiplyUnsafe(CURVE.x).negate(); // -x, not x
+    let t2 = P.psi();
+    let t3 = P.double();
+    t3 = t3.psi2();
+    t3 = t3.subtract(t2);
+    t2 = t1.add(t2);
+    t2 = t2.multiplyUnsafe(CURVE.x).negate();
+    t3 = t3.add(t2);
+    t3 = t3.subtract(t1);
+    const Q = t3.subtract(P);
+    return Q;
   }
 
   // Checks for equation y² = x³ + 4

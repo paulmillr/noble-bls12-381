@@ -399,14 +399,17 @@ class PointG2 extends math_1.ProjectivePoint {
     }
     clearCofactor() {
         const P = this;
-        const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
-        const t2 = P.psi();
-        const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
-        return p2
-            .subtract(t2)
-            .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
-            .subtract(t1)
-            .subtract(P);
+        let t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
+        let t2 = P.psi();
+        let t3 = P.double();
+        t3 = t3.psi2();
+        t3 = t3.subtract(t2);
+        t2 = t1.add(t2);
+        t2 = t2.multiplyUnsafe(math_1.CURVE.x).negate();
+        t3 = t3.add(t2);
+        t3 = t3.subtract(t1);
+        const Q = t3.subtract(P);
+        return Q;
     }
     isOnCurve() {
         const b = new math_1.Fq2(math_1.CURVE.b2);
