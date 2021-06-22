@@ -1,6 +1,12 @@
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
-import { Fq, Fq12, BigintTwelve } from '..';
+import { Fq, Fq12 } from '..';
+
+type BigintTwelve = [
+  bigint, bigint, bigint, bigint,
+  bigint, bigint, bigint, bigint,
+  bigint, bigint, bigint, bigint
+];
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 fc.configureGlobal({ numRuns: NUM_RUNS });

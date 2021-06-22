@@ -1,6 +1,6 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
-import { Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, BigintTwelve, ProjectivePoint, mod } from './math';
-export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
+import { Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, ProjectivePoint, mod } from './math';
+export { Fq, Fr, Fq2, Fq12, CURVE };
 export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;

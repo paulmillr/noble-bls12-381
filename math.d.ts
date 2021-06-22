@@ -23,7 +23,7 @@ declare type BigintSix = [
     bigint,
     bigint
 ];
-export declare type BigintTwelve = [
+declare type BigintTwelve = [
     bigint,
     bigint,
     bigint,

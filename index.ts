@@ -12,13 +12,13 @@
 // Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
-  Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients, BigintTwelve,
+  Fq, Fr, Fq2, Fq12, CURVE, EllCoefficients,
   ProjectivePoint,
   map_to_curve_SSWU_G2, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes,
   mod, powMod
 } from './math';
-export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
+export { Fq, Fr, Fq2, Fq12, CURVE };
 
 // Use utils.setDSTLabel() instead
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';

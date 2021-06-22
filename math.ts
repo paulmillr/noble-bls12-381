@@ -58,7 +58,7 @@ type BigintSix = [
 ];
 
 // prettier-ignore
-export type BigintTwelve = [
+type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint
