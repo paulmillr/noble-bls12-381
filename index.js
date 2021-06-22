@@ -47,7 +47,7 @@ exports.utils = {
         if (typeof newLabel !== 'string' || newLabel.length > 64)
             throw new TypeError('Invalid DST');
         exports.DST_LABEL = newLabel;
-    }
+    },
 };
 function bytesToNumberBE(bytes) {
     let value = 0n;
@@ -264,9 +264,9 @@ class PointG1 extends math_1.ProjectivePoint {
         if (this.isZero())
             return;
         if (!this.isOnCurve())
-            throw new Error('Invalid point: not on curve Fq');
+            throw new Error('Invalid G1 point: not on curve Fq');
         if (!this.isTorsionFree())
-            throw new Error('Invalid point: must be of prime-order subgroup');
+            throw new Error('Invalid G1 point: must be of prime-order subgroup');
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.value);
@@ -397,9 +397,9 @@ class PointG2 extends math_1.ProjectivePoint {
         if (this.isZero())
             return;
         if (!this.isOnCurve())
-            throw new Error('Invalid point: not on curve Fq2');
+            throw new Error('Invalid G2 point: not on curve Fq2');
         if (!this.isTorsionFree())
-            throw new Error('Invalid point: must be of prime-order subgroup');
+            throw new Error('Invalid G2 point: must be of prime-order subgroup');
     }
     psi() {
         return this.fromAffineTuple(math_1.psi(...this.toAffine()));

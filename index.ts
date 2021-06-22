@@ -69,7 +69,7 @@ export const utils = {
   setDSTLabel(newLabel: string) {
     if (typeof newLabel !== 'string' || newLabel.length > 64) throw new TypeError('Invalid DST');
     DST_LABEL = newLabel;
-  }
+  },
 };
 
 function bytesToNumberBE(bytes: Uint8Array) {
@@ -309,8 +309,8 @@ export class PointG1 extends ProjectivePoint<Fq> {
 
   assertValidity() {
     if (this.isZero()) return;
-    if (!this.isOnCurve()) throw new Error('Invalid point: not on curve Fq');
-    if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup')
+    if (!this.isOnCurve()) throw new Error('Invalid G1 point: not on curve Fq');
+    if (!this.isTorsionFree()) throw new Error('Invalid G1 point: must be of prime-order subgroup');
   }
 
   toRepr() {
@@ -467,8 +467,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   assertValidity() {
     if (this.isZero()) return;
-    if (!this.isOnCurve()) throw new Error('Invalid point: not on curve Fq2');
-    if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup');
+    if (!this.isOnCurve()) throw new Error('Invalid G2 point: not on curve Fq2');
+    if (!this.isTorsionFree()) throw new Error('Invalid G2 point: must be of prime-order subgroup');
   }
 
   // Ψ endomorphism
@@ -478,7 +478,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // Ψ²
   private psi2() {
-    return this.fromAffineTuple(psi2(...this.toAffine()))
+    return this.fromAffineTuple(psi2(...this.toAffine()));
   }
 
   // clearCofactorG2 from spec
