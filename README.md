@@ -7,7 +7,7 @@
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-Compatible with ETH2, matches specs [pairing-curves-09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-10](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10).
+Compatible with ETH2, matches specs [pairing-curves-09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-11](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11).
 
 To learn more about internals, check out [BLS12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c). To try it live, see [the online demo](https://paulmillr.com/ecc) & [threshold sigs demo](https://genthresh.com).
 
