@@ -245,24 +245,24 @@ To achieve the best speed out of all JS / Python implementations, the library em
 Benchmarks measured with Apple M1:
 
 ```
-getPublicKey x 1,614 ops/sec @ 619μs/op
-sign x 31 ops/sec @ 31ms/op
-verify x 25 ops/sec @ 39ms/op
-pairing x 61 ops/sec @ 16ms/op
-aggregatePublicKeys/8 x 84 ops/sec @ 11ms/op
-aggregateSignatures/8 x 34 ops/sec @ 29ms/op
+getPublicKey x 1,302 ops/sec @ 767μs/op
+sign x 23 ops/sec @ 43ms/op
+verify x 21 ops/sec @ 46ms/op
+pairing x 52 ops/sec @ 19ms/op
+aggregatePublicKeys/8 x 112 ops/sec @ 8ms/op
+aggregateSignatures/8 x 27 ops/sec @ 36ms/op
 
 with compression / decompression disabled:
-sign/nc x 49 ops/sec @ 20ms/op
-verify/nc x 42 ops/sec @ 23ms/op
-aggregatePublicKeys/32 x 5,509 ops/sec @ 181μs/op
-aggregatePublicKeys/128 x 1,347 ops/sec @ 742μs/op
-aggregatePublicKeys/512 x 319 ops/sec @ 3ms/op
-aggregatePublicKeys/2048 x 81 ops/sec @ 12ms/op
-aggregateSignatures/32 x 1,443 ops/sec @ 692μs/op
-aggregateSignatures/128 x 344 ops/sec @ 2ms/op
-aggregateSignatures/512 x 85 ops/sec @ 11ms/op
-aggregateSignatures/2048 x 21 ops/sec @ 46ms/op
+sign/nc x 38 ops/sec @ 25ms/op
+verify/nc x 36 ops/sec @ 27ms/op
+aggregatePublicKeys/32 x 5,341 ops/sec @ 187μs/op
+aggregatePublicKeys/128 x 1,035 ops/sec @ 965μs/op
+aggregatePublicKeys/512 x 234 ops/sec @ 4ms/op
+aggregatePublicKeys/2048 x 59 ops/sec @ 16ms/op
+aggregateSignatures/32 x 1,118 ops/sec @ 893μs/op
+aggregateSignatures/128 x 306 ops/sec @ 3ms/op
+aggregateSignatures/512 x 69 ops/sec @ 14ms/op
+aggregateSignatures/2048 x 16 ops/sec @ 60ms/op
 ```
 
 ## Security
