@@ -247,7 +247,7 @@ Benchmarks measured with Apple M1:
 ```
 getPublicKey x 1,639 ops/sec @ 609μs/op
 sign x 34 ops/sec @ 28ms/op
-verify x 32 ops/sec @ 30ms/op
+verify x 27 ops/sec @ 36ms/op
 pairing x 75 ops/sec @ 13ms/op
 aggregatePublicKeys/8 x 396 ops/sec @ 2ms/op
 aggregateSignatures/8 x 74 ops/sec @ 13ms/op

@@ -466,6 +466,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fq2);
     if (!left.subtract(right).equals(Fq2.ZERO)) throw new Error('Invalid point: not on curve Fq2');
+    if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup');
   }
 
   psi() {
@@ -473,6 +474,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   // Checks is the point resides in prime-order subgroup.
+  // point.isTorsionFree() should return true for valid points
+  // It returns false for shitty points.
   // https://eprint.iacr.org/2019/814.pdf
   isTorsionFree() {
     const psi1 = this.psi(); // Ψ(P)

@@ -399,6 +399,8 @@ class PointG2 extends math_1.ProjectivePoint {
         const right = b.multiply(z.pow(3n));
         if (!left.subtract(right).equals(math_1.Fq2.ZERO))
             throw new Error('Invalid point: not on curve Fq2');
+        if (!this.isTorsionFree())
+            throw new Error('Invalid point: must be of prime-order subgroup');
     }
     psi() {
         return this.fromAffineTuple(math_1.psi(...this.toAffine()));
