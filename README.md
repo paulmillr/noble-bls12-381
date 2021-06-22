@@ -120,7 +120,7 @@ function sign(
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
 - Returns `Uint8Array | string | PointG2`: encoded signature
 
-Default domain separation tag (DST) is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`, use `bls.utils.setDSTLabel("...")` to change it.
+Default domain separation tag (DST) is specified below, in **Internals** section, with instructions on how to change it.
 
 ##### `verify(signature, message, publicKey)`
 ```typescript
@@ -229,7 +229,7 @@ The BLS parameters for the library are:
 
 - `PK_IN` `G1`
 - `HASH_OR_ENCODE` `true`
-- `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_`
+- `DST` `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_` - use `bls.utils.setDSTLabel("...")` to change it.
 - `RAND_BITS` `64`
 
 Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
