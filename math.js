@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isogenyCoefficients = exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fr = exports.Fq = exports.powMod = exports.mod = exports.CURVE = void 0;
+exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fq12 = exports.Fq6 = exports.Fq2 = exports.Fr = exports.Fq = exports.powMod = exports.mod = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -374,6 +374,8 @@ class Fq6 extends FQP {
             throw new Error(`Expected array with 3 elements`);
     }
     static fromTuple(t) {
+        if (!Array.isArray(t) || t.length !== 6)
+            throw new Error('Invalid Fq6 usage');
         return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
     }
     init(triple) {
@@ -860,12 +862,12 @@ function map_to_curve_SSWU_G2(t) {
 exports.map_to_curve_SSWU_G2 = map_to_curve_SSWU_G2;
 function isogenyMapG2(xyz) {
     const [x, y, z] = xyz;
-    const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
     const zz = z.multiply(z);
-    console.log('zz');
-    const zPowers = [z, zz, zz.multiply(z)];
-    for (let i = 0; i < exports.isogenyCoefficients.length; i++) {
-        const k_i = exports.isogenyCoefficients[i];
+    const zzz = zz.multiply(z);
+    const zPowers = [z, zz, zzz];
+    const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
+    for (let i = 0; i < ISOGENY_COEFFICIENTS.length; i++) {
+        const k_i = ISOGENY_COEFFICIENTS[i];
         mapped[i] = k_i.slice(-1)[0];
         const arr = k_i.slice(0, -1).reverse();
         for (let j = 0; j < arr.length; j++) {
@@ -1129,4 +1131,4 @@ const yden = [
     ],
     [0x1n, 0x0n],
 ].map((pair) => new Fq2(pair));
-exports.isogenyCoefficients = [xnum, xden, ynum, yden];
+const ISOGENY_COEFFICIENTS = [xnum, xden, ynum, yden];

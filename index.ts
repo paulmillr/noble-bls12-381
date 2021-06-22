@@ -105,10 +105,10 @@ function toPaddedHex(num: bigint, padding: number) {
   return num.toString(16).padStart(padding * 2, '0');
 }
 
-function expectHex(item: unknown): void {
-  if (typeof item !== 'string' && !(item instanceof Uint8Array)) {
-    throw new TypeError('Expected hex string or Uint8Array');
-  }
+function ensureBytes(hex: string | Uint8Array): Uint8Array {
+  if (hex instanceof Uint8Array) return hex;
+  if (typeof hex === 'string') return hexToBytes(hex);
+  throw new TypeError('Expected hex string or Uint8Array');
 }
 
 function concatBytes(...arrays: Uint8Array[]): Uint8Array {
@@ -235,8 +235,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   static fromHex(bytes: Bytes) {
-    expectHex(bytes);
-    if (typeof bytes === 'string') bytes = hexToBytes(bytes);
+    bytes = ensureBytes(bytes);
     const { P } = CURVE;
 
     let point;
@@ -250,24 +249,18 @@ export class PointG1 extends ProjectivePoint<Fq> {
       const right = mod(x ** 3n + CURVE.b, P);
       let y = powMod(right, (P + 1n) / 4n, P);
       const left = powMod(y, 2n, P);
-      if (left - right !== 0n) {
-        throw new Error('The given point is not on G1: y**2 = x**3 + b');
-      }
+      if (left - right !== 0n) throw new Error('The given point is not on G1: y**2 = x**3 + b');
       const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
       if ((y * 2n) / P !== aflag) {
         y = P - y;
       }
-      point = new PointG1(new Fq(x), new Fq(y), new Fq(1n));
+      point = new PointG1(new Fq(x), new Fq(y));
     } else if (bytes.length === 96) {
       // Check if the infinity flag is set
-      if ((bytes[0] & (1 << 6)) !== 0) {
-        return PointG1.ZERO;
-      }
-
+      if ((bytes[0] & (1 << 6)) !== 0) return PointG1.ZERO;
       const x = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
       const y = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
-
-      point = new PointG1(new Fq(x), new Fq(y), Fq.ONE);
+      point = new PointG1(new Fq(x), new Fq(y));
     } else {
       throw new Error('Invalid point G1, expected 48/96 bytes');
     }
@@ -313,8 +306,8 @@ export class PointG1 extends ProjectivePoint<Fq> {
     if (!this.isTorsionFree()) throw new Error('Invalid G1 point: must be of prime-order subgroup');
   }
 
-  toRepr() {
-    return [this.x, this.y, this.z].map((v) => v.value);
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return this.toString();
   }
 
   // Sparse multiplication against precomputed coefficients
@@ -352,8 +345,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
   static async hashToCurve(msg: Bytes) {
-    expectHex(msg);
-    if (typeof msg === 'string') msg = hexToBytes(msg);
+    msg = ensureBytes(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fq2(u[0])} u1=${new Fq2(u[1])}`);
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
@@ -366,8 +358,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   // TODO: Optimize, it's very slow because of sqrt.
   static fromSignature(hex: Bytes): PointG2 {
-    expectHex(hex);
-    if (typeof hex === 'string') hex = hexToBytes(hex);
+    hex = ensureBytes(hex);
     const { P } = CURVE;
     const half = hex.length / 2;
     if (half !== 48 && half !== 96)
@@ -398,9 +389,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   static fromHex(bytes: Bytes) {
-    expectHex(bytes);
-    if (typeof bytes === 'string') bytes = hexToBytes(bytes);
-
+    bytes = ensureBytes(bytes);
     let point;
     if (bytes.length === 96) {
       throw new Error('Compressed format not supported yet.');
@@ -415,7 +404,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
       const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
       const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
 
-      point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]), Fq2.ONE);
+      point = new PointG2(new Fq2([x0, x1]), new Fq2([y0, y1]));
     } else {
       throw new Error('Invalid uncompressed point G2, expected 192 bytes');
     }
@@ -447,21 +436,20 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   toHex(isCompressed = false) {
+    this.assertValidity();
     if (isCompressed) {
-      throw new Error('Not supported');
+      throw new Error('Point compression has not yet been implemented');
     } else {
       if (this.equals(PointG2.ZERO)) {
         return '4'.padEnd(2 * 4 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
-      } else {
-        this.assertValidity();
-        const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
-        return (
-          toPaddedHex(x1, PUBLIC_KEY_LENGTH) +
-          toPaddedHex(x0, PUBLIC_KEY_LENGTH) +
-          toPaddedHex(y1, PUBLIC_KEY_LENGTH) +
-          toPaddedHex(y0, PUBLIC_KEY_LENGTH)
-        );
       }
+      const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+      return (
+        toPaddedHex(x1, PUBLIC_KEY_LENGTH) +
+        toPaddedHex(x0, PUBLIC_KEY_LENGTH) +
+        toPaddedHex(y1, PUBLIC_KEY_LENGTH) +
+        toPaddedHex(y0, PUBLIC_KEY_LENGTH)
+      );
     }
   }
 
@@ -516,8 +504,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return zPsi3.subtract(psi2).add(this).isZero(); // [z]Ψ³(P) - Ψ²(P) + P == O
   }
 
-  toRepr() {
-    return [this.x, this.y, this.z].map((v) => v.values);
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return this.toString();
   }
 
   clearPairingPrecomputes() {
@@ -540,22 +528,16 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
   return withFinalExponent ? looped.finalExponentiate() : looped;
 }
 
-type PB1 = Bytes | PointG1;
-type PB2 = Bytes | PointG2;
-function normP1(point: PB1): PointG1 {
-  if (point instanceof PointG1) return point;
-  expectHex(point);
-  return PointG1.fromHex(point);
+type G1Hex = Bytes | PointG1;
+type G2Hex = Bytes | PointG2;
+function normP1(point: G1Hex): PointG1 {
+  return point instanceof PointG1 ? point : PointG1.fromHex(point);
 }
-function normP2(point: PB2): PointG2 {
-  if (point instanceof PointG2) return point;
-  expectHex(point);
-  return PointG2.fromSignature(point);
+function normP2(point: G2Hex): PointG2 {
+  return point instanceof PointG2 ? point : PointG2.fromSignature(point);
 }
-async function normP2H(point: PB2): Promise<PointG2> {
-  if (point instanceof PointG2) return point;
-  expectHex(point);
-  return await PointG2.hashToCurve(point);
+async function normP2Hash(point: G2Hex): Promise<PointG2> {
+  return point instanceof PointG2 ? point : PointG2.hashToCurve(point);
 }
 
 // Multiplies generator by private key.
@@ -570,20 +552,20 @@ export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
 export async function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: string, privateKey: PrivateKey): Promise<string>;
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export async function sign(message: PB2, privateKey: PrivateKey): Promise<Bytes | PointG2> {
-  const msgPoint = await normP2H(message);
+export async function sign(message: G2Hex, privateKey: PrivateKey): Promise<Bytes | PointG2> {
+  const msgPoint = await normP2Hash(message);
   msgPoint.assertValidity();
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   if (message instanceof PointG2) return sigPoint;
-  const bytes = sigPoint.toSignature();
-  return typeof message === 'string' ? bytes : hexToBytes(bytes);
+  const hex = sigPoint.toSignature();
+  return typeof message === 'string' ? hex : hexToBytes(hex);
 }
 
 // Verify checks if pairing of public key & hash is equal to pairing of generator & signature.
 // e(P, H(m)) == e(G, S)
-export async function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean> {
+export async function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex): Promise<boolean> {
   const P = normP1(publicKey);
-  const Hm = await normP2H(message);
+  const Hm = await normP2Hash(message);
   const G = PointG1.BASE;
   const S = normP2(signature);
   // Instead of doing 2 exponentiations, we use property of billinear maps
@@ -599,7 +581,7 @@ export async function verify(signature: PB2, message: PB2, publicKey: PB1): Prom
 export function aggregatePublicKeys(publicKeys: Uint8Array[]): Uint8Array;
 export function aggregatePublicKeys(publicKeys: string[]): string;
 export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
-export function aggregatePublicKeys(publicKeys: PB1[]): Uint8Array | string | PointG1 {
+export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | string | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
   if (publicKeys[0] instanceof PointG1) return agg;
@@ -612,7 +594,7 @@ export function aggregatePublicKeys(publicKeys: PB1[]): Uint8Array | string | Po
 export function aggregateSignatures(signatures: Uint8Array[]): Uint8Array;
 export function aggregateSignatures(signatures: string[]): string;
 export function aggregateSignatures(signatures: PointG2[]): PointG2;
-export function aggregateSignatures(signatures: PB2[]): Uint8Array | string | PointG2 {
+export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | string | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
   if (signatures[0] instanceof PointG2) return agg;
@@ -624,14 +606,14 @@ export function aggregateSignatures(signatures: PB2[]): Uint8Array | string | Po
 // ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
 export async function verifyBatch(
-  signature: PB2,
-  messages: PB2[],
-  publicKeys: PB1[]
+  signature: G2Hex,
+  messages: G2Hex[],
+  publicKeys: G1Hex[]
 ): Promise<boolean> {
   if (!messages.length) throw new Error('Expected non-empty messages array');
   if (publicKeys.length !== messages.length) throw new Error('Pubkey count should equal msg count');
   const sig = normP2(signature);
-  const nMessages = await Promise.all(messages.map(normP2H));
+  const nMessages = await Promise.all(messages.map(normP2Hash));
   const nPublicKeys = publicKeys.map(normP1);
   try {
     const paired = [];

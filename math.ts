@@ -155,8 +155,8 @@ export class Fq implements Field<Fq> {
   static readonly MAX_BITS = bitLen(CURVE.P);
   static readonly ZERO = new Fq(0n);
   static readonly ONE = new Fq(1n);
-
   readonly value: bigint;
+
   constructor(value: bigint) {
     this.value = mod(value, Fq.ORDER);
   }
@@ -215,13 +215,13 @@ export class Fr implements Field<Fr> {
   static readonly ZERO = new Fr(0n);
   static readonly ONE = new Fr(1n);
 
-  static isValid(b: bigint): boolean {
-    return b <= Fr.ORDER;
-  }
-
   readonly value: bigint;
   constructor(value: bigint) {
     this.value = mod(value, Fr.ORDER);
+  }
+
+  static isValid(b: bigint) {
+    return b <= Fr.ORDER;
   }
 
   isZero(): boolean {
@@ -377,7 +377,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   static readonly MAX_BITS = bitLen(CURVE.P2);
   static readonly ZERO = new Fq2([0n, 0n]);
   static readonly ONE = new Fq2([1n, 0n]);
-  public readonly c: [Fq, Fq];
+  readonly c: [Fq, Fq];
 
   constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]) {
     super();
@@ -484,6 +484,7 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
   static fromTuple(t: BigintSix): Fq6 {
+    if (!Array.isArray(t) || t.length !== 6) throw new Error('Invalid Fq6 usage');
     return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
   }
 
@@ -500,7 +501,6 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   conjugate(): any {
     throw new TypeError('No conjugate on Fq6');
   }
-
   multiply(rhs: Fq6 | bigint) {
     if (typeof rhs === 'bigint')
       return new Fq6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
@@ -1093,8 +1093,8 @@ export function isogenyMapG2(xyz: [Fq2, Fq2, Fq2]): [Fq2, Fq2, Fq2] {
   const mapped = [Fq2.ZERO, Fq2.ZERO, Fq2.ZERO, Fq2.ZERO];
 
   // Horner Polynomial Evaluation
-  for (let i = 0; i < isogenyCoefficients.length; i++) {
-    const k_i = isogenyCoefficients[i];
+  for (let i = 0; i < ISOGENY_COEFFICIENTS.length; i++) {
+    const k_i = ISOGENY_COEFFICIENTS[i];
     mapped[i] = k_i.slice(-1)[0];
     const arr = k_i.slice(0, -1).reverse();
     for (let j = 0; j < arr.length; j++) {
@@ -1396,4 +1396,4 @@ const yden = [
   ],
   [0x1n, 0x0n],
 ].map((pair) => new Fq2(pair)) as Fq2_4;
-export const isogenyCoefficients: [Fq2_4, Fq2_4, Fq2_4, Fq2_4] = [xnum, xden, ynum, yden];
+const ISOGENY_COEFFICIENTS: [Fq2_4, Fq2_4, Fq2_4, Fq2_4] = [xnum, xden, ynum, yden];

@@ -20,7 +20,6 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
     assertValidity(): void;
-    toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
     private isOnCurve;
     private isTorsionFree;
@@ -43,22 +42,21 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     clearCofactor(): PointG2;
     private isOnCurve;
     private isTorsionFree;
-    toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];
 }
 export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fq12;
-declare type PB1 = Bytes | PointG1;
-declare type PB2 = Bytes | PointG2;
+declare type G1Hex = Bytes | PointG1;
+declare type G2Hex = Bytes | PointG2;
 export declare function getPublicKey(privateKey: PrivateKey): Uint8Array | string;
 export declare function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
 export declare function sign(message: string, privateKey: PrivateKey): Promise<string>;
 export declare function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export declare function verify(signature: PB2, message: PB2, publicKey: PB1): Promise<boolean>;
+export declare function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex): Promise<boolean>;
 export declare function aggregatePublicKeys(publicKeys: Uint8Array[]): Uint8Array;
 export declare function aggregatePublicKeys(publicKeys: string[]): string;
 export declare function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export declare function aggregateSignatures(signatures: Uint8Array[]): Uint8Array;
 export declare function aggregateSignatures(signatures: string[]): string;
 export declare function aggregateSignatures(signatures: PointG2[]): PointG2;
-export declare function verifyBatch(signature: PB2, messages: PB2[], publicKeys: PB1[]): Promise<boolean>;
+export declare function verifyBatch(signature: G2Hex, messages: G2Hex[], publicKeys: G1Hex[]): Promise<boolean>;

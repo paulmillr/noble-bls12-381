@@ -78,9 +78,9 @@ export declare class Fr implements Field<Fr> {
     static readonly ORDER: bigint;
     static readonly ZERO: Fr;
     static readonly ONE: Fr;
-    static isValid(b: bigint): boolean;
     readonly value: bigint;
     constructor(value: bigint);
+    static isValid(b: bigint): boolean;
     isZero(): boolean;
     equals(rhs: Fr): boolean;
     negate(): Fr;
@@ -211,6 +211,4 @@ export declare function calcPairingPrecomputes(x: Fq2, y: Fq2): EllCoefficients[
 export declare function millerLoop(ell: EllCoefficients[], g1: [Fq, Fq]): Fq12;
 export declare function psi(x: Fq2, y: Fq2): [Fq2, Fq2];
 export declare function psi2(x: Fq2, y: Fq2): [Fq2, Fq2];
-declare type Fq2_4 = [Fq2, Fq2, Fq2, Fq2];
-export declare const isogenyCoefficients: [Fq2_4, Fq2_4, Fq2_4, Fq2_4];
 export {};
