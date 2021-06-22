@@ -120,7 +120,7 @@ function sign(
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
 - Returns `Uint8Array | string | PointG2`: encoded signature
 
-Default domain separation tag (DST) is specified below, in **Internals** section, with instructions on how to change it.
+Check out **Internals** section on instructions about domain separation tag (DST).
 
 ##### `verify(signature, message, publicKey)`
 ```typescript
