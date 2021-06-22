@@ -230,7 +230,7 @@ export class PointG1 extends ProjectivePoint<Fq> {
   static BASE = new PointG1(new Fq(CURVE.Gx), new Fq(CURVE.Gy), Fq.ONE);
   static ZERO = new PointG1(Fq.ONE, Fq.ONE, Fq.ZERO);
 
-  constructor(x: Fq, y: Fq, z: Fq) {
+  constructor(x: Fq, y: Fq, z: Fq = Fq.ONE) {
     super(x, y, z, Fq);
   }
 
@@ -247,9 +247,10 @@ export class PointG1 extends ProjectivePoint<Fq> {
         return this.ZERO;
       }
       const x = mod(compressedValue, POW_2_381);
-      const fullY = mod(x ** 3n + new Fq(CURVE.b).value, P);
-      let y = powMod(fullY, (P + 1n) / 4n, P);
-      if (powMod(y, 2n, P) - fullY !== 0n) {
+      const right = mod(x ** 3n + CURVE.b, P);
+      let y = powMod(right, (P + 1n) / 4n, P);
+      const left = powMod(y, 2n, P);
+      if (left - right !== 0n) {
         throw new Error('The given point is not on G1: y**2 = x**3 + b');
       }
       const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
@@ -326,16 +327,16 @@ export class PointG1 extends ProjectivePoint<Fq> {
     const b = new Fq(CURVE.b);
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-    const right = b.multiply(z.pow(3n) as Fq);
+    const right = b.multiply(z.pow(3n));
     return left.subtract(right).equals(Fq.ZERO);
   }
 
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
-  // We can also use https://eprint.iacr.org/2019/814.pdf
-  isTorsionFree(): boolean {
-    return !this.subtract(this.multiplyUnsafe(CURVE.x)).isZero();
+  // We are simply multiplying by 1 - x to clear the cofactor.
+  private isTorsionFree(): boolean {
+    return !this.multiplyUnsafe(CURVE.hEff).isZero();
   }
 }
 
@@ -345,23 +346,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
 
   private _PPRECOMPUTES: EllCoefficients[] | undefined;
 
-  constructor(x: Fq2, y: Fq2, z: Fq2) {
+  constructor(x: Fq2, y: Fq2, z: Fq2 = Fq2.ONE) {
     super(x, y, z, Fq2);
-  }
-
-  // clearCofactorG2 from spec
-  _clearCofactorG2(): PointG2 {
-    const P = this;
-    // BLS_X is negative number
-    const t1 = P.multiplyUnsafe(CURVE.x).negate();
-    const t2 = P.psi();
-    // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
-    const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
-    return p2
-      .subtract(t2)
-      .add(t1.add(t2).multiplyUnsafe(CURVE.x).negate())
-      .subtract(t1)
-      .subtract(P);
   }
 
   // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
@@ -373,7 +359,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
     const Q1 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[1])));
     const R = Q0.add(Q1);
-    const P = R._clearCofactorG2();
+    const P = R.clearCofactor();
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
     return P;
   }
@@ -485,12 +471,29 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup');
   }
 
-  // Ψ
+  // Ψ endomorphism
   private psi() {
     return this.fromAffineTuple(psi(...this.toAffine()));
   }
+
+  // Ψ²
   private psi2() {
     return this.fromAffineTuple(psi2(...this.toAffine()))
+  }
+
+  // clearCofactorG2 from spec
+  clearCofactor(): PointG2 {
+    const P = this;
+    // BLS_X is negative number
+    const t1 = P.multiplyUnsafe(CURVE.x).negate();
+    const t2 = P.psi();
+    // psi2(2 * P) - T2 + ((T1 + T2) * (-X)) - T1 - P
+    const p2 = P.fromAffineTuple(psi2(...P.double().toAffine()));
+    return p2
+      .subtract(t2)
+      .add(t1.add(t2).multiplyUnsafe(CURVE.x).negate())
+      .subtract(t1)
+      .subtract(P);
   }
 
   // Checks for equation y² = x³ + 4
@@ -506,7 +509,7 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
   // https://eprint.iacr.org/2019/814.pdf
-  isTorsionFree(): boolean {
+  private isTorsionFree(): boolean {
     const psi2 = this.psi2(); // Ψ²(P)
     const psi3 = psi2.psi(); // Ψ³(P)
     const zPsi3 = psi3.multiplyUnsafe(CURVE.x).negate(); // [z]Ψ³(P) where z = -x

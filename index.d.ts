@@ -14,7 +14,7 @@ export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomO
 export declare class PointG1 extends ProjectivePoint<Fq> {
     static BASE: PointG1;
     static ZERO: PointG1;
-    constructor(x: Fq, y: Fq, z: Fq);
+    constructor(x: Fq, y: Fq, z?: Fq);
     static fromHex(bytes: Bytes): PointG1;
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toRawBytes(isCompressed?: boolean): Uint8Array;
@@ -23,14 +23,13 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
     private isOnCurve;
-    isTorsionFree(): boolean;
+    private isTorsionFree;
 }
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
     static ZERO: PointG2;
     private _PPRECOMPUTES;
-    constructor(x: Fq2, y: Fq2, z: Fq2);
-    _clearCofactorG2(): PointG2;
+    constructor(x: Fq2, y: Fq2, z?: Fq2);
     static hashToCurve(msg: Bytes): Promise<PointG2>;
     static fromSignature(hex: Bytes): PointG2;
     static fromHex(bytes: Bytes): PointG2;
@@ -41,8 +40,9 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     assertValidity(): void;
     private psi;
     private psi2;
+    clearCofactor(): PointG2;
     private isOnCurve;
-    isTorsionFree(): boolean;
+    private isTorsionFree;
     toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): EllCoefficients[];

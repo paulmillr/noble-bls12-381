@@ -469,7 +469,7 @@ describe('bls12-381 Point', () => {
       ),
     ];
     for (let p of points) {
-      expect(p.multiplyUnsafe(CURVE.h_eff).equals(p._clearCofactorG2())).toEqual(true);
+      expect(p.multiplyUnsafe(CURVE.h2Eff).equals(p.clearCofactor())).toEqual(true);
     }
   });
 });

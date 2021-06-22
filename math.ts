@@ -20,6 +20,7 @@ export const CURVE = {
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
   Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
   b: 4n,
+  hEff: 0xd201000000010001n,
 
   // G2 is the order-q subgroup of E2(Fp²) : y² = x³+4(1+√−1),
   // where Fp2 is Fp[√−1]/(x2+1). #E2(Fp2 ) = h2q, where
@@ -42,7 +43,7 @@ export const CURVE = {
   b2: [4n, 4n],
   // The BLS parameter x for BLS12-381
   x: 0xd201000000010000n,
-  h_eff:
+  h2Eff:
     0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551n,
 };
 
@@ -1323,7 +1324,7 @@ const wsq_inv = wsq.invert();
 const wcu = new Fq12([Fq6.ZERO, ut_root]);
 const wcu_inv = wcu.invert();
 
-// Ψ(P)
+// Ψ(P) endomorphism
 export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
   //const [x, y] = P.toAffine();
   // Untwist Fq2->Fq12 && frobenius(1) && twist back
@@ -1334,7 +1335,7 @@ export function psi(x: Fq2, y: Fq2): [Fq2, Fq2] {
 // 1 / F2(2)^((p-1)/3) in GF(p²)
 const PSI2_C1 =
   0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
-// Ψ²(P)
+// Ψ²(P) endomorphism
 export function psi2(x: Fq2, y: Fq2): [Fq2, Fq2] {
   return [x.multiply(PSI2_C1), y.negate()];
 }

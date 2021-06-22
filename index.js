@@ -188,7 +188,7 @@ function normalizePrivKey(key) {
     return int;
 }
 class PointG1 extends math_1.ProjectivePoint {
-    constructor(x, y, z) {
+    constructor(x, y, z = math_1.Fq.ONE) {
         super(x, y, z, math_1.Fq);
     }
     static fromHex(bytes) {
@@ -204,9 +204,10 @@ class PointG1 extends math_1.ProjectivePoint {
                 return this.ZERO;
             }
             const x = math_1.mod(compressedValue, POW_2_381);
-            const fullY = math_1.mod(x ** 3n + new math_1.Fq(math_1.CURVE.b).value, P);
-            let y = math_1.powMod(fullY, (P + 1n) / 4n, P);
-            if (math_1.powMod(y, 2n, P) - fullY !== 0n) {
+            const right = math_1.mod(x ** 3n + math_1.CURVE.b, P);
+            let y = math_1.powMod(right, (P + 1n) / 4n, P);
+            const left = math_1.powMod(y, 2n, P);
+            if (left - right !== 0n) {
                 throw new Error('The given point is not on G1: y**2 = x**3 + b');
             }
             const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
@@ -281,26 +282,15 @@ class PointG1 extends math_1.ProjectivePoint {
         return left.subtract(right).equals(math_1.Fq.ZERO);
     }
     isTorsionFree() {
-        return !this.subtract(this.multiplyUnsafe(math_1.CURVE.x)).isZero();
+        return !this.multiplyUnsafe(math_1.CURVE.hEff).isZero();
     }
 }
 exports.PointG1 = PointG1;
 PointG1.BASE = new PointG1(new math_1.Fq(math_1.CURVE.Gx), new math_1.Fq(math_1.CURVE.Gy), math_1.Fq.ONE);
 PointG1.ZERO = new PointG1(math_1.Fq.ONE, math_1.Fq.ONE, math_1.Fq.ZERO);
 class PointG2 extends math_1.ProjectivePoint {
-    constructor(x, y, z) {
+    constructor(x, y, z = math_1.Fq2.ONE) {
         super(x, y, z, math_1.Fq2);
-    }
-    _clearCofactorG2() {
-        const P = this;
-        const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
-        const t2 = P.psi();
-        const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
-        return p2
-            .subtract(t2)
-            .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
-            .subtract(t1)
-            .subtract(P);
     }
     static async hashToCurve(msg) {
         expectHex(msg);
@@ -310,7 +300,7 @@ class PointG2 extends math_1.ProjectivePoint {
         const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
         const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
         const R = Q0.add(Q1);
-        const P = R._clearCofactorG2();
+        const P = R.clearCofactor();
         return P;
     }
     static fromSignature(hex) {
@@ -416,6 +406,17 @@ class PointG2 extends math_1.ProjectivePoint {
     }
     psi2() {
         return this.fromAffineTuple(math_1.psi2(...this.toAffine()));
+    }
+    clearCofactor() {
+        const P = this;
+        const t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
+        const t2 = P.psi();
+        const p2 = P.fromAffineTuple(math_1.psi2(...P.double().toAffine()));
+        return p2
+            .subtract(t2)
+            .add(t1.add(t2).multiplyUnsafe(math_1.CURVE.x).negate())
+            .subtract(t1)
+            .subtract(P);
     }
     isOnCurve() {
         const b = new math_1.Fq2(math_1.CURVE.b2);

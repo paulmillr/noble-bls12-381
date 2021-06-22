@@ -5,13 +5,14 @@ export declare const CURVE: {
     Gx: bigint;
     Gy: bigint;
     b: bigint;
+    hEff: bigint;
     P2: bigint;
     h2: bigint;
     G2x: bigint[];
     G2y: bigint[];
     b2: bigint[];
     x: bigint;
-    h_eff: bigint;
+    h2Eff: bigint;
 };
 declare type BigintTuple = [bigint, bigint];
 declare type BigintSix = [
