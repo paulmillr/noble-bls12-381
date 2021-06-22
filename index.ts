@@ -19,6 +19,8 @@ import {
   mod, powMod
 } from './math';
 export { Fq, Fr, Fq2, Fq12, CURVE, BigintTwelve };
+
+// Use utils.setDSTLabel() instead
 export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 type Bytes = Uint8Array | string;
@@ -64,6 +66,10 @@ export const utils = {
     }
   },
   mod,
+  setDSTLabel(newLabel: string) {
+    if (typeof newLabel !== 'string' || newLabel.length > 64) throw new TypeError('Invalid DST');
+    DST_LABEL = newLabel;
+  }
 };
 
 function bytesToNumberBE(bytes: Uint8Array) {

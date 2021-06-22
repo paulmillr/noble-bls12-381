@@ -43,6 +43,11 @@ exports.utils = {
         }
     },
     mod: math_1.mod,
+    setDSTLabel(newLabel) {
+        if (typeof newLabel !== 'string' || newLabel.length > 64)
+            throw new TypeError('Invalid DST');
+        exports.DST_LABEL = newLabel;
+    }
 };
 function bytesToNumberBE(bytes) {
     let value = 0n;

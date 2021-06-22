@@ -8,6 +8,7 @@ export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
     randomPrivateKey: (bytesLength?: number) => Uint8Array;
     mod: typeof mod;
+    setDSTLabel(newLabel: string): void;
 };
 export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fq> {
