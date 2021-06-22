@@ -124,7 +124,6 @@ export declare class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     static readonly COFACTOR: bigint;
     static readonly ROOTS_OF_UNITY: Fq2[];
     static readonly ETAs: Fq2[];
-    static readonly FROBENIUS_COEFFICIENTS: Fq[];
     readonly c: [Fq, Fq];
     constructor(coeffs: [Fq, Fq] | [bigint, bigint] | bigint[]);
     init(tuple: [Fq, Fq]): Fq2;
@@ -142,8 +141,6 @@ export declare class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
     readonly c: [Fq2, Fq2, Fq2];
     static readonly ZERO: Fq6;
     static readonly ONE: Fq6;
-    static readonly FROBENIUS_COEFFICIENTS_1: Fq2[];
-    static readonly FROBENIUS_COEFFICIENTS_2: Fq2[];
     static fromTuple(t: BigintSix): Fq6;
     constructor(c: [Fq2, Fq2, Fq2]);
     init(triple: [Fq2, Fq2, Fq2]): Fq6;
@@ -162,7 +159,6 @@ export declare class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     readonly c: [Fq6, Fq6];
     static readonly ZERO: Fq12;
     static readonly ONE: Fq12;
-    static readonly FROBENIUS_COEFFICIENTS: Fq2[];
     static fromTuple(t: BigintTwelve): Fq12;
     constructor(c: [Fq6, Fq6]);
     init(c: [Fq6, Fq6]): Fq12;

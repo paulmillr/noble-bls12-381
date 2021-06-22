@@ -381,6 +381,14 @@ const ev4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006d
 
 // Finite extension field over irreducible polynominal.
 // Fq(u) / (u^2 - β) where β = -1
+const FQ2_FROBENIUS_COEFFICIENTS = [
+  new Fq(
+    0x1n
+  ),
+  new Fq(
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan
+  ),
+];
 export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
@@ -407,14 +415,6 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
     new Fq2([-ev2, ev1]),
     new Fq2([ev3, ev4]),
     new Fq2([-ev4, ev3]),
-  ];
-  static readonly FROBENIUS_COEFFICIENTS = [
-    new Fq(
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n
-    ),
-    new Fq(
-      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan
-    ),
   ];
 
   public readonly c: [Fq, Fq];
@@ -506,7 +506,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
 
   // Raises to q**i -th power
   frobeniusMap(power: number): Fq2 {
-    return new Fq2([this.c[0], this.c[1].multiply(Fq2.FROBENIUS_COEFFICIENTS[power % 2])]);
+    return new Fq2([this.c[0], this.c[1].multiply(FQ2_FROBENIUS_COEFFICIENTS[power % 2])]);
   }
   multiplyByB() {
     let [c0, c1] = this.c;
@@ -519,61 +519,63 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
 
 // Finite extension field over irreducible polynominal.
 // Fq2(v) / (v^3 - ξ) where ξ = u + 1
+
+const FQ6_FROBENIUS_COEFFICIENTS_1 = [
+  new Fq2([
+    0x1n,
+    0x0n,
+  ]),
+  new Fq2([
+    0x0n,
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+  ]),
+  new Fq2([
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ]),
+  new Fq2([
+    0x0n,
+    0x1n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x0n,
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+  ]),
+];
+const FQ6_FROBENIUS_COEFFICIENTS_2 = [
+  new Fq2([
+    0x1n,
+    0x0n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+    0x0n,
+  ]),
+  new Fq2([
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ]),
+  new Fq2([
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+    0x0n,
+  ]),
+];
+
 export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
-  static readonly FROBENIUS_COEFFICIENTS_1 = [
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-    ]),
-    new Fq2([
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-    ]),
-  ];
-  static readonly FROBENIUS_COEFFICIENTS_2 = [
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-  ];
   static fromTuple(t: BigintSix): Fq6 {
     return new Fq6([new Fq2(t.slice(0, 2)), new Fq2(t.slice(2, 4)), new Fq2(t.slice(4, 6))]);
   }
@@ -667,67 +669,69 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   frobeniusMap(power: number) {
     return new Fq6([
       this.c[0].frobeniusMap(power),
-      this.c[1].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_1[power % 6]),
-      this.c[2].frobeniusMap(power).multiply(Fq6.FROBENIUS_COEFFICIENTS_2[power % 6]),
+      this.c[1].frobeniusMap(power).multiply(FQ6_FROBENIUS_COEFFICIENTS_1[power % 6]),
+      this.c[2].frobeniusMap(power).multiply(FQ6_FROBENIUS_COEFFICIENTS_2[power % 6]),
     ]);
   }
 }
 
 // Finite extension field over irreducible polynominal.
 // Fq6(w) / (w2 - γ) where γ = v
+
+const FQ12_FROBENIUS_COEFFICIENTS = [
+  new Fq2([
+    0x1n,
+    0x0n,
+  ]),
+  new Fq2([
+    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+  ]),
+  new Fq2([
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+  ]),
+  new Fq2([
+    0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
+    0x0n,
+  ]),
+  new Fq2([
+    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
+    0x0n,
+  ]),
+  new Fq2([
+    0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
+    0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
+    0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
+  ]),
+  new Fq2([
+    0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
+    0x0n,
+  ]),
+  new Fq2([
+    0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
+    0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
+  ]),
+];
+
 export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   static readonly ZERO = new Fq12([Fq6.ZERO, Fq6.ZERO]);
   static readonly ONE = new Fq12([Fq6.ONE, Fq6.ZERO]);
-  static readonly FROBENIUS_COEFFICIENTS = [
-    new Fq2([
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001n,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
-      0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
-    ]),
-    new Fq2([
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffffn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
-      0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
-    ]),
-    new Fq2([
-      0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
-      0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3n,
-      0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09n,
-      0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2n,
-    ]),
-    new Fq2([
-      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
-      0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n,
-    ]),
-    new Fq2([
-      0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116n,
-      0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995n,
-    ]),
-  ];
   static fromTuple(t: BigintTwelve): Fq12 {
     return new Fq12([
       Fq6.fromTuple(t.slice(0, 6) as BigintSix),
@@ -792,13 +796,9 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     const [c0, c1] = this.c;
     let r0 = c0.frobeniusMap(power);
     let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
+    const coeff = FQ12_FROBENIUS_COEFFICIENTS[power % 12];
     return new Fq12([
-      r0,
-      new Fq6([
-        c1_0.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
-        c1_1.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
-        c1_2.multiply(Fq12.FROBENIUS_COEFFICIENTS[power % 12]),
-      ]),
+      r0, new Fq6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
     ]);
   }
 
@@ -867,8 +867,8 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
 }
 
 type Constructor<T extends Field<T>> = { new (...args: any[]): T } & FieldStatic<T> & {
-    MAX_BITS: number;
-  };
+  MAX_BITS: number;
+};
 //type PointConstructor<TT extends Field<T>, T extends ProjectivePoint<TT>> = { new(...args: any[]): T };
 
 // x=X/Z, y=Y/Z
