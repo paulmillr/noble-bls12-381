@@ -255,20 +255,28 @@ class PointG1 extends math_1.ProjectivePoint {
         }
     }
     assertValidity() {
-        const b = new math_1.Fq(math_1.CURVE.b);
         if (this.isZero())
             return;
-        const { x, y, z } = this;
-        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-        const right = b.multiply(z.pow(3n));
-        if (!left.subtract(right).equals(math_1.Fq.ZERO))
+        if (!this.isOnCurve())
             throw new Error('Invalid point: not on curve Fq');
+        if (!this.isTorsionFree())
+            throw new Error('Invalid point: must be of prime-order subgroup');
     }
     toRepr() {
         return [this.x, this.y, this.z].map((v) => v.value);
     }
     millerLoop(P) {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
+    }
+    isOnCurve() {
+        const b = new math_1.Fq(math_1.CURVE.b);
+        const { x, y, z } = this;
+        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+        const right = b.multiply(z.pow(3n));
+        return left.subtract(right).equals(math_1.Fq.ZERO);
+    }
+    isTorsionFree() {
+        return !this.multiplyUnsafe(math_1.CURVE.h).isZero();
     }
 }
 exports.PointG1 = PointG1;
@@ -391,19 +399,22 @@ class PointG2 extends math_1.ProjectivePoint {
         }
     }
     assertValidity() {
-        const b = new math_1.Fq2(math_1.CURVE.b2);
         if (this.isZero())
             return;
-        const { x, y, z } = this;
-        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-        const right = b.multiply(z.pow(3n));
-        if (!left.subtract(right).equals(math_1.Fq2.ZERO))
+        if (!this.isOnCurve())
             throw new Error('Invalid point: not on curve Fq2');
         if (!this.isTorsionFree())
             throw new Error('Invalid point: must be of prime-order subgroup');
     }
     psi() {
         return this.fromAffineTuple(math_1.psi(...this.toAffine()));
+    }
+    isOnCurve() {
+        const b = new math_1.Fq2(math_1.CURVE.b2);
+        const { x, y, z } = this;
+        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+        const right = b.multiply(z.pow(3n));
+        return left.subtract(right).equals(math_1.Fq2.ZERO);
     }
     isTorsionFree() {
         const psi1 = this.psi();

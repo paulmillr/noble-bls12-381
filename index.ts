@@ -301,12 +301,9 @@ export class PointG1 extends ProjectivePoint<Fq> {
   }
 
   assertValidity() {
-    const b = new Fq(CURVE.b);
     if (this.isZero()) return;
-    const { x, y, z } = this;
-    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-    const right = b.multiply(z.pow(3n) as Fq);
-    if (!left.subtract(right).equals(Fq.ZERO)) throw new Error('Invalid point: not on curve Fq');
+    if (!this.isOnCurve()) throw new Error('Invalid point: not on curve Fq');
+    if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup')
   }
 
   toRepr() {
@@ -316,6 +313,18 @@ export class PointG1 extends ProjectivePoint<Fq> {
   // Sparse multiplication against precomputed coefficients
   millerLoop(P: PointG2): Fq12 {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
+  }
+
+  private isOnCurve(): boolean {
+    const b = new Fq(CURVE.b);
+    const { x, y, z } = this;
+    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+    const right = b.multiply(z.pow(3n) as Fq);
+    return left.subtract(right).equals(Fq.ZERO);
+  }
+
+  isTorsionFree(): boolean {
+    return !this.multiplyUnsafe(CURVE.h).isZero();
   }
 }
 
@@ -460,12 +469,8 @@ export class PointG2 extends ProjectivePoint<Fq2> {
   }
 
   assertValidity() {
-    const b = new Fq2(CURVE.b2);
     if (this.isZero()) return;
-    const { x, y, z } = this;
-    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-    const right = b.multiply(z.pow(3n) as Fq2);
-    if (!left.subtract(right).equals(Fq2.ZERO)) throw new Error('Invalid point: not on curve Fq2');
+    if (!this.isOnCurve()) throw new Error('Invalid point: not on curve Fq2');
     if (!this.isTorsionFree()) throw new Error('Invalid point: must be of prime-order subgroup');
   }
 
@@ -473,11 +478,19 @@ export class PointG2 extends ProjectivePoint<Fq2> {
     return this.fromAffineTuple(psi(...this.toAffine()));
   }
 
+  private isOnCurve(): boolean {
+    const b = new Fq2(CURVE.b2);
+    const { x, y, z } = this;
+    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+    const right = b.multiply(z.pow(3n) as Fq2);
+    return left.subtract(right).equals(Fq2.ZERO);
+  }
+
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
   // https://eprint.iacr.org/2019/814.pdf
-  isTorsionFree() {
+  isTorsionFree(): boolean {
     const psi1 = this.psi(); // Ψ(P)
     const psi2 = psi1.psi(); // Ψ²(P)
     const psi3 = psi2.psi(); // Ψ³(P)

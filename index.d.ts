@@ -21,6 +21,8 @@ export declare class PointG1 extends ProjectivePoint<Fq> {
     assertValidity(): void;
     toRepr(): bigint[];
     millerLoop(P: PointG2): Fq12;
+    isOnCurve(): boolean;
+    isTorsionFree(): boolean;
 }
 export declare class PointG2 extends ProjectivePoint<Fq2> {
     static BASE: PointG2;
@@ -37,6 +39,7 @@ export declare class PointG2 extends ProjectivePoint<Fq2> {
     toHex(isCompressed?: boolean): string;
     assertValidity(): void;
     psi(): this;
+    isOnCurve(): boolean;
     isTorsionFree(): boolean;
     toRepr(): [bigint, bigint][];
     clearPairingPrecomputes(): void;
