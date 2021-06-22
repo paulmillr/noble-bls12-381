@@ -3,10 +3,10 @@
 // Basic math is done over finite fields over q.
 // More complicated math is done over polynominal extension fields.
 // To simplify calculations in Fq12, we construct extension tower:
-// Fq12 = Fq6^2 => Fq2^3
-// Fq(u) / (u^2 - β) where β = -1
-// Fq2(v) / (v^3 - ξ) where ξ = u + 1
-// Fq6(w) / (w2 - γ) where γ = v
+// Fq₁₂ = Fq₆² => Fq₂³
+// Fq(u) / (u² - β) where β = -1
+// Fq₂(v) / (v³ - ξ) where ξ = u + 1
+// Fq₆(w) / (w² - γ) where γ = v
 
 export const CURVE = {
   // G1 is the order-q subgroup of E1(Fp) : y² = x³ + 4, #E1(Fp) = h1q, where
@@ -24,7 +24,7 @@ export const CURVE = {
 
   // G2 is the order-q subgroup of E2(Fp²) : y² = x³+4(1+√−1),
   // where Fp2 is Fp[√−1]/(x2+1). #E2(Fp2 ) = h2q, where
-  // G^2 - 1
+  // G² - 1
   // h2q
   P2:
     0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn **
@@ -449,14 +449,14 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
   // We wish to find the multiplicative inverse of a nonzero
   // element a + bu in Fp2. We leverage an identity
   //
-  // (a + bu)(a - bu) = a^2 + b^2
+  // (a + bu)(a - bu) = a² + b²
   //
-  // which holds because u^2 = -1. This can be rewritten as
+  // which holds because u² = -1. This can be rewritten as
   //
-  // (a + bu)(a - bu)/(a^2 + b^2) = 1
+  // (a + bu)(a - bu)/(a² + b²) = 1
   //
-  // because a^2 + b^2 = 0 has no nonzero solutions for (a, b).
-  // This gives that (a - bu)/(a^2 + b^2) is the inverse
+  // because a² + b² = 0 has no nonzero solutions for (a, b).
+  // This gives that (a - bu)/(a² + b²) is the inverse
   // of (a + bu). Importantly, this can be computing using
   // only a single inversion in Fp.
   invert() {
@@ -479,7 +479,7 @@ export class Fq2 extends FQP<Fq2, Fq, [Fq, Fq]> {
 }
 
 // Finite extension field over irreducible polynominal.
-// Fq2(v) / (v^3 - ξ) where ξ = u + 1
+// Fq2(v) / (v³ - ξ) where ξ = u + 1
 export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
   static readonly ZERO = new Fq6([Fq2.ZERO, Fq2.ZERO, Fq2.ZERO]);
   static readonly ONE = new Fq6([Fq2.ONE, Fq2.ZERO, Fq2.ZERO]);
@@ -551,23 +551,23 @@ export class Fq6 extends FQP<Fq6, Fq2, [Fq2, Fq2, Fq2]> {
 
   square() {
     let [c0, c1, c2] = this.c;
-    let t0 = c0.square(); // c0^2
+    let t0 = c0.square(); // c0²
     let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1
     let t3 = c1.multiply(c2).multiply(2n); // 2 * c1 * c2
-    let t4 = c2.square(); // c2^2
+    let t4 = c2.square(); // c2²
     return new Fq6([
       t3.mulByNonresidue().add(t0), // T3 * (u + 1) + T0
       t4.mulByNonresidue().add(t1), // T4 * (u + 1) + T1
-      // T1 + (c0 - c1 + c2)^2 + T3 - T0 - T4
+      // T1 + (c0 - c1 + c2)² + T3 - T0 - T4
       t1.add(c0.subtract(c1).add(c2).square()).add(t3).subtract(t0).subtract(t4),
     ]);
   }
 
   invert() {
     let [c0, c1, c2] = this.c;
-    let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue()); // c0^2 - c2 * c1 * (u + 1)
-    let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1)); // c2^2 * (u + 1) - c0 * c1
-    let t2 = c1.square().subtract(c0.multiply(c2)); // c1^2 - c0 * c2
+    let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue()); // c0² - c2 * c1 * (u + 1)
+    let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1)); // c2² * (u + 1) - c0 * c1
+    let t2 = c1.square().subtract(c0.multiply(c2)); // c1² - c0 * c2
     // 1/(((c2 * T1 + c1 * T2) * v) + c0 * T0)
     let t4 = c2.multiply(t1).add(c1.multiply(t2)).mulByNonresidue().add(c0.multiply(t0)).invert();
     return new Fq6([t4.multiply(t0), t4.multiply(t1), t4.multiply(t2)]);
@@ -643,7 +643,7 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
 
   invert() {
     let [c0, c1] = this.c;
-    let t = c0.square().subtract(c1.square().mulByNonresidue()).invert(); // 1 / (c0^2 - c1^2 * v)
+    let t = c0.square().subtract(c1.square().mulByNonresidue()).invert(); // 1 / (c0² - c1² * v)
     return new Fq12([c0.multiply(t), c1.multiply(t).negate()]); // ((C0 * T) * T) + (-C1 * T) * w
   }
   // Raises to q**i -th power
@@ -662,8 +662,8 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     const a2 = a.square(),
       b2 = b.square();
     return [
-      b2.mulByNonresidue().add(a2), // b^2 * Nonresidue + a^2
-      a.add(b).square().subtract(a2).subtract(b2), // (a + b)^2 - a^2 - b^2
+      b2.mulByNonresidue().add(a2), // b² * Nonresidue + a²
+      a.add(b).square().subtract(a2).subtract(b2), // (a + b)² - a² - b²
     ];
   }
 
@@ -703,9 +703,9 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
   // https://eprint.iacr.org/2009/565.pdf
   finalExponentiate() {
     const { x } = CURVE;
-    // this^(q^6) / this
+    // this^(q⁶) / this
     const t0 = this.frobeniusMap(6).div(this);
-    // t0^(q^2) * t0
+    // t0^(q²) * t0
     const t1 = t0.frobeniusMap(2).multiply(t0);
     const t2 = t1.cyclotomicExp(x).conjugate();
     const t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
@@ -717,7 +717,7 @@ export class Fq12 extends FQP<Fq12, Fq6, [Fq6, Fq6]> {
     const t4_t1_pow_q3 = t4.multiply(t1).frobeniusMap(3);
     const t6_t1c_pow_q1 = t6.multiply(t1.conjugate()).frobeniusMap(1);
     const t7_t3c_t1 = t7.multiply(t3.conjugate()).multiply(t1);
-    // (t2 * t5)^(q^2) * (t4 * t1)^(q^3) * (t6 * t1.conj)^(q^1) * t7 * t3.conj * t1
+    // (t2 * t5)^(q²) * (t4 * t1)^(q³) * (t6 * t1.conj)^(q^1) * t7 * t3.conj * t1
     return t2_t5_pow_q2.multiply(t4_t1_pow_q3).multiply(t6_t1c_pow_q1).multiply(t7_t3c_t1);
   }
 }
@@ -1004,20 +1004,20 @@ function sgn0(x: Fq2) {
 
 const P_MINUS_9_DIV_16 = (CURVE.P ** 2n - 9n) / 16n;
 // Does not return a square root.
-// Returns uv^7 * (uv^15)^((p^2 - 9) / 16) * root of unity
+// Returns uv⁷ * (uv¹⁵)^((p² - 9) / 16) * root of unity
 // if valid square root is found
 function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
   const v7 = v.pow(7n);
   const uv7 = u.multiply(v7);
   const uv15 = uv7.multiply(v7.multiply(v));
-  // gamma =  uv^7 * (uv^15)^((p^2 - 9) / 16)
+  // gamma =  uv⁷ * (uv^15)^((p² - 9) / 16)
   const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
   let success = false;
   let result = gamma;
   // Constant-time routine, so we do not early-return.
   const positiveRootsOfUnity = FQ2_ROOTS_OF_UNITY.slice(0, 4);
   for (const root of positiveRootsOfUnity) {
-    // Valid if (root * gamma)^2 * v - u == 0
+    // Valid if (root * gamma)² * v - u == 0
     const candidate = root.multiply(gamma);
     if (candidate.pow(2n).multiply(v).subtract(u).isZero() && !success) {
       success = true;
@@ -1027,7 +1027,7 @@ function sqrt_div_fq2(u: Fq2, v: Fq2): [boolean, Fq2] {
   return [success, result];
 }
 
-// Optimized SWU Map - FQ2 to G2': y^2 = x^3 + 240i * x + 1012 + 1012i
+// Optimized SWU Map - FQ2 to G2': y² = x³ + 240i * x + 1012 + 1012i
 // Found in Section 4 of https://eprint.iacr.org/2019/403
 // Note: it's constant-time
 export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
@@ -1038,16 +1038,16 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
 
   const t2 = t.pow(2n);
   const iso_3_z_t2 = iso_3_z.multiply(t2);
-  const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n)); // (Z * t^2 + Z^2 * t^4)
-  let denominator = iso_3_a.multiply(ztzt).negate(); // -a(Z * t^2 + Z^2 * t^4)
-  let numerator = iso_3_b.multiply(ztzt.add(Fq2.ONE)); // b(Z * t^2 + Z^2 * t^4 + 1)
+  const ztzt = iso_3_z_t2.add(iso_3_z_t2.pow(2n)); // (Z * t² + Z² * t⁴)
+  let denominator = iso_3_a.multiply(ztzt).negate(); // -a(Z * t² + Z² * t⁴)
+  let numerator = iso_3_b.multiply(ztzt.add(Fq2.ONE)); // b(Z * t² + Z² * t⁴ + 1)
 
   // Exceptional case
   if (denominator.isZero()) denominator = iso_3_z.multiply(iso_3_a);
 
-  // v = D^3
+  // v = D³
   let v = denominator.pow(3n);
-  // u = N^3 + a * N * D^2 + b * D^3
+  // u = N³ + a * N * D² + b * D³
   let u = numerator
     .pow(3n)
     .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
@@ -1057,14 +1057,14 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fq2): [Fq2, Fq2, Fq2] {
   let y;
   if (success) y = sqrtCandidateOrGamma;
   // Handle case where (u / v) is not square
-  // sqrt_candidate(x1) = sqrt_candidate(x0) * t^3
+  // sqrt_candidate(x1) = sqrt_candidate(x0) * t³
   const sqrtCandidateX1 = sqrtCandidateOrGamma.multiply(t.pow(3n));
 
-  // u(x1) = Z^3 * t^6 * u(x0)
+  // u(x1) = Z³ * t⁶ * u(x0)
   u = iso_3_z_t2.pow(3n).multiply(u);
   let success2 = false;
   for (const eta of FQ2_ETAs) {
-    // Valid solution if (eta * sqrt_candidate(x1))^2 * v - u == 0
+    // Valid solution if (eta * sqrt_candidate(x1))² * v - u == 0
     const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
     const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
     if (temp.isZero() && !success && !success2) {
@@ -1123,18 +1123,18 @@ export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
   let ell_coeff: EllCoefficients[] = [];
   for (let i = BLS_X_LEN - 2; i >= 0; i--) {
     // Double
-    let t0 = Ry.square(); // Ry^2
-    let t1 = Rz.square(); // Rz^2
+    let t0 = Ry.square(); // Ry²
+    let t1 = Rz.square(); // Rz²
     let t2 = t1.multiply(3n).multiplyByB(); // 3 * T1 * B
     let t3 = t2.multiply(3n); // 3 * T2
-    let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0); // (Ry + Rz)^2 - T1 - T0
+    let t4 = Ry.add(Rz).square().subtract(t1).subtract(t0); // (Ry + Rz)² - T1 - T0
     ell_coeff.push([
       t2.subtract(t0), // T2 - T0
-      Rx.square().multiply(3n), // 3 * Rx^2
+      Rx.square().multiply(3n), // 3 * Rx²
       t4.negate(), // -T4
     ]);
     Rx = t0.subtract(t3).multiply(Rx).multiply(Ry).div(2n); // ((T0 - T3) * Rx * Ry) / 2
-    Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n)); // ((T0 + T3) / 2)^2 - 3 * T2^2
+    Ry = t0.add(t3).div(2n).square().subtract(t2.square().multiply(3n)); // ((T0 + T3) / 2)² - 3 * T2²
     Rz = t0.multiply(t4); // T0 * T4
     if (bitGet(CURVE.x, i)) {
       // Addition
@@ -1145,10 +1145,10 @@ export function calcPairingPrecomputes(x: Fq2, y: Fq2) {
         t0.negate(), // -T0
         t1, // T1
       ]);
-      let t2 = t1.square(); // T1^2
+      let t2 = t1.square(); // T1²
       let t3 = t2.multiply(t1); // T2 * T1
       let t4 = t2.multiply(Rx); // T2 * Rx
-      let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz)); // T3 - 4 * T4 + T0^2 * Rz
+      let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz)); // T3 - 4 * T4 + T0² * Rz
       Rx = t1.multiply(t5); // T1 * T5
       Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry)); // (T4 - T5) * T0 - T3 * Ry
       Rz = Rz.multiply(t3); // Rz * T3
@@ -1213,7 +1213,7 @@ const ev4 =
   0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1n;
 
 // Finite extension field over irreducible polynominal.
-// Fq(u) / (u^2 - β) where β = -1
+// Fq(u) / (u² - β) where β = -1
 const FQ2_FROBENIUS_COEFFICIENTS = [
   0x1n,
   0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaan,

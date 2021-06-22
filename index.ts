@@ -1,11 +1,11 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 // bls12-381 is a construction of two curves:
 // 1. Fq: (x, y)
-// 2. Fq2: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
+// 2. Fq₂: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
 //
 // Bilinear Pairing (ate pairing) is used to combine both elements into a paired one:
-//   Fq12 = e(Fq, Fq2)
-//   where Fq12 = 12-degree polynomial
+//   Fq₁₂ = e(Fq, Fq2)
+//   where Fq₁₂ = 12-degree polynomial
 // Pairing is used to verify signatures.
 //
 // We are using Fq for private keys (shorter) and Fq2 for signatures (longer).
