@@ -1,19 +1,19 @@
 "use strict";
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.DST_LABEL = exports.CURVE = exports.Fp12 = exports.Fp2 = exports.Fr = exports.Fp = void 0;
+exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.PointG1 = exports.utils = exports.CURVE = exports.Fp12 = exports.Fp2 = exports.Fr = exports.Fp = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fp", { enumerable: true, get: function () { return math_1.Fp; } });
 Object.defineProperty(exports, "Fr", { enumerable: true, get: function () { return math_1.Fr; } });
 Object.defineProperty(exports, "Fp2", { enumerable: true, get: function () { return math_1.Fp2; } });
 Object.defineProperty(exports, "Fp12", { enumerable: true, get: function () { return math_1.Fp12; } });
 Object.defineProperty(exports, "CURVE", { enumerable: true, get: function () { return math_1.CURVE; } });
-exports.DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
+let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 exports.utils = {
     async sha256(message) {
         if (typeof window == 'object' && 'crypto' in window) {
@@ -43,10 +43,14 @@ exports.utils = {
         }
     },
     mod: math_1.mod,
+    getDSTLabel() {
+        return DST_LABEL;
+    },
     setDSTLabel(newLabel) {
-        if (typeof newLabel !== 'string' || newLabel.length > 64)
+        if (typeof newLabel !== 'string' || newLabel.length > 2048 || newLabel.length === 0) {
             throw new TypeError('Invalid DST');
-        exports.DST_LABEL = newLabel;
+        }
+        DST_LABEL = newLabel;
     },
 };
 function bytesToNumberBE(bytes) {
@@ -132,16 +136,16 @@ function strxor(a, b) {
     }
     return arr;
 }
-async function expand_message_xmd(msg, DST, len_in_bytes) {
+async function expand_message_xmd(msg, DST, lenInBytes) {
     const H = exports.utils.sha256;
     const b_in_bytes = SHA256_DIGEST_SIZE;
     const r_in_bytes = b_in_bytes * 2;
-    const ell = Math.ceil(len_in_bytes / b_in_bytes);
+    const ell = Math.ceil(lenInBytes / b_in_bytes);
     if (ell > 255)
         throw new Error('Invalid xmd length');
     const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
     const Z_pad = i2osp(0, r_in_bytes);
-    const l_i_b_str = i2osp(len_in_bytes, 2);
+    const l_i_b_str = i2osp(lenInBytes, 2);
     const b = new Array(ell);
     const b_0 = await H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
     b[0] = await H(concatBytes(b_0, i2osp(1, 1), DST_prime));
@@ -150,14 +154,14 @@ async function expand_message_xmd(msg, DST, len_in_bytes) {
         b[i] = await H(concatBytes(...args));
     }
     const pseudo_random_bytes = concatBytes(...b);
-    return pseudo_random_bytes.slice(0, len_in_bytes);
+    return pseudo_random_bytes.slice(0, lenInBytes);
 }
 async function hash_to_field(msg, degree, isRandomOracle = true) {
     const count = isRandomOracle ? 2 : 1;
     const m = degree;
     const L = 64;
     const len_in_bytes = count * m * L;
-    const DST = stringToBytes(exports.DST_LABEL);
+    const DST = stringToBytes(DST_LABEL);
     const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
@@ -171,7 +175,6 @@ async function hash_to_field(msg, degree, isRandomOracle = true) {
     }
     return u;
 }
-exports.hash_to_field = hash_to_field;
 function normalizePrivKey(key) {
     let int;
     if (key instanceof Uint8Array && key.length === 32)
@@ -293,8 +296,8 @@ class PointG2 extends math_1.ProjectivePoint {
     static async hashToCurve(msg) {
         msg = ensureBytes(msg);
         const u = await hash_to_field(msg, 2);
-        const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
-        const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
+        const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_simple_swu_9mod16(u[0])));
+        const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_simple_swu_9mod16(u[1])));
         const R = Q0.add(Q1);
         const P = R.clearCofactor();
         return P;

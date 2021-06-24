@@ -1,16 +1,15 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
-import { Fp, Fr, Fp2, Fp12, CURVE, EllCoefficients, ProjectivePoint, mod } from './math';
+import { Fp, Fr, Fp2, Fp12, CURVE, ProjectivePoint, mod } from './math';
 export { Fp, Fr, Fp2, Fp12, CURVE };
-export declare let DST_LABEL: string;
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
 export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
     randomPrivateKey: (bytesLength?: number) => Uint8Array;
     mod: typeof mod;
+    getDSTLabel(): string;
     setDSTLabel(newLabel: string): void;
 };
-export declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fp> {
     static BASE: PointG1;
     static ZERO: PointG1;
@@ -43,7 +42,7 @@ export declare class PointG2 extends ProjectivePoint<Fp2> {
     private isOnCurve;
     private isTorsionFree;
     clearPairingPrecomputes(): void;
-    pairingPrecomputes(): EllCoefficients[];
+    pairingPrecomputes(): [Fp2, Fp2, Fp2][];
 }
 export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fp12;
 declare type G1Hex = Bytes | PointG1;

@@ -204,11 +204,10 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     private wNAF;
     multiplyPrecomputed(scalar: bigint): this;
 }
-export declare function map_to_curve_SSWU_G2(t: bigint[] | Fp2): [Fp2, Fp2, Fp2];
+export declare function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp2];
 export declare function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2];
-export declare type EllCoefficients = [Fp2, Fp2, Fp2];
-export declare function calcPairingPrecomputes(x: Fp2, y: Fp2): EllCoefficients[];
-export declare function millerLoop(ell: EllCoefficients[], g1: [Fp, Fp]): Fp12;
+export declare function calcPairingPrecomputes(x: Fp2, y: Fp2): [Fp2, Fp2, Fp2][];
+export declare function millerLoop(ell: [Fp2, Fp2, Fp2][], g1: [Fp, Fp]): Fp12;
 export declare function psi(x: Fp2, y: Fp2): [Fp2, Fp2];
 export declare function psi2(x: Fp2, y: Fp2): [Fp2, Fp2];
 export {};

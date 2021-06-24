@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_SSWU_G2 = exports.ProjectivePoint = exports.Fp12 = exports.Fp6 = exports.Fp2 = exports.Fr = exports.Fp = exports.powMod = exports.mod = exports.CURVE = void 0;
+exports.psi2 = exports.psi = exports.millerLoop = exports.calcPairingPrecomputes = exports.isogenyMapG2 = exports.map_to_curve_simple_swu_9mod16 = exports.ProjectivePoint = exports.Fp12 = exports.Fp6 = exports.Fp2 = exports.Fr = exports.Fp = exports.powMod = exports.mod = exports.CURVE = void 0;
 exports.CURVE = {
     P: 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn,
     r: 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n,
@@ -816,7 +816,7 @@ function sqrt_div_fp2(u, v) {
     }
     return [success, result];
 }
-function map_to_curve_SSWU_G2(t) {
+function map_to_curve_simple_swu_9mod16(t) {
     const iso_3_a = new Fp2([0n, 240n]);
     const iso_3_b = new Fp2([1012n, 1012n]);
     const iso_3_z = new Fp2([-2n, -1n]);
@@ -859,7 +859,7 @@ function map_to_curve_SSWU_G2(t) {
     y = y.multiply(denominator);
     return [numerator, y, denominator];
 }
-exports.map_to_curve_SSWU_G2 = map_to_curve_SSWU_G2;
+exports.map_to_curve_simple_swu_9mod16 = map_to_curve_simple_swu_9mod16;
 function isogenyMapG2(xyz) {
     const [x, y, z] = xyz;
     const zz = z.multiply(z);

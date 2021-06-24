@@ -1,13 +1,12 @@
 // To verify curve parameters, see pairing-friendly-curves spec:
-// https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09
-// Basic math is done over finite fields over q.
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-09
+// Basic math is done over finite fields over p.
 // More complicated math is done over polynominal extension fields.
 // To simplify calculations in Fp12, we construct extension tower:
 // Fp₁₂ = Fp₆² => Fp₂³
 // Fp(u) / (u² - β) where β = -1
 // Fp₂(v) / (v³ - ξ) where ξ = u + 1
 // Fp₆(w) / (w² - γ) where γ = v
-
 export const CURVE = {
   // G1 is the order-q subgroup of E1(Fp) : y² = x³ + 4, #E1(Fp) = h1q, where
   // characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
@@ -149,7 +148,7 @@ function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
   return mod(x, modulo);
 }
 
-// Finite field over q.
+// Finite field over p.
 export class Fp implements Field<Fp> {
   static readonly ORDER = CURVE.P;
   static readonly MAX_BITS = bitLen(CURVE.P);
@@ -373,6 +372,7 @@ abstract class FQP<TT extends { c: TTT } & Field<TT>, CT extends Field<CT>, TTT 
   }
 }
 
+// Fp₂ over complex plane
 export class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
   static readonly ORDER = CURVE.P2;
   static readonly MAX_BITS = bitLen(CURVE.P2);
@@ -584,7 +584,8 @@ export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
 }
 
 // Finite extension field over irreducible polynominal.
-// Fp6(w) / (w2 - γ) where γ = v
+// Fp₁₂ = Fp₆² => Fp₂³
+// Fp₆(w) / (w² - γ) where γ = v
 export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   static readonly ZERO = new Fp12([Fp6.ZERO, Fp6.ZERO]);
   static readonly ONE = new Fp12([Fp6.ONE, Fp6.ZERO]);
@@ -1031,7 +1032,8 @@ function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
 // Optimized SWU Map - Fp2 to G2': y² = x³ + 240i * x + 1012 + 1012i
 // Found in Section 4 of https://eprint.iacr.org/2019/403
 // Note: it's constant-time
-export function map_to_curve_SSWU_G2(t: bigint[] | Fp2): [Fp2, Fp2, Fp2] {
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-07#appendix-D.2.3
+export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp2] {
   const iso_3_a = new Fp2([0n, 240n]);
   const iso_3_b = new Fp2([1012n, 1012n]);
   const iso_3_z = new Fp2([-2n, -1n]);
@@ -1084,7 +1086,7 @@ export function map_to_curve_SSWU_G2(t: bigint[] | Fp2): [Fp2, Fp2, Fp2] {
 
 // 3-isogeny map from E' to E
 // Converts from Jacobi (xyz) to Projective (xyz) coordinates.
-// https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#appendix-C.3
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-E.3
 export function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2] {
   const [x, y, z] = xyz;
   const zz = z.multiply(z);
@@ -1113,15 +1115,13 @@ export function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2] {
   return [x2, y2, z2];
 }
 
-export type EllCoefficients = [Fp2, Fp2, Fp2];
-
 // Pre-compute coefficients for sparse multiplication
 // Point addition and point double calculations is reused for coefficients
 export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
   //const [x, y] = this.toAffine();
   const [Qx, Qy, Qz] = [x, y, Fp2.ONE];
   let [Rx, Ry, Rz] = [Qx, Qy, Qz];
-  let ell_coeff: EllCoefficients[] = [];
+  let ell_coeff: [Fp2, Fp2, Fp2][] = [];
   for (let i = BLS_X_LEN - 2; i >= 0; i--) {
     // Double
     let t0 = Ry.square(); // Ry²
@@ -1158,7 +1158,7 @@ export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
   return ell_coeff;
 }
 
-export function millerLoop(ell: EllCoefficients[], g1: [Fp, Fp]): Fp12 {
+export function millerLoop(ell: [Fp2, Fp2, Fp2][], g1: [Fp, Fp]): Fp12 {
   let f12 = Fp12.ONE;
   const [x, y] = g1;
   const [Px, Py] = [x as Fp, y as Fp];

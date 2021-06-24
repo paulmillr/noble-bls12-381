@@ -12,25 +12,24 @@
 // Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
-  Fp, Fr, Fp2, Fp12, CURVE, EllCoefficients,
+  Fp, Fr, Fp2, Fp12, CURVE,
   ProjectivePoint,
-  map_to_curve_SSWU_G2, isogenyMapG2,
+  map_to_curve_simple_swu_9mod16, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes,
   mod, powMod
 } from './math';
 export { Fp, Fr, Fp2, Fp12, CURVE };
 
-// Use utils.setDSTLabel() instead
-export let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-
 type Bytes = Uint8Array | string;
 type PrivateKey = Bytes | bigint | number;
-
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
+
+// Use utils.getDSTLabel(), utils.setDSTLabel(value)
+let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 export const utils = {
   async sha256(message: Uint8Array): Promise<Uint8Array> {
@@ -66,8 +65,14 @@ export const utils = {
     }
   },
   mod,
+  getDSTLabel() {
+    return DST_LABEL;
+  },
   setDSTLabel(newLabel: string) {
-    if (typeof newLabel !== 'string' || newLabel.length > 64) throw new TypeError('Invalid DST');
+    // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3.1
+    if (typeof newLabel !== 'string' || newLabel.length > 2048 || newLabel.length === 0) {
+      throw new TypeError('Invalid DST');
+    }
     DST_LABEL = newLabel;
   },
 };
@@ -163,20 +168,22 @@ function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
   return arr;
 }
 
+// Produces a uniformly random byte string using a cryptographic hash function H that outputs b bits
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.4.1
 async function expand_message_xmd(
   msg: Uint8Array,
   DST: Uint8Array,
-  len_in_bytes: number
+  lenInBytes: number
 ): Promise<Uint8Array> {
   const H = utils.sha256;
   const b_in_bytes = SHA256_DIGEST_SIZE;
   const r_in_bytes = b_in_bytes * 2;
 
-  const ell = Math.ceil(len_in_bytes / b_in_bytes);
+  const ell = Math.ceil(lenInBytes / b_in_bytes);
   if (ell > 255) throw new Error('Invalid xmd length');
   const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
   const Z_pad = i2osp(0, r_in_bytes);
-  const l_i_b_str = i2osp(len_in_bytes, 2);
+  const l_i_b_str = i2osp(lenInBytes, 2);
   const b = new Array<Uint8Array>(ell);
   const b_0 = await H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
   b[0] = await H(concatBytes(b_0, i2osp(1, 1), DST_prime));
@@ -185,12 +192,14 @@ async function expand_message_xmd(
     b[i] = await H(concatBytes(...args));
   }
   const pseudo_random_bytes = concatBytes(...b);
-  return pseudo_random_bytes.slice(0, len_in_bytes);
+  return pseudo_random_bytes.slice(0, lenInBytes);
 }
 
+// hashes arbitrary-length byte strings to a list of one or more elements of a finite field F
 // degree - extension degree, 1 for Fp, 2 for Fp2
 // isRandomOracle - specifies NU or RO as per spec
-export async function hash_to_field(
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3
+async function hash_to_field(
   msg: Uint8Array,
   degree: number,
   isRandomOracle = true
@@ -337,19 +346,20 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   static BASE = new PointG2(new Fp2(CURVE.G2x), new Fp2(CURVE.G2y), Fp2.ONE);
   static ZERO = new PointG2(Fp2.ONE, Fp2.ONE, Fp2.ZERO);
 
-  private _PPRECOMPUTES: EllCoefficients[] | undefined;
+  private _PPRECOMPUTES: [Fp2, Fp2, Fp2][] | undefined;
 
   constructor(x: Fp2, y: Fp2, z: Fp2 = Fp2.ONE) {
     super(x, y, z, Fp2);
   }
 
-  // https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-07#section-3
+  // Encodes byte string to elliptic curve
+  // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3
   static async hashToCurve(msg: Bytes) {
     msg = ensureBytes(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fp2(u[0])} u1=${new Fp2(u[1])}`);
-    const Q0 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[0])));
-    const Q1 = new PointG2(...isogenyMapG2(map_to_curve_SSWU_G2(u[1])));
+    const Q0 = new PointG2(...isogenyMapG2(map_to_curve_simple_swu_9mod16(u[0])));
+    const Q1 = new PointG2(...isogenyMapG2(map_to_curve_simple_swu_9mod16(u[1])));
     const R = Q0.add(Q1);
     const P = R.clearCofactor();
     //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
@@ -514,7 +524,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     this._PPRECOMPUTES = undefined;
   }
 
-  pairingPrecomputes(): EllCoefficients[] {
+  pairingPrecomputes(): [Fp2, Fp2, Fp2][] {
     if (this._PPRECOMPUTES) return this._PPRECOMPUTES;
     this._PPRECOMPUTES = calcPairingPrecomputes(...this.toAffine());
     return this._PPRECOMPUTES;
