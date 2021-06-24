@@ -1032,7 +1032,7 @@ function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
 // Optimized SWU Map - Fp2 to G2': y² = x³ + 240i * x + 1012 + 1012i
 // Found in Section 4 of https://eprint.iacr.org/2019/403
 // Note: it's constant-time
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-07#appendix-D.2.3
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.2.3
 export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp2] {
   const iso_3_a = new Fp2([0n, 240n]);
   const iso_3_b = new Fp2([1012n, 1012n]);
