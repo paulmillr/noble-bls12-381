@@ -235,6 +235,8 @@ function normalizePrivKey(key: PrivateKey): bigint {
   return int;
 }
 
+// Point on G1 curve: (x, y)
+// We add z because we work with projective coordinates instead of affine x-y: that's much faster.
 export class PointG1 extends ProjectivePoint<Fp> {
   static BASE = new PointG1(new Fp(CURVE.Gx), new Fp(CURVE.Gy), Fp.ONE);
   static ZERO = new PointG1(Fp.ONE, Fp.ONE, Fp.ZERO);
@@ -342,6 +344,8 @@ export class PointG1 extends ProjectivePoint<Fp> {
   }
 }
 
+// Point on G2 curve (complex numbers): (x1, x2+i), (y1, y2+i)
+// We add z because we work with projective coordinates instead of affine x-y: that's much faster.
 export class PointG2 extends ProjectivePoint<Fp2> {
   static BASE = new PointG2(new Fp2(CURVE.G2x), new Fp2(CURVE.G2y), Fp2.ONE);
   static ZERO = new PointG2(Fp2.ONE, Fp2.ONE, Fp2.ZERO);
@@ -531,6 +535,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   }
 }
 
+// Calculates bilinear pairing
 export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = true): Fp12 {
   if (P.isZero() || Q.isZero()) throw new Error('No pairings at point of Infinity');
   P.assertValidity();
@@ -559,7 +564,7 @@ export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
   return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
 }
 
-// Sign executes `hashToCurve` on the message and then multiplies the result by private key.
+// Executes `hashToCurve` on the message and then multiplies the result by private key.
 // S = pk x H(m)
 export async function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: string, privateKey: PrivateKey): Promise<string>;
@@ -573,7 +578,7 @@ export async function sign(message: G2Hex, privateKey: PrivateKey): Promise<Byte
   return typeof message === 'string' ? hex : hexToBytes(hex);
 }
 
-// Verify checks if pairing of public key & hash is equal to pairing of generator & signature.
+// Checks if pairing of public key & hash is equal to pairing of generator & signature.
 // e(P, H(m)) == e(G, S)
 export async function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex): Promise<boolean> {
   const P = normP1(publicKey);
@@ -615,7 +620,7 @@ export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | string | 
   return bytes;
 }
 
-// ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
+// https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
 // e(G, S) = e(G, SUM(n)(Si)) = MUL(n)(e(G, Si))
 export async function verifyBatch(
   signature: G2Hex,
