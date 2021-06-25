@@ -73,7 +73,7 @@ function bitGet(n, pos) {
 }
 function invert(number, modulo = exports.CURVE.P) {
     if (number === 0n || modulo <= 0n) {
-        throw new Error('invert: expected positive integers');
+        throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
     }
     let a = mod(number, modulo);
     let b = modulo;

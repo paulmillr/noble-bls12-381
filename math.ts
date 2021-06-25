@@ -49,18 +49,11 @@ export const CURVE = {
 const BLS_X_LEN = bitLen(CURVE.x);
 
 type BigintTuple = [bigint, bigint];
-
-// prettier-ignore
-type BigintSix = [
-  bigint, bigint, bigint,
-  bigint, bigint, bigint,
-];
-
+type BigintSix = [bigint, bigint, bigint, bigint, bigint, bigint];
 // prettier-ignore
 type BigintTwelve = [
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint,
-  bigint, bigint, bigint, bigint
+  bigint, bigint, bigint, bigint, bigint, bigint,
+  bigint, bigint, bigint, bigint, bigint, bigint
 ];
 
 // Finite field
@@ -128,7 +121,7 @@ function bitGet(n: bigint, pos: number) {
 // Inverses number over modulo
 function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
   if (number === 0n || modulo <= 0n) {
-    throw new Error('invert: expected positive integers');
+    throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
   }
   // Eucledian GCD https://brilliant.org/wiki/extended-euclidean-algorithm/
   let a = mod(number, modulo);
@@ -214,8 +207,8 @@ export class Fr implements Field<Fr> {
   static readonly ORDER = CURVE.r;
   static readonly ZERO = new Fr(0n);
   static readonly ONE = new Fr(1n);
-
   readonly value: bigint;
+
   constructor(value: bigint) {
     this.value = mod(value, Fr.ORDER);
   }
@@ -669,6 +662,9 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
     ];
   }
 
+  // A cyclotomic group is a subgroup of Fp^n defined by
+  //   GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
+  // The result of any pairing is in a cyclotomic subgroup
   // https://eprint.iacr.org/2009/565.pdf
   private cyclotomicSquare(): Fp12 {
     const [c0, c1] = this.c;

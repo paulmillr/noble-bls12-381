@@ -16,8 +16,8 @@ const SHA256_DIGEST_SIZE = 32;
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 exports.utils = {
     async sha256(message) {
-        if (typeof window == 'object' && 'crypto' in window) {
-            const buffer = await window.crypto.subtle.digest('SHA-256', message.buffer);
+        if (typeof self == 'object' && 'crypto' in self) {
+            const buffer = await self.crypto.subtle.digest('SHA-256', message.buffer);
             return new Uint8Array(buffer);
         }
         else if (typeof process === 'object' && 'node' in process.versions) {
@@ -31,8 +31,8 @@ exports.utils = {
         }
     },
     randomPrivateKey: (bytesLength = 32) => {
-        if (typeof window == 'object' && 'crypto' in window) {
-            return window.crypto.getRandomValues(new Uint8Array(bytesLength));
+        if (typeof self == 'object' && 'crypto' in self) {
+            return self.crypto.getRandomValues(new Uint8Array(bytesLength));
         }
         else if (typeof process === 'object' && 'node' in process.versions) {
             const { randomBytes } = require('crypto');
@@ -68,8 +68,11 @@ function bytesToHex(uint8a) {
     return hex;
 }
 function hexToBytes(hex) {
-    if (typeof hex !== 'string' || hex.length % 2)
-        throw new Error('Expected valid hex');
+    if (typeof hex !== 'string') {
+        throw new TypeError('hexToBytes: expected string, got ' + typeof hex);
+    }
+    if (hex.length % 2)
+        throw new Error('hexToBytes: received invalid unpadded hex');
     const array = new Uint8Array(hex.length / 2);
     for (let i = 0; i < array.length; i++) {
         const j = i * 2;

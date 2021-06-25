@@ -15,14 +15,7 @@ export declare const CURVE: {
     h2Eff: bigint;
 };
 declare type BigintTuple = [bigint, bigint];
-declare type BigintSix = [
-    bigint,
-    bigint,
-    bigint,
-    bigint,
-    bigint,
-    bigint
-];
+declare type BigintSix = [bigint, bigint, bigint, bigint, bigint, bigint];
 declare type BigintTwelve = [
     bigint,
     bigint,
