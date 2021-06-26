@@ -159,9 +159,14 @@ export declare class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
     invert(): Fp12;
     frobeniusMap(power: number): Fp12;
     private Fp4Square;
-    private cyclotomicSquare;
-    private cyclotomicExp;
+    cyclotomicSquare(): Fp12;
+    cyclotomicSquareRepeated(num: number): Fp12;
+    cyclotomicInvert(): Fp12;
+    powXDiv2(inv?: boolean): Fp12;
+    powX(inv?: boolean): Fp12;
     finalExponentiate(): Fp12;
+    finalExpEasy(): Fp12;
+    finalExpHardBls12(): Fp12;
 }
 declare type Constructor<T extends Field<T>> = {
     new (...args: any[]): T;

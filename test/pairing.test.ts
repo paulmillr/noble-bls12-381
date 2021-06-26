@@ -3,6 +3,9 @@ const G1 = bls.PointG1.BASE;
 const G2 = bls.PointG2.BASE;
 const CURVE_ORDER = bls.CURVE.r;
 
+// @ts-ignore
+BigInt.prototype.toJSON = function() {return this.toString()}
+
 describe('pairing', () => {
   it('should create negative G1 pairing', () => {
     const p1 = bls.pairing(G1, G2);

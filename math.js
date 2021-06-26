@@ -548,30 +548,74 @@ class Fp12 extends FQP {
             ]),
         ]);
     }
-    cyclotomicExp(n) {
-        let z = Fp12.ONE;
-        for (let i = BLS_X_LEN - 1; i >= 0; i--) {
-            z = z.cyclotomicSquare();
-            if (bitGet(n, i))
-                z = z.multiply(this);
+    cyclotomicSquareRepeated(num) {
+        let f = this;
+        for (let i = 0; i < num; i++) {
+            f = f.cyclotomicSquare();
         }
-        return z;
+        return f;
+    }
+    cyclotomicInvert() {
+        return this.conjugate();
+    }
+    powXDiv2(inv = true) {
+        let a = this;
+        let r = a.cyclotomicSquare();
+        r = r.multiply(a);
+        r = r.cyclotomicSquareRepeated(2);
+        r = r.multiply(a);
+        r = r.cyclotomicSquareRepeated(3);
+        r = r.multiply(a);
+        r = r.cyclotomicSquareRepeated(9);
+        r = r.multiply(a);
+        r = r.cyclotomicSquareRepeated(32);
+        r = r.multiply(a);
+        r = r.cyclotomicSquareRepeated(16 - 1);
+        if (inv)
+            r = r.cyclotomicInvert();
+        return r;
+    }
+    powX(inv = true) {
+        let r = this.powXDiv2(inv);
+        r.cyclotomicSquare();
+        return r;
     }
     finalExponentiate() {
-        const { x } = exports.CURVE;
-        const t0 = this.frobeniusMap(6).div(this);
-        const t1 = t0.frobeniusMap(2).multiply(t0);
-        const t2 = t1.cyclotomicExp(x).conjugate();
-        const t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
-        const t4 = t3.cyclotomicExp(x).conjugate();
-        const t5 = t4.cyclotomicExp(x).conjugate();
-        const t6 = t5.cyclotomicExp(x).conjugate().multiply(t2.cyclotomicSquare());
-        const t7 = t6.cyclotomicExp(x).conjugate();
-        const t2_t5_pow_q2 = t2.multiply(t5).frobeniusMap(2);
-        const t4_t1_pow_q3 = t4.multiply(t1).frobeniusMap(3);
-        const t6_t1c_pow_q1 = t6.multiply(t1.conjugate()).frobeniusMap(1);
-        const t7_t3c_t1 = t7.multiply(t3.conjugate()).multiply(t1);
-        return t2_t5_pow_q2.multiply(t4_t1_pow_q3).multiply(t6_t1c_pow_q1).multiply(t7_t3c_t1);
+        return this.finalExpEasy().finalExpHardBls12();
+    }
+    finalExpEasy() {
+        let f = this;
+        let g = f.invert();
+        f = f.conjugate();
+        g = g.multiply(f);
+        f = g.frobeniusMap(2);
+        f = f.multiply(g);
+        return f;
+    }
+    finalExpHardBls12() {
+        let f = this;
+        let v0;
+        let v1;
+        let v2;
+        v2 = f.cyclotomicSquare();
+        v0 = f.powX();
+        v1 = f.cyclotomicInvert();
+        v0 = v0.multiply(v1);
+        v1 = v0.powX();
+        v0 = v0.cyclotomicInvert();
+        v0 = v0.multiply(v1);
+        v1 = v0.powX();
+        v0 = v0.frobeniusMap(1);
+        v0 = v0.multiply(v1);
+        f = f.multiply(v2);
+        v2 = v0.powX();
+        v1 = v2.powX();
+        v2 = v0.frobeniusMap(2);
+        v0 = v0.cyclotomicInvert();
+        v0 = v0.multiply(v1);
+        v0 = v0.multiply(v2);
+        f = f.multiply(v0);
+        return f;
     }
 }
 exports.Fp12 = Fp12;

@@ -666,7 +666,7 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   //   GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
   // The result of any pairing is in a cyclotomic subgroup
   // https://eprint.iacr.org/2009/565.pdf
-  private cyclotomicSquare(): Fp12 {
+  cyclotomicSquare(): Fp12 {
     const [c0, c1] = this.c;
     const [c0c0, c0c1, c0c2] = c0.c;
     const [c1c0, c1c1, c1c2] = c1.c;
@@ -688,35 +688,118 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
     ]); // 2 * (T6 + c1c2) + T6
   }
 
-  private cyclotomicExp(n: bigint) {
-    let z = Fp12.ONE;
-    for (let i = BLS_X_LEN - 1; i >= 0; i--) {
-      z = z.cyclotomicSquare();
-      if (bitGet(n, i)) z = z.multiply(this);
+  cyclotomicSquareRepeated(num: number): Fp12 {
+    let f: Fp12 = this;
+    for (let i = 0; i < num; i++) {
+      f = f.cyclotomicSquare();
     }
-    return z;
+    return f;
   }
+
+  //   ## Fast inverse for a
+  // `a` MUST be in the cyclotomic subgroup
+  // consequently `a` MUST be unitary
+  cyclotomicInvert(): Fp12 {
+    return this.conjugate();
+  }
+
+  powXDiv2(inv = true): Fp12 {
+    let a: Fp12 = this;
+    let r: Fp12 = a.cyclotomicSquare();
+    r = r.multiply(a);
+    r = r.cyclotomicSquareRepeated(2);
+    r = r.multiply(a);
+    r = r.cyclotomicSquareRepeated(3);
+    r = r.multiply(a);
+    r = r.cyclotomicSquareRepeated(9);
+    r = r.multiply(a);
+    r = r.cyclotomicSquareRepeated(32);
+    r = r.multiply(a);
+    r = r.cyclotomicSquareRepeated(16-1);
+    if (inv) r = r.cyclotomicInvert();
+    return r;
+  }
+  powX(inv = true): Fp12 {
+    let r = this.powXDiv2(inv);
+    r.cyclotomicSquare();
+    return r;
+    // powXDiv2
+  }
+
+  // private cyclotomicExp(n: bigint) {
+  //   let z = Fp12.ONE;
+  //   for (let i = BLS_X_LEN - 1; i >= 0; i--) {
+  //     z = z.cyclotomicSquare();
+  //     if (bitGet(n, i)) z = z.multiply(this);
+  //   }
+  //   return z;
+  // }
 
   // https://eprint.iacr.org/2010/354.pdf
   // https://eprint.iacr.org/2009/565.pdf
   finalExponentiate() {
-    const { x } = CURVE;
-    // this^(q⁶) / this
-    const t0 = this.frobeniusMap(6).div(this);
-    // t0^(q²) * t0
-    const t1 = t0.frobeniusMap(2).multiply(t0);
-    const t2 = t1.cyclotomicExp(x).conjugate();
-    const t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
-    const t4 = t3.cyclotomicExp(x).conjugate();
-    const t5 = t4.cyclotomicExp(x).conjugate();
-    const t6 = t5.cyclotomicExp(x).conjugate().multiply(t2.cyclotomicSquare());
-    const t7 = t6.cyclotomicExp(x).conjugate();
-    const t2_t5_pow_q2 = t2.multiply(t5).frobeniusMap(2);
-    const t4_t1_pow_q3 = t4.multiply(t1).frobeniusMap(3);
-    const t6_t1c_pow_q1 = t6.multiply(t1.conjugate()).frobeniusMap(1);
-    const t7_t3c_t1 = t7.multiply(t3.conjugate()).multiply(t1);
-    // (t2 * t5)^(q²) * (t4 * t1)^(q³) * (t6 * t1.conj)^(q^1) * t7 * t3.conj * t1
-    return t2_t5_pow_q2.multiply(t4_t1_pow_q3).multiply(t6_t1c_pow_q1).multiply(t7_t3c_t1);
+    return this.finalExpEasy().finalExpHardBls12();
+      // const { x } = CURVE;
+      // // this^(q⁶) / this
+      // const t0 = this.frobeniusMap(6).div(this);
+      // // t0^(q²) * t0
+      // const t1 = t0.frobeniusMap(2).multiply(t0);
+      // const t2 = t1.cyclotomicExp(x).conjugate();
+      // const t3 = t1.cyclotomicSquare().conjugate().multiply(t2);
+      // const t4 = t3.cyclotomicExp(x).conjugate();
+      // const t5 = t4.cyclotomicExp(x).conjugate();
+      // const t6 = t5.cyclotomicExp(x).conjugate().multiply(t2.cyclotomicSquare());
+      // const t7 = t6.cyclotomicExp(x).conjugate();
+      // const t2_t5_pow_q2 = t2.multiply(t5).frobeniusMap(2);
+      // const t4_t1_pow_q3 = t4.multiply(t1).frobeniusMap(3);
+      // const t6_t1c_pow_q1 = t6.multiply(t1.conjugate()).frobeniusMap(1);
+      // const t7_t3c_t1 = t7.multiply(t3.conjugate()).multiply(t1);
+      // // (t2 * t5)^(q²) * (t4 * t1)^(q³) * (t6 * t1.conj)^(q^1) * t7 * t3.conj * t1
+      // return t2_t5_pow_q2.multiply(t4_t1_pow_q3).multiply(t6_t1c_pow_q1).multiply(t7_t3c_t1);
+  }
+
+  // Fp¹² --> (fexp easy) --> Gϕ₁₂ --> (fexp hard) --> Gₜ
+  finalExpEasy(): Fp12 {
+    let f: Fp12 = this;
+    let g = f.invert();     // g = f^-1
+    f = f.conjugate();      // f = f^p⁶
+    g = g.multiply(f);      // g = f^(p⁶-1)
+    f = g.frobeniusMap(2);  // f = f^((p⁶-1) p²)
+    f = f.multiply(g);      // f = f^((p⁶-1) (p²+1))
+    return f;
+  }
+  finalExpHardBls12(): Fp12 {
+    let f: Fp12 = this;
+    let v0: Fp12;
+    let v1: Fp12;
+    let v2: Fp12;
+    // Save for f³ and (x−1)²
+    v2 = f.cyclotomicSquare();  // v2 = f²
+    // WHEN v0 = ...
+    v0 = f.powX();              // v0 = f^x
+    v1 = f.cyclotomicInvert();  // v1 = f^-1
+    v0 = v0.multiply(v1);       // v0 = f^(x-1)
+    v1 = v0.powX();             // v1 = (f^(x-1))^x
+    v0 = v0.cyclotomicInvert(); // v0 = (f^(x-1))^-1
+    v0 = v0.multiply(v1);       // v0 = (f^(x-1))^(x-1) = f^((x-1)*(x-1)) = f^((x-1)²)
+
+    // (x+p)
+    v1 = v0.powX();             // v1 = f^((x-1)².x)
+    v0 = v0.frobeniusMap(1);    // v0 = f^((x-1)².p)
+    v0 = v0.multiply(v1);       // v0 = f^((x-1)².(x+p))
+
+    // + 3
+    f = f.multiply(v2);         // f = f³
+
+    // (x²+p²−1)
+    v2 = v0.powX(); // inv=false// v2 = f^((x-1)².(x+p).x)
+    v1 = v2.powX(); // inv=false// v1 = f^((x-1)².(x+p).x²)
+    v2 = v0.frobeniusMap(2);    // v2 = f^((x-1)².(x+p).p²)
+    v0 = v0.cyclotomicInvert(); // v0 = f^((x-1)².(x+p).-1)
+    v0 = v0.multiply(v1);       // v0 = f^((x-1)².(x+p).(x²-1))
+    v0 = v0.multiply(v2);       // v0 = f^((x-1)².(x+p).(x²+p²-1))
+    f = f.multiply(v0);         // (x−1)².(x+p).(x²+p²−1) + 3
+    return f;
   }
 }
 
