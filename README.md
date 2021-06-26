@@ -249,20 +249,20 @@ getPublicKey x 1,608 ops/sec @ 621μs/op
 sign x 31 ops/sec @ 32ms/op
 verify x 25 ops/sec @ 38ms/op
 pairing x 63 ops/sec @ 15ms/op
-aggregatePublicKeys/8 x 154 ops/sec @ 6ms/op
+aggregatePublicKeys/8 x 143 ops/sec @ 6ms/op
 aggregateSignatures/8 x 34 ops/sec @ 29ms/op
 
 with compression / decompression disabled:
 sign/nc x 48 ops/sec @ 20ms/op
 verify/nc x 43 ops/sec @ 23ms/op
-aggregatePublicKeys/32 x 5,389 ops/sec @ 185μs/op
-aggregatePublicKeys/128 x 1,325 ops/sec @ 754μs/op
-aggregatePublicKeys/512 x 321 ops/sec @ 3ms/op
-aggregatePublicKeys/2048 x 80 ops/sec @ 12ms/op
-aggregateSignatures/32 x 1,427 ops/sec @ 700μs/op
-aggregateSignatures/128 x 338 ops/sec @ 2ms/op
-aggregateSignatures/512 x 82 ops/sec @ 12ms/op
-aggregateSignatures/2048 x 21 ops/sec @ 47ms/op
+aggregatePublicKeys/32 x 1,557 ops/sec @ 642μs/op
+aggregatePublicKeys/128 x 803 ops/sec @ 1ms/op
+aggregatePublicKeys/512 x 280 ops/sec @ 3ms/op
+aggregatePublicKeys/2048 x 77 ops/sec @ 12ms/op
+aggregateSignatures/32 x 405 ops/sec @ 2ms/op
+aggregateSignatures/128 x 213 ops/sec @ 4ms/op
+aggregateSignatures/512 x 73 ops/sec @ 13ms/op
+aggregateSignatures/2048 x 20 ops/sec @ 49ms/op
 ```
 
 ## Security

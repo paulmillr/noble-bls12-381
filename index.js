@@ -494,6 +494,7 @@ function aggregatePublicKeys(publicKeys) {
     if (!publicKeys.length)
         throw new Error('Expected non-empty array');
     const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
+    agg.assertValidity();
     if (publicKeys[0] instanceof PointG1)
         return agg;
     const bytes = agg.toRawBytes(true);
@@ -506,6 +507,7 @@ function aggregateSignatures(signatures) {
     if (!signatures.length)
         throw new Error('Expected non-empty array');
     const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
+    agg.assertValidity();
     if (signatures[0] instanceof PointG2)
         return agg;
     const bytes = agg.toSignature();

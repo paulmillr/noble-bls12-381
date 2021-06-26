@@ -604,6 +604,7 @@ export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | string | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
+  agg.assertValidity();
   if (publicKeys[0] instanceof PointG1) return agg;
   const bytes = agg.toRawBytes(true);
   if (publicKeys[0] instanceof Uint8Array) return bytes;
@@ -617,6 +618,7 @@ export function aggregateSignatures(signatures: PointG2[]): PointG2;
 export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | string | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
+  agg.assertValidity();
   if (signatures[0] instanceof PointG2) return agg;
   const bytes = agg.toSignature();
   if (signatures[0] instanceof Uint8Array) return bytes;
