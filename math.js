@@ -117,6 +117,9 @@ class Fp {
     pow(n) {
         return new Fp(powMod(this.value, n, Fp.ORDER));
     }
+    sqrt() {
+        return new Fp(powMod(this.value, (Fp.ORDER + 1n) / 4n, Fp.ORDER));
+    }
     subtract(rhs) {
         return new Fp(this.value - rhs.value);
     }

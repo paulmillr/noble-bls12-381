@@ -40,8 +40,8 @@ export declare class PointG2 extends ProjectivePoint<Fp2> {
     private psi;
     private psi2;
     private mulNegX;
-    private isOnCurve;
     clearCofactor(): PointG2;
+    private isOnCurve;
     private isTorsionFree;
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): [Fp2, Fp2, Fp2][];

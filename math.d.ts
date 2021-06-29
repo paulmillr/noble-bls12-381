@@ -62,6 +62,7 @@ export declare class Fp implements Field<Fp> {
     add(rhs: Fp): Fp;
     square(): Fp;
     pow(n: bigint): Fp;
+    sqrt(): Fp;
     subtract(rhs: Fp): Fp;
     multiply(rhs: Fp | bigint): Fp;
     div(rhs: Fp | bigint): Fp;

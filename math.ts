@@ -181,6 +181,15 @@ export class Fp implements Field<Fp> {
     return new Fp(powMod(this.value, n, Fp.ORDER));
   }
 
+  // square root computation for p ≡ 3 (mod 4)
+  // a^((p-3)/4)) ≡ 1/√a (mod p)
+  // √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
+  // It's possible to unwrap the exponentiation, but (P+1)/4 has 228 1's out of 379 bits.
+  // https://eprint.iacr.org/2012/685.pdf
+  sqrt(): Fp {
+    return new Fp(powMod(this.value, (Fp.ORDER + 1n) / 4n, Fp.ORDER));
+  }
+
   subtract(rhs: Fp): Fp {
     return new Fp(this.value - rhs.value);
   }
@@ -739,12 +748,12 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   isZero() {
     return this.z.isZero();
   }
-  getPoint<TT extends this>(x: T, y: T, z: T): TT {
+  createPoint<TT extends this>(x: T, y: T, z: T): TT {
     return new (<any>this.constructor)(x, y, z);
   }
 
   getZero(): this {
-    return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
+    return this.createPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
   }
 
   // Compare one point to another.
@@ -763,7 +772,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   negate(): this {
-    return this.getPoint(this.x, this.y.negate(), this.z);
+    return this.createPoint(this.x, this.y.negate(), this.z);
   }
 
   toString(isAffine = true) {
@@ -775,7 +784,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   fromAffineTuple(xy: [T, T]): this {
-    return this.getPoint(xy[0], xy[1], this.C.ONE);
+    return this.createPoint(xy[0], xy[1], this.C.ONE);
   }
   // Converts Projective point to default (x, y) coordinates.
   // Can accept precomputed Z^-1 - for example, from invertBatch.
@@ -811,7 +820,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
       y.multiply(y).multiply(8n).multiply(SS)
     );
     const Z3 = SSS.multiply(8n);
-    return this.getPoint(X3, Y3, Z3);
+    return this.createPoint(X3, Y3, Z3);
   }
 
   // http://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-1998-cmo-2
@@ -847,7 +856,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     const X3 = V.multiply(A);
     const Y3 = U.multiply(V2VV.subtract(A)).subtract(VVV.multiply(U2));
     const Z3 = VVV.multiply(W);
-    return this.getPoint(X3, Y3, Z3);
+    return this.createPoint(X3, Y3, Z3);
   }
 
   subtract(rhs: this): this {
@@ -861,45 +870,44 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Non-constant-time multiplication. Uses double-and-add algorithm.
   // It's faster, but should only be used when you don't care about
   // an exposed private key e.g. sig verification.
-  multiplyUnsafe(scalar: number | bigint | Fp): this {
+  multiplyUnsafe(scalar: bigint): this {
     let n = scalar;
-    if (n instanceof Fp) n = n.value;
+    let bits = Fp.ORDER;
     if (typeof n === 'number') n = BigInt(n);
-    if (n <= 0) {
-      throw new Error('Point#multiply: invalid scalar, expected positive integer');
+    if (typeof n !== 'bigint' || n <= 0 || n > bits) {
+      throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
     }
-    let p = this.getZero();
+    let point = this.getZero();
     let d: this = this;
     while (n > 0n) {
-      if (n & 1n) p = p.add(d);
+      if (n & 1n) point = point.add(d);
       d = d.double();
       n >>= 1n;
     }
-    return p;
+    return point;
   }
 
   // Constant-time multiplication
   multiply(scalar: bigint): this {
     let n = scalar;
-    if (typeof n !== 'bigint' || n <= 0) {
-      throw new Error('Point#multiply: invalid scalar, expected positive integer');
-    }
-    let p = this.getZero();
-    let d: this = this;
-    let f = this.getZero();
     let bits = Fp.ORDER;
-    if (n > bits) throw new Error('higher:' + n);
+    if (typeof n !== 'bigint' || n <= 0 || n > bits) {
+      throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
+    }
+    let point = this.getZero();
+    let fake = this.getZero();
+    let d: this = this;
     while (bits > 0n) {
       if (n & 1n) {
-        p = p.add(d);
+        point = point.add(d);
       } else {
-        f = f.add(d);
+        fake = fake.add(d);
       }
       d = d.double();
       n >>= 1n;
       bits >>= 1n;
     }
-    return p;
+    return point;
   }
 
   // Should be not more than curve order, but I cannot find it.
@@ -1008,7 +1016,7 @@ function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
   const v7 = v.pow(7n);
   const uv7 = u.multiply(v7);
   const uv15 = uv7.multiply(v7.multiply(v));
-  // gamma =  uv⁷ * (uv^15)^((p² - 9) / 16)
+  // gamma =  uv⁷ * (uv¹⁵)^((p² - 9) / 16)
   const gamma = uv15.pow(P_MINUS_9_DIV_16).multiply(uv7);
   let success = false;
   let result = gamma;

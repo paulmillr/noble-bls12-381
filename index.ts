@@ -12,11 +12,9 @@
 // Some projects may prefer to swap this relation, it is not supported for now.
 // prettier-ignore
 import {
-  Fp, Fr, Fp2, Fp12, CURVE,
-  ProjectivePoint,
+  Fp, Fr, Fp2, Fp12, CURVE, ProjectivePoint,
   map_to_curve_simple_swu_9mod16, isogenyMapG2,
-  millerLoop, psi, psi2, calcPairingPrecomputes,
-  mod, powMod
+  millerLoop, psi, psi2, calcPairingPrecomputes, mod
 } from './math';
 export { Fp, Fr, Fp2, Fp12, CURVE };
 
@@ -259,16 +257,12 @@ export class PointG1 extends ProjectivePoint<Fp> {
       if (bflag === 1n) {
         return this.ZERO;
       }
-      const x = mod(compressedValue, POW_2_381);
-      const right = mod(x ** 3n + CURVE.b, P);
-      let y = powMod(right, (P + 1n) / 4n, P);
-      const left = powMod(y, 2n, P);
-      if (left - right !== 0n) throw new Error('The given point is not on G1: y**2 = x**3 + b');
+      const x = new Fp(mod(compressedValue, POW_2_381));
+      const right = x.pow(3n).add(new Fp(CURVE.b)); // y² = x³ + b
+      let y = right.sqrt();
       const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
-      if ((y * 2n) / P !== aflag) {
-        y = P - y;
-      }
-      point = new PointG1(new Fp(x), new Fp(y));
+      if ((y.value * 2n) / P !== aflag) y = y.negate();
+      point = new PointG1(x, y);
     } else if (bytes.length === 96) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) return PointG1.ZERO;
@@ -278,7 +272,6 @@ export class PointG1 extends ProjectivePoint<Fp> {
     } else {
       throw new Error('Invalid point G1, expected 48/96 bytes');
     }
-
     point.assertValidity();
     return point;
   }
@@ -296,7 +289,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
     const { P } = CURVE;
     if (isCompressed) {
       let hex;
-      if (this.equals(PointG1.ZERO)) {
+      if (this.isZero()) {
         hex = POW_2_383 + POW_2_382;
       } else {
         const [x, y] = this.toAffine();
@@ -305,7 +298,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
       }
       return toPaddedHex(hex, PUBLIC_KEY_LENGTH);
     } else {
-      if (this.equals(PointG1.ZERO)) {
+      if (this.isZero()) {
         // 2x PUBLIC_KEY_LENGTH
         return '4'.padEnd(2 * 2 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
       } else {
@@ -335,13 +328,13 @@ export class PointG1 extends ProjectivePoint<Fp> {
     return this.multiplyUnsafe(CURVE.hEff);
   }
 
-  // Checks for equation y² = x³ + 4
+  // Checks for equation y² = x³ + b
   private isOnCurve(): boolean {
     const b = new Fp(CURVE.b);
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n));
-    return left.subtract(right).equals(Fp.ZERO);
+    return left.subtract(right).isZero();
   }
 
   // Checks is the point resides in prime-order subgroup.
@@ -395,8 +388,9 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     const x1 = z1 % POW_2_381;
     const x2 = z2;
     const x = new Fp2([x2, x1]);
+    const y2 = x.pow(3n).add(new Fp2(CURVE.b2)); // y² = x³ + 4
     // The slow part
-    let y = x.pow(3n).add(new Fp2(CURVE.b2)).sqrt();
+    let y = y2.sqrt();
     if (!y) throw new Error('Failed to find a square root');
 
     // Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
@@ -497,15 +491,6 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     return this.multiplyUnsafe(CURVE.x).negate();
   }
 
-  // Checks for equation y² = x³ + 4
-  private isOnCurve(): boolean {
-    const b = new Fp2(CURVE.b2);
-    const { x, y, z } = this;
-    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-    const right = b.multiply(z.pow(3n) as Fp2);
-    return left.subtract(right).equals(Fp2.ZERO);
-  }
-
   // Maps the point into the prime-order subgroup G2.
   // clear_cofactor_bls12381_g2 from cfrg-hash-to-curve-11
   // https://eprint.iacr.org/2017/419.pdf
@@ -523,6 +508,15 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     t3 = t3.subtract(t1);     // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P
     const Q = t3.subtract(P); // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P - 1P =>
     return Q;                 // [x²-x-1]P + [x-1]Ψ(P) + Ψ²(2P)
+  }
+
+  // Checks for equation y² = x³ + b
+  private isOnCurve(): boolean {
+    const b = new Fp2(CURVE.b2);
+    const { x, y, z } = this;
+    const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+    const right = b.multiply(z.pow(3n) as Fp2);
+    return left.subtract(right).isZero();
   }
 
   // Checks is the point resides in prime-order subgroup.

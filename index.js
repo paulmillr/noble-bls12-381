@@ -209,17 +209,13 @@ class PointG1 extends math_1.ProjectivePoint {
             if (bflag === 1n) {
                 return this.ZERO;
             }
-            const x = math_1.mod(compressedValue, POW_2_381);
-            const right = math_1.mod(x ** 3n + math_1.CURVE.b, P);
-            let y = math_1.powMod(right, (P + 1n) / 4n, P);
-            const left = math_1.powMod(y, 2n, P);
-            if (left - right !== 0n)
-                throw new Error('The given point is not on G1: y**2 = x**3 + b');
+            const x = new math_1.Fp(math_1.mod(compressedValue, POW_2_381));
+            const right = x.pow(3n).add(new math_1.Fp(math_1.CURVE.b));
+            let y = right.sqrt();
             const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
-            if ((y * 2n) / P !== aflag) {
-                y = P - y;
-            }
-            point = new PointG1(new math_1.Fp(x), new math_1.Fp(y));
+            if ((y.value * 2n) / P !== aflag)
+                y = y.negate();
+            point = new PointG1(x, y);
         }
         else if (bytes.length === 96) {
             if ((bytes[0] & (1 << 6)) !== 0)
@@ -245,7 +241,7 @@ class PointG1 extends math_1.ProjectivePoint {
         const { P } = math_1.CURVE;
         if (isCompressed) {
             let hex;
-            if (this.equals(PointG1.ZERO)) {
+            if (this.isZero()) {
                 hex = POW_2_383 + POW_2_382;
             }
             else {
@@ -256,7 +252,7 @@ class PointG1 extends math_1.ProjectivePoint {
             return toPaddedHex(hex, PUBLIC_KEY_LENGTH);
         }
         else {
-            if (this.equals(PointG1.ZERO)) {
+            if (this.isZero()) {
                 return '4'.padEnd(2 * 2 * PUBLIC_KEY_LENGTH, '0');
             }
             else {
@@ -288,7 +284,7 @@ class PointG1 extends math_1.ProjectivePoint {
         const { x, y, z } = this;
         const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
         const right = b.multiply(z.pow(3n));
-        return left.subtract(right).equals(math_1.Fp.ZERO);
+        return left.subtract(right).isZero();
     }
     isTorsionFree() {
         return !this.clearCofactor().isZero();
@@ -324,7 +320,8 @@ class PointG2 extends math_1.ProjectivePoint {
         const x1 = z1 % POW_2_381;
         const x2 = z2;
         const x = new math_1.Fp2([x2, x1]);
-        let y = x.pow(3n).add(new math_1.Fp2(math_1.CURVE.b2)).sqrt();
+        const y2 = x.pow(3n).add(new math_1.Fp2(math_1.CURVE.b2));
+        let y = y2.sqrt();
         if (!y)
             throw new Error('Failed to find a square root');
         const [y0, y1] = y.values;
@@ -411,13 +408,6 @@ class PointG2 extends math_1.ProjectivePoint {
     mulNegX() {
         return this.multiplyUnsafe(math_1.CURVE.x).negate();
     }
-    isOnCurve() {
-        const b = new math_1.Fp2(math_1.CURVE.b2);
-        const { x, y, z } = this;
-        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
-        const right = b.multiply(z.pow(3n));
-        return left.subtract(right).equals(math_1.Fp2.ZERO);
-    }
     clearCofactor() {
         const P = this;
         let t1 = P.mulNegX();
@@ -431,6 +421,13 @@ class PointG2 extends math_1.ProjectivePoint {
         t3 = t3.subtract(t1);
         const Q = t3.subtract(P);
         return Q;
+    }
+    isOnCurve() {
+        const b = new math_1.Fp2(math_1.CURVE.b2);
+        const { x, y, z } = this;
+        const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
+        const right = b.multiply(z.pow(3n));
+        return left.subtract(right).isZero();
     }
     isTorsionFree() {
         const P = this;
