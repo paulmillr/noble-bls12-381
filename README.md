@@ -7,7 +7,7 @@
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-Compatible with ETH2, matches specs [pairing-curves-09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-11](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11).
+Compatible with Algorand, Chia, Dfinity, Ethereum, FIL, Zcash. Matches specs [pairing-curves-09](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-09), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-11](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-11).
 
 To learn more about internals, check out [BLS12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c). To try it live, see [the online demo](https://paulmillr.com/ecc) & [threshold sigs demo](https://genthresh.com).
 
@@ -175,35 +175,43 @@ function pairing(
 ): Fp12
 ```
 - `g1Point: PointG1` - simple point, `x, y` are bigints
-- `g2Point: PointG2` - point over curve with imaginary numbers (`(x, x_1), (y, y_1)`)
-- `withFinalExponent: boolean` - should the result be powered by curve order. Very slow.
+- `g2Point: PointG2` - point over curve with complex numbers (`(x₁, x₂+i), (y₁, y₂+i)`) - pairs of bigints
+- `withFinalExponent: boolean` - should the result be powered by curve order; very slow
 - Returns `Fp12`: paired point over 12-degree extension field.
 
 ##### Helpers
 
 ```typescript
-// 𝔽p
-bls.CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaabn
+// characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
+bls.CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 
-// Prime order
-bls.CURVE.r // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
+// curve order; z⁴ − z² + 1
+bls.CURVE.r // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 
-// Hash base point (x, y)
-bls.CURVE.Gx // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001n
+// cofactor; (z - 1)²/3
+bls.curve.h // 0x396c8c005555e1568c00aaab0000aaab
+
+
+// G1 base point coordinates (x, y)
+bls.CURVE.Gx
 // x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
 // y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
 
-// Signature base point ((x_1, x_2), (y_1, y_2))
+// G2 base point coordinates (x₁, x₂+i), (y₁, y₂+i)
 bls.CURVE.Gy
-// x = 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758, 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160
-// y = 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582, 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
+// x =
+// 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758,
+// 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160
+// y =
+// 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582,
+// 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
 
 // Classes
-bls.Fp
-bls.Fp2
-bls.Fp12
-bls.G1Point
-bls.G2Point
+bls.Fp      // field over Fp
+bls.Fp2     // field over Fp₂
+bls.Fp12    // finite extension field over irreducible polynominal
+bls.G1Point // projective point (xyz) at G1
+bls.G2Point // projective point (xyz) at G2
 ```
 
 ## Internals

@@ -1,7 +1,7 @@
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 // bls12-381 is a construction of two curves:
 // 1. Fp: (x, y)
-// 2. Fp₂: ((x1, x2+i), (y1, y2+i)) - (imaginary numbers)
+// 2. Fp₂: ((x₁, x₂+i), (y₁, y₂+i)) - (complex numbers)
 //
 // Bilinear Pairing (ate pairing) is used to combine both elements into a paired one:
 //   Fp₁₂ = e(Fp, Fp2)
@@ -353,7 +353,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
   }
 }
 
-// Point on G2 curve (complex numbers): (x1, x2+i), (y1, y2+i)
+// Point on G2 curve (complex numbers): (x₁, x₂+i), (y₁, y₂+i)
 // We add z because we work with projective coordinates instead of affine x-y: that's much faster.
 export class PointG2 extends ProjectivePoint<Fp2> {
   static BASE = new PointG2(new Fp2(CURVE.G2x), new Fp2(CURVE.G2y), Fp2.ONE);
