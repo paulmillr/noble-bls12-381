@@ -241,6 +241,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return hexToBytes(this.toHex(isCompressed));
     }
     toHex(isCompressed = false) {
+        this.assertValidity();
         const { P } = math_1.CURVE;
         if (isCompressed) {
             let hex;
@@ -266,17 +267,21 @@ class PointG1 extends math_1.ProjectivePoint {
     }
     assertValidity() {
         if (this.isZero())
-            return;
+            return this;
         if (!this.isOnCurve())
             throw new Error('Invalid G1 point: not on curve Fp');
         if (!this.isTorsionFree())
             throw new Error('Invalid G1 point: must be of prime-order subgroup');
+        return this;
     }
     [Symbol.for('nodejs.util.inspect.custom')]() {
         return this.toString();
     }
     millerLoop(P) {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
+    }
+    clearCofactor() {
+        return this.multiplyUnsafe(math_1.CURVE.hEff);
     }
     isOnCurve() {
         const b = new math_1.Fp(math_1.CURVE.b);
@@ -286,7 +291,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return left.subtract(right).equals(math_1.Fp.ZERO);
     }
     isTorsionFree() {
-        return !this.multiplyUnsafe(math_1.CURVE.hEff).isZero();
+        return !this.clearCofactor().isZero();
     }
 }
 exports.PointG1 = PointG1;
@@ -362,7 +367,6 @@ class PointG2 extends math_1.ProjectivePoint {
             const sum = POW_2_383 + POW_2_382;
             return toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
         }
-        this.assertValidity();
         const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
         const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
         const aflag1 = tmp / math_1.CURVE.P;
@@ -391,11 +395,12 @@ class PointG2 extends math_1.ProjectivePoint {
     }
     assertValidity() {
         if (this.isZero())
-            return;
+            return this;
         if (!this.isOnCurve())
             throw new Error('Invalid G2 point: not on curve Fp2');
         if (!this.isTorsionFree())
             throw new Error('Invalid G2 point: must be of prime-order subgroup');
+        return this;
     }
     psi() {
         return this.fromAffineTuple(math_1.psi(...this.toAffine()));
@@ -403,19 +408,8 @@ class PointG2 extends math_1.ProjectivePoint {
     psi2() {
         return this.fromAffineTuple(math_1.psi2(...this.toAffine()));
     }
-    clearCofactor() {
-        const P = this;
-        let t1 = P.multiplyUnsafe(math_1.CURVE.x).negate();
-        let t2 = P.psi();
-        let t3 = P.double();
-        t3 = t3.psi2();
-        t3 = t3.subtract(t2);
-        t2 = t1.add(t2);
-        t2 = t2.multiplyUnsafe(math_1.CURVE.x).negate();
-        t3 = t3.add(t2);
-        t3 = t3.subtract(t1);
-        const Q = t3.subtract(P);
-        return Q;
+    mulNegX() {
+        return this.multiplyUnsafe(math_1.CURVE.x).negate();
     }
     isOnCurve() {
         const b = new math_1.Fp2(math_1.CURVE.b2);
@@ -424,11 +418,26 @@ class PointG2 extends math_1.ProjectivePoint {
         const right = b.multiply(z.pow(3n));
         return left.subtract(right).equals(math_1.Fp2.ZERO);
     }
+    clearCofactor() {
+        const P = this;
+        let t1 = P.mulNegX();
+        let t2 = P.psi();
+        let t3 = P.double();
+        t3 = t3.psi2();
+        t3 = t3.subtract(t2);
+        t2 = t1.add(t2);
+        t2 = t2.mulNegX();
+        t3 = t3.add(t2);
+        t3 = t3.subtract(t1);
+        const Q = t3.subtract(P);
+        return Q;
+    }
     isTorsionFree() {
-        const psi2 = this.psi2();
+        const P = this;
+        const psi2 = P.psi2();
         const psi3 = psi2.psi();
-        const zPsi3 = psi3.multiplyUnsafe(math_1.CURVE.x).negate();
-        return zPsi3.subtract(psi2).add(this).isZero();
+        const zPsi3 = psi3.mulNegX();
+        return zPsi3.subtract(psi2).add(P).isZero();
     }
     [Symbol.for('nodejs.util.inspect.custom')]() {
         return this.toString();
@@ -495,7 +504,7 @@ function aggregatePublicKeys(publicKeys) {
         throw new Error('Expected non-empty array');
     const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
     if (publicKeys[0] instanceof PointG1)
-        return agg;
+        return agg.assertValidity();
     const bytes = agg.toRawBytes(true);
     if (publicKeys[0] instanceof Uint8Array)
         return bytes;
@@ -507,10 +516,10 @@ function aggregateSignatures(signatures) {
         throw new Error('Expected non-empty array');
     const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
     if (signatures[0] instanceof PointG2)
-        return agg;
+        return agg.assertValidity();
     const bytes = agg.toSignature();
     if (signatures[0] instanceof Uint8Array)
-        return bytes;
+        return hexToBytes(bytes);
     return bytes;
 }
 exports.aggregateSignatures = aggregateSignatures;

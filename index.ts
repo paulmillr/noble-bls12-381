@@ -292,6 +292,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
   }
 
   toHex(isCompressed = false) {
+    this.assertValidity();
     const { P } = CURVE;
     if (isCompressed) {
       let hex;
@@ -315,9 +316,10 @@ export class PointG1 extends ProjectivePoint<Fp> {
   }
 
   assertValidity() {
-    if (this.isZero()) return;
+    if (this.isZero()) return this;
     if (!this.isOnCurve()) throw new Error('Invalid G1 point: not on curve Fp');
     if (!this.isTorsionFree()) throw new Error('Invalid G1 point: must be of prime-order subgroup');
+    return this;
   }
 
   [Symbol.for('nodejs.util.inspect.custom')]() {
@@ -327,6 +329,10 @@ export class PointG1 extends ProjectivePoint<Fp> {
   // Sparse multiplication against precomputed coefficients
   millerLoop(P: PointG2): Fp12 {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
+  }
+
+  clearCofactor() {
+    return this.multiplyUnsafe(CURVE.hEff);
   }
 
   // Checks for equation y² = x³ + 4
@@ -343,7 +349,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
   // It returns false for shitty points.
   // We are simply multiplying by 1 - x to clear the cofactor.
   private isTorsionFree(): boolean {
-    return !this.multiplyUnsafe(CURVE.hEff).isZero();
+    return !this.clearCofactor().isZero();
   }
 }
 
@@ -439,7 +445,6 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const sum = POW_2_383 + POW_2_382;
       return toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
     }
-    this.assertValidity();
     const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
     const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
     const aflag1 = tmp / CURVE.P;
@@ -471,9 +476,10 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   }
 
   assertValidity() {
-    if (this.isZero()) return;
+    if (this.isZero()) return this;
     if (!this.isOnCurve()) throw new Error('Invalid G2 point: not on curve Fp2');
     if (!this.isTorsionFree()) throw new Error('Invalid G2 point: must be of prime-order subgroup');
+    return this;
   }
 
   // Ψ endomorphism
@@ -486,21 +492,9 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     return this.fromAffineTuple(psi2(...this.toAffine()));
   }
 
-  // Maps the point into the prime-order subgroup G2.
-  // clear_cofactor_bls12381_g2 from cfrg-hash-to-curve-11
-  clearCofactor(): PointG2 {
-    const P = this;
-    let t1 = P.multiplyUnsafe(CURVE.x).negate(); // -x, not x
-    let t2 = P.psi();
-    let t3 = P.double();
-    t3 = t3.psi2();
-    t3 = t3.subtract(t2);
-    t2 = t1.add(t2);
-    t2 = t2.multiplyUnsafe(CURVE.x).negate();
-    t3 = t3.add(t2);
-    t3 = t3.subtract(t1);
-    const Q = t3.subtract(P);
-    return Q;
+  // [-x]P aka [z]P
+  private mulNegX() {
+    return this.multiplyUnsafe(CURVE.x).negate();
   }
 
   // Checks for equation y² = x³ + 4
@@ -512,17 +506,39 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     return left.subtract(right).equals(Fp2.ZERO);
   }
 
+  // Maps the point into the prime-order subgroup G2.
+  // clear_cofactor_bls12381_g2 from cfrg-hash-to-curve-11
+  // https://eprint.iacr.org/2017/419.pdf
+  // prettier-ignore
+  clearCofactor(): PointG2 {
+    const P = this;
+    let t1 = P.mulNegX();     // [-x]P
+    let t2 = P.psi();         // Ψ(P)
+    let t3 = P.double();      // 2P
+    t3 = t3.psi2();           // Ψ²(2P)
+    t3 = t3.subtract(t2);     // Ψ²(2P) - Ψ(P)
+    t2 = t1.add(t2);          // [-x]P + Ψ(P)
+    t2 = t2.mulNegX();        // [x²]P - [x]Ψ(P)
+    t3 = t3.add(t2);          // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P)
+    t3 = t3.subtract(t1);     // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P
+    const Q = t3.subtract(P); // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P - 1P =>
+    return Q;                 // [x²-x-1]P + [x-1]Ψ(P) + Ψ²(2P)
+  }
+
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
   // https://eprint.iacr.org/2019/814.pdf
+  // prettier-ignore
   private isTorsionFree(): boolean {
-    const psi2 = this.psi2(); // Ψ²(P)
-    const psi3 = psi2.psi(); // Ψ³(P)
-    const zPsi3 = psi3.multiplyUnsafe(CURVE.x).negate(); // [z]Ψ³(P) where z = -x
-    return zPsi3.subtract(psi2).add(this).isZero(); // [z]Ψ³(P) - Ψ²(P) + P == O
+    const P = this;
+    const psi2 = P.psi2();                        // Ψ²(P)
+    const psi3 = psi2.psi();                      // Ψ³(P)
+    const zPsi3 = psi3.mulNegX();                 // [z]Ψ³(P) where z = -x
+    return zPsi3.subtract(psi2).add(P).isZero();  // [z]Ψ³(P) - Ψ²(P) + P == O
   }
 
+  // Improves introspection in node.js. Basically displays point's x, y.
   [Symbol.for('nodejs.util.inspect.custom')]() {
     return this.toString();
   }
@@ -604,7 +620,7 @@ export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | string | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
-  if (publicKeys[0] instanceof PointG1) return agg;
+  if (publicKeys[0] instanceof PointG1) return agg.assertValidity();
   const bytes = agg.toRawBytes(true);
   if (publicKeys[0] instanceof Uint8Array) return bytes;
   return bytesToHex(bytes);
@@ -617,9 +633,9 @@ export function aggregateSignatures(signatures: PointG2[]): PointG2;
 export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | string | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
-  if (signatures[0] instanceof PointG2) return agg;
+  if (signatures[0] instanceof PointG2) return agg.assertValidity();
   const bytes = agg.toSignature();
-  if (signatures[0] instanceof Uint8Array) return bytes;
+  if (signatures[0] instanceof Uint8Array) return hexToBytes(bytes);
   return bytes;
 }
 
