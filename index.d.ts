@@ -18,8 +18,9 @@ export declare class PointG1 extends ProjectivePoint<Fp> {
     static fromPrivateKey(privateKey: PrivateKey): PointG1;
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
-    assertValidity(): void;
+    assertValidity(): this;
     millerLoop(P: PointG2): Fp12;
+    clearCofactor(): this;
     private isOnCurve;
     private isTorsionFree;
 }
@@ -35,11 +36,12 @@ export declare class PointG2 extends ProjectivePoint<Fp2> {
     toSignature(): string;
     toRawBytes(isCompressed?: boolean): Uint8Array;
     toHex(isCompressed?: boolean): string;
-    assertValidity(): void;
+    assertValidity(): this;
     private psi;
     private psi2;
-    clearCofactor(): PointG2;
+    private mulNegX;
     private isOnCurve;
+    clearCofactor(): PointG2;
     private isTorsionFree;
     clearPairingPrecomputes(): void;
     pairingPrecomputes(): [Fp2, Fp2, Fp2][];
