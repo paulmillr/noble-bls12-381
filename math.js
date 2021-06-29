@@ -590,11 +590,11 @@ class ProjectivePoint {
     isZero() {
         return this.z.isZero();
     }
-    getPoint(x, y, z) {
+    createPoint(x, y, z) {
         return new this.constructor(x, y, z);
     }
     getZero() {
-        return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
+        return this.createPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
     }
     equals(rhs) {
         if (this.constructor !== rhs.constructor)
@@ -606,7 +606,7 @@ class ProjectivePoint {
         return xe && ye;
     }
     negate() {
-        return this.getPoint(this.x, this.y.negate(), this.z);
+        return this.createPoint(this.x, this.y.negate(), this.z);
     }
     toString(isAffine = true) {
         if (!isAffine) {
@@ -616,7 +616,7 @@ class ProjectivePoint {
         return `Point<x=${x}, y=${y}>`;
     }
     fromAffineTuple(xy) {
-        return this.getPoint(xy[0], xy[1], this.C.ONE);
+        return this.createPoint(xy[0], xy[1], this.C.ONE);
     }
     toAffine(invZ = this.z.invert()) {
         return [this.x.multiply(invZ), this.y.multiply(invZ)];
@@ -639,7 +639,7 @@ class ProjectivePoint {
         const X3 = H.multiply(S).multiply(2n);
         const Y3 = W.multiply(B.multiply(4n).subtract(H)).subtract(y.multiply(y).multiply(8n).multiply(SS));
         const Z3 = SSS.multiply(8n);
-        return this.getPoint(X3, Y3, Z3);
+        return this.createPoint(X3, Y3, Z3);
     }
     add(rhs) {
         if (this.constructor !== rhs.constructor)
@@ -674,7 +674,7 @@ class ProjectivePoint {
         const X3 = V.multiply(A);
         const Y3 = U.multiply(V2VV.subtract(A)).subtract(VVV.multiply(U2));
         const Z3 = VVV.multiply(W);
-        return this.getPoint(X3, Y3, Z3);
+        return this.createPoint(X3, Y3, Z3);
     }
     subtract(rhs) {
         if (this.constructor !== rhs.constructor)
@@ -683,46 +683,43 @@ class ProjectivePoint {
     }
     multiplyUnsafe(scalar) {
         let n = scalar;
-        if (n instanceof Fp)
-            n = n.value;
+        let bits = Fp.ORDER;
         if (typeof n === 'number')
             n = BigInt(n);
-        if (n <= 0) {
-            throw new Error('Point#multiply: invalid scalar, expected positive integer');
+        if (typeof n !== 'bigint' || n <= 0 || n > bits) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
         }
-        let p = this.getZero();
+        let point = this.getZero();
         let d = this;
         while (n > 0n) {
             if (n & 1n)
-                p = p.add(d);
+                point = point.add(d);
             d = d.double();
             n >>= 1n;
         }
-        return p;
+        return point;
     }
     multiply(scalar) {
         let n = scalar;
-        if (typeof n !== 'bigint' || n <= 0) {
-            throw new Error('Point#multiply: invalid scalar, expected positive integer');
-        }
-        let p = this.getZero();
-        let d = this;
-        let f = this.getZero();
         let bits = Fp.ORDER;
-        if (n > bits)
-            throw new Error('higher:' + n);
+        if (typeof n !== 'bigint' || n <= 0 || n > bits) {
+            throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
+        }
+        let point = this.getZero();
+        let fake = this.getZero();
+        let d = this;
         while (bits > 0n) {
             if (n & 1n) {
-                p = p.add(d);
+                point = point.add(d);
             }
             else {
-                f = f.add(d);
+                fake = fake.add(d);
             }
             d = d.double();
             n >>= 1n;
             bits >>= 1n;
         }
-        return p;
+        return point;
     }
     maxBits() {
         return this.C.MAX_BITS;

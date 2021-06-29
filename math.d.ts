@@ -177,7 +177,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     private _MPRECOMPUTES;
     constructor(x: T, y: T, z: T, C: Constructor<T>);
     isZero(): boolean;
-    getPoint<TT extends this>(x: T, y: T, z: T): TT;
+    createPoint<TT extends this>(x: T, y: T, z: T): TT;
     getZero(): this;
     equals(rhs: ProjectivePoint<T>): boolean;
     negate(): this;
@@ -189,7 +189,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     double(): this;
     add(rhs: this): this;
     subtract(rhs: this): this;
-    multiplyUnsafe(scalar: number | bigint | Fp): this;
+    multiplyUnsafe(scalar: bigint): this;
     multiply(scalar: bigint): this;
     private maxBits;
     private precomputeWindow;
