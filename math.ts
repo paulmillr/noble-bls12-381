@@ -1256,6 +1256,65 @@ export function millerLoop(ell: [Fp2, Fp2, Fp2][], g1: [Fp, Fp]): Fp12 {
   return f12.conjugate();
 }
 
+// https://github.com/mratsim/constantine/blob/master/constantine/pairing/miller_loops.nim#L229
+function miller_init_double_then_add(Q: Fp2, P: Fp, numDoublings: number): Fp12 {
+  // static:
+  //   doAssert f.c0 is Fp4
+  //   doAssert FT.C == F1.C
+  //   doAssert FT.C == F2.C
+  //   doAssert numDoublings >= 1
+
+  // {.push checks: off.} # No OverflowError or IndexError allowed
+  // var line {.noInit.}: Line[F2]
+
+  // # First step: 0b10, T <- Q, f = 1 (mod p¹²), f *= line
+  // # ----------------------------------------------------
+  let T = Q;
+  let f;
+  // f.square() -> square(1)
+
+  // https://github.com/mratsim/constantine/blob/master/constantine/pairing/lines_projective.nim
+  let line = line_double(T, P);
+  while (numDoublings >= 2) {
+    f = f.mul_sparse_sparse(line, line)
+    line = line_double(T, P)
+    f = f.mul(line)
+    for (let i = 2; i < numDoublings; i++) {
+      f = f.square();
+      line = line_double(T, P);
+      f = f.mul(line);
+    }
+  }
+
+  if (numDoublings === 1) {
+    // The line corresponds to a sparse xy000z Fp12
+    // var line2 {.noInit.}: Line[F2]
+    let line2 = line_add(T, Q, P)
+    f = f.mul_sparse_sparse(line, line2)
+  } else {
+    let line = line_add(T, Q, P)
+    f = f.mul(line)
+  }
+  return f;
+}
+function miller_accum_double_then_add(Q: Fp2, P: Fp, numDoublings: number, add = true) {
+  let T;
+  let f;
+  for (let i = 0; i < numDoublings; i++) {
+    f = f.square();
+    let line = line_double(T, P);
+    f = f.mul(line);
+  }
+
+  if (add) {
+    let line = line_add(T, Q, P);
+    f = f.mul(line);
+  }
+  return f;
+}
+
+
+
 const ut_root = new Fp6([Fp2.ZERO, Fp2.ONE, Fp2.ZERO]);
 const wsq = new Fp12([ut_root, Fp6.ZERO]);
 const wsq_inv = wsq.invert();
