@@ -30,7 +30,7 @@ exports.utils = {
             throw new Error("The environment doesn't have sha256 function");
         }
     },
-    randomPrivateKey: (bytesLength = 32) => {
+    randomBytes: (bytesLength = 32) => {
         if (typeof self == 'object' && 'crypto' in self) {
             return self.crypto.getRandomValues(new Uint8Array(bytesLength));
         }
@@ -41,6 +41,16 @@ exports.utils = {
         else {
             throw new Error("The environment doesn't have randomBytes function");
         }
+    },
+    randomPrivateKey: () => {
+        let i = 32;
+        while (i--) {
+            const b32 = exports.utils.randomBytes(32);
+            const num = bytesToNumberBE(b32);
+            if (num > 1n && num < math_1.CURVE.r)
+                return b32;
+        }
+        throw new Error('Valid private key was not found in 32 iterations. PRNG is broken');
     },
     mod: math_1.mod,
     getDSTLabel() {

@@ -5,7 +5,8 @@ declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
 export declare const utils: {
     sha256(message: Uint8Array): Promise<Uint8Array>;
-    randomPrivateKey: (bytesLength?: number) => Uint8Array;
+    randomBytes: (bytesLength?: number) => Uint8Array;
+    randomPrivateKey: () => Uint8Array;
     mod: typeof mod;
     getDSTLabel(): string;
     setDSTLabel(newLabel: string): void;

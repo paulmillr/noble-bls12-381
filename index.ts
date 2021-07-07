@@ -48,7 +48,7 @@ export const utils = {
       throw new Error("The environment doesn't have sha256 function");
     }
   },
-  randomPrivateKey: (bytesLength: number = 32): Uint8Array => {
+  randomBytes: (bytesLength: number = 32): Uint8Array => {
     // @ts-ignore
     if (typeof self == 'object' && 'crypto' in self) {
       // @ts-ignore
@@ -61,6 +61,17 @@ export const utils = {
     } else {
       throw new Error("The environment doesn't have randomBytes function");
     }
+  },
+  // NIST SP 800-56A rev 3, section 5.6.1.2.2
+  // https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
+  randomPrivateKey: (): Uint8Array => {
+    let i = 32;
+    while (i--) {
+      const b32 = utils.randomBytes(32);
+      const num = bytesToNumberBE(b32);
+      if (num > 1n && num < CURVE.r) return b32;
+    }
+    throw new Error('Valid private key was not found in 32 iterations. PRNG is broken');
   },
   mod,
   getDSTLabel() {
