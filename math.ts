@@ -867,16 +867,19 @@ export abstract class ProjectivePoint<T extends Field<T>> {
     return this.add(rhs.negate());
   }
 
+  private validateScalar(n: bigint | number): bigint {
+    if (typeof n === 'number') n = BigInt(n);
+    if (typeof n !== 'bigint' || n <= 0 || n > CURVE.r) {
+      throw new Error(`Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`);
+    }
+    return n;
+  }
+
   // Non-constant-time multiplication. Uses double-and-add algorithm.
   // It's faster, but should only be used when you don't care about
   // an exposed private key e.g. sig verification.
   multiplyUnsafe(scalar: bigint): this {
-    let n = scalar;
-    let bits = Fp.ORDER;
-    if (typeof n === 'number') n = BigInt(n);
-    if (typeof n !== 'bigint' || n <= 0 || n > bits) {
-      throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
-    }
+    let n = this.validateScalar(scalar);
     let point = this.getZero();
     let d: this = this;
     while (n > 0n) {
@@ -889,14 +892,11 @@ export abstract class ProjectivePoint<T extends Field<T>> {
 
   // Constant-time multiplication
   multiply(scalar: bigint): this {
-    let n = scalar;
-    let bits = Fp.ORDER;
-    if (typeof n !== 'bigint' || n <= 0 || n > bits) {
-      throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
-    }
+    let n = this.validateScalar(scalar);
     let point = this.getZero();
     let fake = this.getZero();
     let d: this = this;
+    let bits = Fp.ORDER;
     while (bits > 0n) {
       if (n & 1n) {
         point = point.add(d);
@@ -992,11 +992,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
 
   // Constant time multiplication. Uses wNAF.
   multiplyPrecomputed(scalar: bigint): this {
-    const big = typeof scalar === 'bigint';
-    if (!big || scalar < 1n) {
-      throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
-    }
-    return this.wNAF(scalar)[0];
+    return this.wNAF(this.validateScalar(scalar))[0];
   }
 }
 

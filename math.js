@@ -681,14 +681,16 @@ class ProjectivePoint {
             throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         return this.add(rhs.negate());
     }
-    multiplyUnsafe(scalar) {
-        let n = scalar;
-        let bits = Fp.ORDER;
+    validateScalar(n) {
         if (typeof n === 'number')
             n = BigInt(n);
-        if (typeof n !== 'bigint' || n <= 0 || n > bits) {
-            throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
+        if (typeof n !== 'bigint' || n <= 0 || n > exports.CURVE.r) {
+            throw new Error(`Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`);
         }
+        return n;
+    }
+    multiplyUnsafe(scalar) {
+        let n = this.validateScalar(scalar);
         let point = this.getZero();
         let d = this;
         while (n > 0n) {
@@ -700,14 +702,11 @@ class ProjectivePoint {
         return point;
     }
     multiply(scalar) {
-        let n = scalar;
-        let bits = Fp.ORDER;
-        if (typeof n !== 'bigint' || n <= 0 || n > bits) {
-            throw new Error('Point#multiply: invalid scalar, expected positive integer < CURVE.r');
-        }
+        let n = this.validateScalar(scalar);
         let point = this.getZero();
         let fake = this.getZero();
         let d = this;
+        let bits = Fp.ORDER;
         while (bits > 0n) {
             if (n & 1n) {
                 point = point.add(d);
@@ -783,11 +782,7 @@ class ProjectivePoint {
         return [p, f];
     }
     multiplyPrecomputed(scalar) {
-        const big = typeof scalar === 'bigint';
-        if (!big || scalar < 1n) {
-            throw new Error('ProjectivePoint#multiply: invalid scalar, expected positive integer');
-        }
-        return this.wNAF(scalar)[0];
+        return this.wNAF(this.validateScalar(scalar))[0];
     }
 }
 exports.ProjectivePoint = ProjectivePoint;

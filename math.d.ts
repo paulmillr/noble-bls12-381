@@ -189,6 +189,7 @@ export declare abstract class ProjectivePoint<T extends Field<T>> {
     double(): this;
     add(rhs: this): this;
     subtract(rhs: this): this;
+    private validateScalar;
     multiplyUnsafe(scalar: bigint): this;
     multiply(scalar: bigint): this;
     private maxBits;
