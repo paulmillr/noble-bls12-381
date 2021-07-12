@@ -870,7 +870,9 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   private validateScalar(n: bigint | number): bigint {
     if (typeof n === 'number') n = BigInt(n);
     if (typeof n !== 'bigint' || n <= 0 || n > CURVE.r) {
-      throw new Error(`Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`);
+      throw new Error(
+        `Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`
+      );
     }
     return n;
   }
