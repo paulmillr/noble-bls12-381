@@ -358,7 +358,8 @@ export class PointG1 extends ProjectivePoint<Fp> {
 
   // σ endomorphism
   private sigma(): PointG1 {
-    const BETA = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+    const BETA =
+      0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
     const [x, y] = this.toAffine();
     return new PointG1(x.multiply(BETA), y);
   }

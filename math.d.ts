@@ -5,7 +5,6 @@ export declare const CURVE: {
     Gx: bigint;
     Gy: bigint;
     b: bigint;
-    hEff: bigint;
     P2: bigint;
     h2: bigint;
     G2x: bigint[];

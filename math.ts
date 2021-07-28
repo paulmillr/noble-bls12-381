@@ -19,7 +19,6 @@ export const CURVE = {
   Gx: 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bbn,
   Gy: 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1n,
   b: 4n,
-  hEff: 0xd201000000010001n,
 
   // G2 is the order-q subgroup of E2(Fp²) : y² = x³+4(1+√−1),
   // where Fp2 is Fp[√−1]/(x2+1). #E2(Fp2 ) = h2q, where
