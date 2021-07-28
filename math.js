@@ -118,7 +118,10 @@ class Fp {
         return new Fp(powMod(this.value, n, Fp.ORDER));
     }
     sqrt() {
-        return new Fp(powMod(this.value, (Fp.ORDER + 1n) / 4n, Fp.ORDER));
+        const root = this.pow((Fp.ORDER + 1n) / 4n);
+        if (!root.square().equals(this))
+            return;
+        return root;
     }
     subtract(rhs) {
         return new Fp(this.value - rhs.value);

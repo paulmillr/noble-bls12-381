@@ -186,8 +186,10 @@ export class Fp implements Field<Fp> {
   // √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
   // It's possible to unwrap the exponentiation, but (P+1)/4 has 228 1's out of 379 bits.
   // https://eprint.iacr.org/2012/685.pdf
-  sqrt(): Fp {
-    return new Fp(powMod(this.value, (Fp.ORDER + 1n) / 4n, Fp.ORDER));
+  sqrt(): Fp | undefined {
+    const root = this.pow((Fp.ORDER + 1n) / 4n);
+    if (!root.square().equals(this)) return;
+    return root;
   }
 
   subtract(rhs: Fp): Fp {

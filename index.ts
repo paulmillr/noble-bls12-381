@@ -271,6 +271,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
       const x = new Fp(mod(compressedValue, POW_2_381));
       const right = x.pow(3n).add(new Fp(CURVE.b)); // y² = x³ + b
       let y = right.sqrt();
+      if (!y) throw new Error('Invalid compressed G1 point');
       const aflag = mod(compressedValue, POW_2_382) / POW_2_381;
       if ((y.value * 2n) / P !== aflag) y = y.negate();
       point = new PointG1(x, y);
