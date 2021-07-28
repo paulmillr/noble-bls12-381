@@ -82,9 +82,12 @@ function invert(number, modulo = exports.CURVE.P) {
         const r = b % a;
         const m = x - u * q;
         const n = y - v * q;
-        [b, a] = [a, r];
-        [x, y] = [u, v];
-        [u, v] = [m, n];
+        b = a;
+        a = r;
+        x = u;
+        y = v;
+        u = m;
+        v = n;
     }
     const gcd = b;
     if (gcd !== 1n)
@@ -131,8 +134,9 @@ class Fp {
         return new Fp(this.value * rhs);
     }
     div(rhs) {
-        const inv = typeof rhs === 'bigint' ? new Fp(rhs).invert().value : rhs.invert();
-        return this.multiply(inv);
+        if (typeof rhs === 'bigint')
+            rhs = new Fp(rhs);
+        return this.multiply(rhs.invert());
     }
     toString() {
         const str = this.value.toString(16).padStart(96, '0');
@@ -181,8 +185,9 @@ class Fr {
         return new Fr(this.value * rhs);
     }
     div(rhs) {
-        const inv = typeof rhs === 'bigint' ? new Fr(rhs).invert().value : rhs.invert();
-        return this.multiply(inv);
+        if (typeof rhs === 'bigint')
+            rhs = new Fr(rhs);
+        return this.multiply(rhs.invert());
     }
     legendre() {
         return this.pow((Fr.ORDER - 1n) / 2n);

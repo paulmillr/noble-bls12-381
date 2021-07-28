@@ -201,8 +201,8 @@ export class Fp implements Field<Fp> {
   }
 
   div(rhs: Fp | bigint): Fp {
-    const inv = typeof rhs === 'bigint' ? new Fp(rhs).invert().value : rhs.invert();
-    return this.multiply(inv);
+    if (typeof rhs === 'bigint') rhs = new Fp(rhs);
+    return this.multiply(rhs.invert());
   }
 
   toString() {
@@ -265,8 +265,8 @@ export class Fr implements Field<Fr> {
   }
 
   div(rhs: Fr | bigint): Fr {
-    const inv = typeof rhs === 'bigint' ? new Fr(rhs).invert().value : rhs.invert();
-    return this.multiply(inv);
+    if (typeof rhs === 'bigint') rhs = new Fr(rhs);
+    return this.multiply(rhs.invert());
   }
   legendre(): Fr {
     return this.pow((Fr.ORDER - 1n) / 2n);
