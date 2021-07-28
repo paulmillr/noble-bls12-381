@@ -4,27 +4,27 @@ const G2 = bls.PointG2.BASE;
 const CURVE_ORDER = bls.CURVE.r;
 
 describe('pairing', () => {
-  it('should create negative G1 pairing', () => {
+  it('creates negative G1 pairing', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = bls.pairing(G1.negate(), G2);
     expect(p1.multiply(p2)).toEqual(bls.Fp12.ONE);
   });
-  it('should create negative G2 pairing', () => {
+  it('creates negative G2 pairing', () => {
     const p2 = bls.pairing(G1.negate(), G2);
     const p3 = bls.pairing(G1, G2.negate());
     expect(p2).toEqual(p3);
   });
-  it('should create proper pairing output order', () => {
+  it('creates proper pairing output order', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = p1.pow(CURVE_ORDER);
     expect(p2).toEqual(bls.Fp12.ONE);
   });
-  it('should create right pairing with bilinearity on G1', () => {
+  it('G1 billinearity', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = bls.pairing(G1.multiply(2n), G2);
     expect(p1.multiply(p1)).toEqual(p2);
   });
-  it('pairing should not degenerate', () => {
+  it('should not degenerate', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = bls.pairing(G1.multiply(2n), G2);
     const p3 = bls.pairing(G1, G2.negate());
@@ -32,17 +32,17 @@ describe('pairing', () => {
     expect(p1).not.toEqual(p3);
     expect(p2).not.toEqual(p3);
   });
-  it('should create right pairing with bilinearity on G2', () => {
+  it('G2 billinearity', () => {
     const p1 = bls.pairing(G1, G2);
     const p2 = bls.pairing(G1, G2.multiply(2n));
     expect(p1.multiply(p1)).toEqual(p2);
   });
-  it('should create right pairing composite check', () => {
+  it('proper pairing composite check', () => {
     const p1 = bls.pairing(G1.multiply(37n), G2.multiply(27n));
     const p2 = bls.pairing(G1.multiply(999n), G2);
     expect(p1).toEqual(p2);
   });
-  it('test pairing results against https://github.com/zkcrypto/pairing', () => {
+  it('vectors from https://github.com/zkcrypto/pairing', () => {
     const p1 = bls.pairing(G1, G2);
     expect(p1).toEqual(
       bls.Fp12.fromTuple([
@@ -61,7 +61,7 @@ describe('pairing', () => {
       ])
     );
   });
-  it('test finalExponentiate', () => {
+  it('finalExponentiate is correct', () => {
     const p1 = bls.Fp12.fromTuple([
       690392658038414015999440694435086329841032295415825549843130960252222448232974816207293269712691075396080336239827n,
       1673244384695948045466836192250093912021245353707563547917201356526057153141766171738038843400145227470982267854187n,

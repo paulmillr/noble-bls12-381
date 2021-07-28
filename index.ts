@@ -247,6 +247,10 @@ function normalizePrivKey(key: PrivateKey): bigint {
   return int;
 }
 
+function assertType(item: any, type: any) {
+  if (!(item instanceof type)) throw new Error('Expected Fp* argument, not number/bigint');
+}
+
 // Point on G1 curve: (x, y)
 // We add z because we work with projective coordinates instead of affine x-y: that's much faster.
 export class PointG1 extends ProjectivePoint<Fp> {
@@ -255,6 +259,9 @@ export class PointG1 extends ProjectivePoint<Fp> {
 
   constructor(x: Fp, y: Fp, z: Fp = Fp.ONE) {
     super(x, y, z, Fp);
+    assertType(x, Fp);
+    assertType(y, Fp);
+    assertType(z, Fp);
   }
 
   static fromHex(bytes: Bytes) {
@@ -337,7 +344,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
   }
 
   clearCofactor() {
-    return this.multiplyUnsafe(CURVE.hEff);
+    return this.multiplyUnsafe(CURVE.h);
   }
 
   // Checks for equation y² = x³ + b
@@ -349,12 +356,28 @@ export class PointG1 extends ProjectivePoint<Fp> {
     return left.subtract(right).isZero();
   }
 
+  // σ endomorphism
+  private sigma(): PointG1 {
+    const BETA = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+    const [x, y] = this.toAffine();
+    return new PointG1(x.multiply(BETA), y);
+  }
+
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
-  // We are simply multiplying by 1 - x to clear the cofactor.
+  // https://eprint.iacr.org/2019/814.pdf
   private isTorsionFree(): boolean {
-    return !this.clearCofactor().isZero();
+    // (z² − 1)/3
+    const c1 = 0x396c8c005555e1560000000055555555n;
+    const P = this;
+    const S = P.sigma();
+    const Q = S.double();
+    const S2 = S.sigma();
+    // [(z² − 1)/3](2σ(P) − P − σ²(P)) − σ²(P) = O
+    const left = Q.subtract(P).subtract(S2).multiplyUnsafe(c1);
+    const C = left.subtract(S2);
+    return C.isZero();
   }
 }
 
@@ -368,6 +391,9 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   constructor(x: Fp2, y: Fp2, z: Fp2 = Fp2.ONE) {
     super(x, y, z, Fp2);
+    assertType(x, Fp2);
+    assertType(y, Fp2);
+    assertType(z, Fp2);
   }
 
   // Encodes byte string to elliptic curve

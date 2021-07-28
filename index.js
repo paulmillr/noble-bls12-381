@@ -205,9 +205,16 @@ function normalizePrivKey(key) {
         throw new Error('Private key must be 0 < key < CURVE.r');
     return int;
 }
+function assertType(item, type) {
+    if (!(item instanceof type))
+        throw new Error('Expected Fp* argument, not number/bigint');
+}
 class PointG1 extends math_1.ProjectivePoint {
     constructor(x, y, z = math_1.Fp.ONE) {
         super(x, y, z, math_1.Fp);
+        assertType(x, math_1.Fp);
+        assertType(y, math_1.Fp);
+        assertType(z, math_1.Fp);
     }
     static fromHex(bytes) {
         bytes = ensureBytes(bytes);
@@ -289,7 +296,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
     }
     clearCofactor() {
-        return this.multiplyUnsafe(math_1.CURVE.hEff);
+        return this.multiplyUnsafe(math_1.CURVE.h);
     }
     isOnCurve() {
         const b = new math_1.Fp(math_1.CURVE.b);
@@ -298,8 +305,20 @@ class PointG1 extends math_1.ProjectivePoint {
         const right = b.multiply(z.pow(3n));
         return left.subtract(right).isZero();
     }
+    sigma() {
+        const BETA = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaacn;
+        const [x, y] = this.toAffine();
+        return new PointG1(x.multiply(BETA), y);
+    }
     isTorsionFree() {
-        return !this.clearCofactor().isZero();
+        const c1 = 0x396c8c005555e1560000000055555555n;
+        const P = this;
+        const S = P.sigma();
+        const Q = S.double();
+        const S2 = S.sigma();
+        const left = Q.subtract(P).subtract(S2).multiplyUnsafe(c1);
+        const C = left.subtract(S2);
+        return C.isZero();
     }
 }
 exports.PointG1 = PointG1;
@@ -308,6 +327,9 @@ PointG1.ZERO = new PointG1(math_1.Fp.ONE, math_1.Fp.ONE, math_1.Fp.ZERO);
 class PointG2 extends math_1.ProjectivePoint {
     constructor(x, y, z = math_1.Fp2.ONE) {
         super(x, y, z, math_1.Fp2);
+        assertType(x, math_1.Fp2);
+        assertType(y, math_1.Fp2);
+        assertType(z, math_1.Fp2);
     }
     static async hashToCurve(msg) {
         msg = ensureBytes(msg);

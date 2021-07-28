@@ -114,7 +114,7 @@ describe('bls12-381 Point', () => {
       expect(double).toEqual(a.multiply(2n));
       expect(double).toEqual(a.add(a));
     });
-    it('should be pdoubled and laced on curve vector 2', () => {
+    it('should be pdoubled and placed on curve vector 2', () => {
       const a = new PointG1(
         new Fp(
           3924344720014921989021119511230386772731826098545970939506931087307386672210285223838080721449761235230077903044877n
@@ -143,6 +143,15 @@ describe('bls12-381 Point', () => {
       );
       expect(double).toEqual(a.multiply(2n));
       expect(double).toEqual(a.add(a));
+    });
+    it('should not validate incorrect point', () => {
+      const x =
+        499001545268060011619089734015590154568173930614466321429631711131511181286230338880376679848890024401335766847607n;
+      const y =
+        3934582309586258715640230772291917282844636728991757779640464479794033391537662970190753981664259511166946374555673n;
+
+      const p = new PointG1(new Fp(x), new Fp(y));
+      expect(() => p.assertValidity()).toThrowError();
     });
   });
   describe('Point with Fp2 coordinates', () => {
@@ -429,13 +438,16 @@ describe('bls12-381 Point', () => {
     ];
     // Re-define validateScalar to allow scalars higher than CURVE.r
     // @ts-ignore
-    PointG2.prototype.validateScalar = function(n: bigint | number): bigint {
+    PointG2.prototype.validateScalar = function (n: bigint | number): bigint {
       if (typeof n === 'number') n = BigInt(n);
-      if (typeof n !== 'bigint' || n <= 0) { // n > CURVE.r
-        throw new Error(`Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`);
+      if (typeof n !== 'bigint' || n <= 0) {
+        // n > CURVE.r
+        throw new Error(
+          `Point#multiply: invalid scalar, expected positive integer < CURVE.r. Got: ${n}`
+        );
       }
       return n;
-    }
+    };
     for (let p of points) {
       const ours = p.clearCofactor();
       const shouldBe = p.multiplyUnsafe(CURVE.h2Eff);

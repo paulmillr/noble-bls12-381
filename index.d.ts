@@ -23,6 +23,7 @@ export declare class PointG1 extends ProjectivePoint<Fp> {
     millerLoop(P: PointG2): Fp12;
     clearCofactor(): this;
     private isOnCurve;
+    private sigma;
     private isTorsionFree;
 }
 export declare class PointG2 extends ProjectivePoint<Fp2> {
