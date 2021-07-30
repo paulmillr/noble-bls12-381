@@ -103,18 +103,9 @@ function getPublicKey(privateKey: string): string;
 
 ##### `sign(message, privateKey)`
 ```typescript
-function sign(
-  message: Uint8Array,
-  privateKey: Uint8Array
-): Promise<Uint8Array>;
-function sign(
-  message: string,
-  privateKey: string
-): Promise<string>;
-function sign(
-  message: PointG2,
-  privateKey: Uint8Array | string | bigint
-): Promise<PointG2>;
+function sign(message: Uint8Array, privateKey: Uint8Array): Promise<Uint8Array>;
+function sign(message: string, privateKey: string): Promise<Uint8Array>;
+function sign(message: PointG2, privateKey: Uint8Array | string | bigint): Promise<PointG2>;
 ```
 - `message: Uint8Array | string` - message which would be hashed & signed
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
