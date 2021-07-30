@@ -262,8 +262,8 @@ aggregatePublicKeys/512 x 256 ops/sec @ 3ms/op
 aggregatePublicKeys/2048 x 81 ops/sec @ 12ms/op
 aggregateSignatures/32 x 452 ops/sec @ 2ms/op
 aggregateSignatures/128 x 240 ops/sec @ 4ms/op
-eaggregateSignatures/512 x 81 ops/sec @ 12ms/op
- aggregateSignatures/2048 x 22 ops/sec @ 43ms/op
+aggregateSignatures/512 x 81 ops/sec @ 12ms/op
+aggregateSignatures/2048 x 22 ops/sec @ 43ms/op
 ```
 
 ## Security
