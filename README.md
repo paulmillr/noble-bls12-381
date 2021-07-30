@@ -157,16 +157,16 @@ function verifyBatch(
 - `publicKeys: (Uint8Array | string | PointG1)[]` - e.g. that were generated from `privateKeys` by `getPublicKey`
 - Returns `Promise<boolean>`: `true` / `false` whether the signature matches hashes
 
-##### `pairing(G1Point, G2Point)`
+##### `pairing(pointG1, pointG2)`
 ```typescript
 function pairing(
-  g1Point: PointG1,
-  g2Point: PointG2,
+  pointG1: PointG1,
+  pointG2: PointG2,
   withFinalExponent: boolean = true
 ): Fp12
 ```
-- `g1Point: PointG1` - simple point, `x, y` are bigints
-- `g2Point: PointG2` - point over curve with complex numbers (`(x₁, x₂+i), (y₁, y₂+i)`) - pairs of bigints
+- `pointG1: PointG1` - simple point, `x, y` are bigints
+- `pointG2: PointG2` - point over curve with complex numbers (`(x₁, x₂+i), (y₁, y₂+i)`) - pairs of bigints
 - `withFinalExponent: boolean` - should the result be powered by curve order; very slow
 - Returns `Fp12`: paired point over 12-degree extension field.
 
@@ -201,8 +201,8 @@ bls.CURVE.Gy
 bls.Fp      // field over Fp
 bls.Fp2     // field over Fp₂
 bls.Fp12    // finite extension field over irreducible polynominal
-bls.G1Point // projective point (xyz) at G1
-bls.G2Point // projective point (xyz) at G2
+bls.PointG1 // projective point (xyz) at G1
+bls.PointG2 // projective point (xyz) at G2
 ```
 
 ## Internals
