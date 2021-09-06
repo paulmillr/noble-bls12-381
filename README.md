@@ -23,8 +23,7 @@ To learn more about internals, check out [BLS12-381 for the rest of us](https://
 - Check out all libraries:
   [secp256k1](https://github.com/paulmillr/noble-secp256k1),
   [ed25519](https://github.com/paulmillr/noble-ed25519),
-  [bls12-381](https://github.com/paulmillr/noble-bls12-381),
-  [ripemd160](https://github.com/paulmillr/noble-ripemd160)
+  [bls12-381](https://github.com/paulmillr/noble-bls12-381)
 
 ## Usage
 
