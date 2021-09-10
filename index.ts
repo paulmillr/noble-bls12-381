@@ -30,6 +30,7 @@ const SHA256_DIGEST_SIZE = 32;
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
 export const utils = {
+  hashToField: hash_to_field,
   async sha256(message: Uint8Array): Promise<Uint8Array> {
     // @ts-ignore
     if (typeof self == 'object' && 'crypto' in self) {
@@ -214,7 +215,8 @@ async function expand_message_xmd(
 async function hash_to_field(
   msg: Uint8Array,
   degree: number,
-  isRandomOracle = true
+  isRandomOracle = true,
+  field = CURVE.P
 ): Promise<bigint[][]> {
   const count = isRandomOracle ? 2 : 1;
   const m = degree;
@@ -228,7 +230,7 @@ async function hash_to_field(
     for (let j = 0; j < m; j++) {
       const elm_offset = L * (j + i * m);
       const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-      e[j] = mod(os2ip(tv), CURVE.P);
+      e[j] = mod(os2ip(tv), field);
     }
     u[i] = e;
   }

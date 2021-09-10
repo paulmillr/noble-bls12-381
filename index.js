@@ -15,6 +15,7 @@ const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 exports.utils = {
+    hashToField: hash_to_field,
     async sha256(message) {
         if (typeof self == 'object' && 'crypto' in self) {
             const buffer = await self.crypto.subtle.digest('SHA-256', message.buffer);
@@ -169,7 +170,7 @@ async function expand_message_xmd(msg, DST, lenInBytes) {
     const pseudo_random_bytes = concatBytes(...b);
     return pseudo_random_bytes.slice(0, lenInBytes);
 }
-async function hash_to_field(msg, degree, isRandomOracle = true) {
+async function hash_to_field(msg, degree, isRandomOracle = true, field = math_1.CURVE.P) {
     const count = isRandomOracle ? 2 : 1;
     const m = degree;
     const L = 64;
@@ -182,7 +183,7 @@ async function hash_to_field(msg, degree, isRandomOracle = true) {
         for (let j = 0; j < m; j++) {
             const elm_offset = L * (j + i * m);
             const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-            e[j] = math_1.mod(os2ip(tv), math_1.CURVE.P);
+            e[j] = math_1.mod(os2ip(tv), field);
         }
         u[i] = e;
     }
