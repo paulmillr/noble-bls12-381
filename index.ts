@@ -29,6 +29,31 @@ const SHA256_DIGEST_SIZE = 32;
 // Use utils.getDSTLabel(), utils.setDSTLabel(value)
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 
+// Default hash_to_field options are for hash to G2.
+//
+// Parameter definitions are in section 5.3 of the spec unless otherwise noted.
+// Parameter values come from section 8.8.2 of the spec.
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-8.8.2
+//
+// Base field F is GF(p^m)
+// p = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+// m = 2 (or 1 for G1 see section 8.8.1)
+// k = 128
+let htfDefaults = {
+  // DST: a domain separation tag
+  // defined in section 2.2.5
+  DST: DST_LABEL,
+  // p: the characteristic of F
+  //    where F is a finite field of characteristic p and order q = p^m
+  p: CURVE.P,
+  // m: the extension degree of F, m >= 1
+  //     where F is a finite field of characteristic p and order q = p^m
+  m: 2,
+  // k: the target security level for the suite in bits
+  // defined in section 5.1
+  k: 128,
+};
+
 export const utils = {
   hashToField: hash_to_field,
   async sha256(message: Uint8Array): Promise<Uint8Array> {
@@ -209,20 +234,27 @@ async function expand_message_xmd(
 }
 
 // hashes arbitrary-length byte strings to a list of one or more elements of a finite field F
-// degree - extension degree, 1 for Fp, 2 for Fp2
-// isRandomOracle - specifies NU or RO as per spec
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3
+// Inputs:
+// msg - a byte string containing the message to hash.
+// count - the number of elements of F to output.
+// Outputs:
+// [u_0, ..., u_(count - 1)], a list of field elements.
 async function hash_to_field(
   msg: Uint8Array,
-  degree: number,
-  isRandomOracle = true,
-  field = CURVE.P
+  count: number,
+  options = htfDefaults,
 ): Promise<bigint[][]> {
-  const count = isRandomOracle ? 2 : 1;
-  const m = degree;
-  const L = 64; // 64 for sha2, shake, sha3, blake
+  // if options is provided but incomplete, fill any missing fields with the
+  // value in hftDefaults (ie hash to G2).
+  const DSTstring= "DST" in options ? options.DST : htfDefaults.DST;
+  const p = "p" in options ? options.p : htfDefaults.p;
+  const m = "m" in options ? options.m : htfDefaults.m;
+  const k = "k" in options ? options.k : htfDefaults.k;
+  const log2p = p.toString(2).length;
+  const L = Math.ceil((log2p + k) / 8) // section 5.1 of ietf draft link above
   const len_in_bytes = count * m * L;
-  const DST = stringToBytes(DST_LABEL);
+  const DST = stringToBytes(DSTstring);
   const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
   const u = new Array(count);
   for (let i = 0; i < count; i++) {
@@ -230,7 +262,7 @@ async function hash_to_field(
     for (let j = 0; j < m; j++) {
       const elm_offset = L * (j + i * m);
       const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-      e[j] = mod(os2ip(tv), field);
+      e[j] = mod(os2ip(tv), p);
     }
     u[i] = e;
   }

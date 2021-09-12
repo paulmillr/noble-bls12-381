@@ -12,7 +12,12 @@ export declare const utils: {
     getDSTLabel(): string;
     setDSTLabel(newLabel: string): void;
 };
-declare function hash_to_field(msg: Uint8Array, degree: number, isRandomOracle?: boolean, field?: bigint): Promise<bigint[][]>;
+declare function hash_to_field(msg: Uint8Array, count: number, options?: {
+    DST: string;
+    p: bigint;
+    m: number;
+    k: number;
+}): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fp> {
     static BASE: PointG1;
     static ZERO: PointG1;

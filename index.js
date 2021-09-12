@@ -14,6 +14,12 @@ const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
+let htfDefaults = {
+    DST: DST_LABEL,
+    p: math_1.CURVE.P,
+    m: 2,
+    k: 128,
+};
 exports.utils = {
     hashToField: hash_to_field,
     async sha256(message) {
@@ -170,12 +176,15 @@ async function expand_message_xmd(msg, DST, lenInBytes) {
     const pseudo_random_bytes = concatBytes(...b);
     return pseudo_random_bytes.slice(0, lenInBytes);
 }
-async function hash_to_field(msg, degree, isRandomOracle = true, field = math_1.CURVE.P) {
-    const count = isRandomOracle ? 2 : 1;
-    const m = degree;
-    const L = 64;
+async function hash_to_field(msg, count, options = htfDefaults) {
+    const DSTstring = "DST" in options ? options.DST : htfDefaults.DST;
+    const p = "p" in options ? options.p : htfDefaults.p;
+    const m = "m" in options ? options.m : htfDefaults.m;
+    const k = "k" in options ? options.k : htfDefaults.k;
+    const log2p = p.toString(2).length;
+    const L = Math.ceil((log2p + k) / 8);
     const len_in_bytes = count * m * L;
-    const DST = stringToBytes(DST_LABEL);
+    const DST = stringToBytes(DSTstring);
     const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
@@ -183,7 +192,7 @@ async function hash_to_field(msg, degree, isRandomOracle = true, field = math_1.
         for (let j = 0; j < m; j++) {
             const elm_offset = L * (j + i * m);
             const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-            e[j] = math_1.mod(os2ip(tv), field);
+            e[j] = (0, math_1.mod)(os2ip(tv), p);
         }
         u[i] = e;
     }
