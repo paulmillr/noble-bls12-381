@@ -52,6 +52,9 @@ let htfDefaults = {
   // k: the target security level for the suite in bits
   // defined in section 5.1
   k: 128,
+  // option to use a message that has already been processed by
+  // expand_message_xmd
+  expand: true,
 };
 
 export const utils = {
@@ -251,11 +254,15 @@ async function hash_to_field(
   const p = "p" in options ? options.p : htfDefaults.p;
   const m = "m" in options ? options.m : htfDefaults.m;
   const k = "k" in options ? options.k : htfDefaults.k;
+  const expand = "expand" in options ? options.expand : htfDefaults.expand;
   const log2p = p.toString(2).length;
   const L = Math.ceil((log2p + k) / 8) // section 5.1 of ietf draft link above
   const len_in_bytes = count * m * L;
   const DST = stringToBytes(DSTstring);
-  const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+  let pseudo_random_bytes = msg;
+  if (expand) {
+      pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+  }
   const u = new Array(count);
   for (let i = 0; i < count; i++) {
     const e = new Array(m);

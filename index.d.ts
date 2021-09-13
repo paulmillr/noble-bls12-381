@@ -17,6 +17,7 @@ declare function hash_to_field(msg: Uint8Array, count: number, options?: {
     p: bigint;
     m: number;
     k: number;
+    expand: boolean;
 }): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fp> {
     static BASE: PointG1;

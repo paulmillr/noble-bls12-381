@@ -19,6 +19,7 @@ let htfDefaults = {
     p: math_1.CURVE.P,
     m: 2,
     k: 128,
+    expand: true,
 };
 exports.utils = {
     hashToField: hash_to_field,
@@ -181,11 +182,15 @@ async function hash_to_field(msg, count, options = htfDefaults) {
     const p = "p" in options ? options.p : htfDefaults.p;
     const m = "m" in options ? options.m : htfDefaults.m;
     const k = "k" in options ? options.k : htfDefaults.k;
+    const expand = "expand" in options ? options.expand : htfDefaults.expand;
     const log2p = p.toString(2).length;
     const L = Math.ceil((log2p + k) / 8);
     const len_in_bytes = count * m * L;
     const DST = stringToBytes(DSTstring);
-    const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+    let pseudo_random_bytes = msg;
+    if (expand) {
+        pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+    }
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
         const e = new Array(m);
