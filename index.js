@@ -177,27 +177,23 @@ async function expand_message_xmd(msg, DST, lenInBytes) {
     const pseudo_random_bytes = concatBytes(...b);
     return pseudo_random_bytes.slice(0, lenInBytes);
 }
-async function hash_to_field(msg, count, options = htfDefaults) {
-    const DSTstring = "DST" in options ? options.DST : htfDefaults.DST;
-    const p = "p" in options ? options.p : htfDefaults.p;
-    const m = "m" in options ? options.m : htfDefaults.m;
-    const k = "k" in options ? options.k : htfDefaults.k;
-    const expand = "expand" in options ? options.expand : htfDefaults.expand;
-    const log2p = p.toString(2).length;
-    const L = Math.ceil((log2p + k) / 8);
-    const len_in_bytes = count * m * L;
-    const DST = stringToBytes(DSTstring);
+async function hash_to_field(msg, count, options = {}) {
+    const htfOptions = { ...htfDefaults, ...options };
+    const log2p = htfOptions.p.toString(2).length;
+    const L = Math.ceil((log2p + htfOptions.k) / 8);
+    const len_in_bytes = count * htfOptions.m * L;
+    const DST = stringToBytes(htfOptions.DST);
     let pseudo_random_bytes = msg;
-    if (expand) {
+    if (htfOptions.expand) {
         pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
     }
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
-        const e = new Array(m);
-        for (let j = 0; j < m; j++) {
-            const elm_offset = L * (j + i * m);
+        const e = new Array(htfOptions.m);
+        for (let j = 0; j < htfOptions.m; j++) {
+            const elm_offset = L * (j + i * htfOptions.m);
             const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-            e[j] = (0, math_1.mod)(os2ip(tv), p);
+            e[j] = (0, math_1.mod)(os2ip(tv), htfOptions.p);
         }
         u[i] = e;
     }

@@ -283,8 +283,6 @@ describe('bls12-381', () => {
     const options = {
         p: bls.CURVE.r,
         m: 1,
-        DST: bls.utils.getDSTLabel(),
-        k: 128,
         expand: false,
     };
     for (let vector of SCALAR_VECTORS) {
