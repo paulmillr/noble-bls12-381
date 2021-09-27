@@ -236,7 +236,7 @@ Filecoin uses little endian byte arrays for private keys - so ensure to reverse 
 
 ## Speed
 
-To achieve the best speed out of all JS / Python implementations, the library employs optimizations:
+To achieve the best speed out of all JS / Python implementations, the library employs different optimizations:
 
 - cyclotomic exponentation
 - endomorphism for clearing cofactor
