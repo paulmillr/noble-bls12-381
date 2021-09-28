@@ -4,6 +4,7 @@ export { Fp, Fr, Fp2, Fp12, CURVE };
 declare type Bytes = Uint8Array | string;
 declare type PrivateKey = Bytes | bigint | number;
 export declare const utils: {
+    hashToField: typeof hash_to_field;
     sha256(message: Uint8Array): Promise<Uint8Array>;
     randomBytes: (bytesLength?: number) => Uint8Array;
     randomPrivateKey: () => Uint8Array;
@@ -11,6 +12,7 @@ export declare const utils: {
     getDSTLabel(): string;
     setDSTLabel(newLabel: string): void;
 };
+declare function hash_to_field(msg: Uint8Array, count: number, options?: {}): Promise<bigint[][]>;
 export declare class PointG1 extends ProjectivePoint<Fp> {
     static BASE: PointG1;
     static ZERO: PointG1;

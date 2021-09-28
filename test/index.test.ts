@@ -6,6 +6,12 @@ const G2_VECTORS = readFileSync(join(__dirname, 'bls12-381-g2-test-vectors.txt')
   .trim()
   .split('\n')
   .map((l) => l.split(':'));
+// Vectors come from
+// https://github.com/zkcrypto/bls12_381/blob/e501265cd36849a4981fe55e10dc87c38ee2213d/src/hash_to_curve/map_scalar.rs#L20
+const SCALAR_VECTORS = readFileSync(join(__dirname, 'bls12-381-scalar-test-vectors.txt'), 'utf-8')
+  .trim()
+  .split('\n')
+  .map((l) => l.split(':'));
 
 // @ts-ignore
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
@@ -271,6 +277,20 @@ describe('bls12-381', () => {
       const [priv, msg, expected] = vector;
       const sig = await bls.sign(msg, priv);
       expect(sig).toEqual(expected);
+    }
+  });
+  it(`should produce correct scalars (${SCALAR_VECTORS.length} vectors)`, async () => {
+    const options = {
+        p: bls.CURVE.r,
+        m: 1,
+        expand: false,
+    };
+    for (let vector of SCALAR_VECTORS) {
+      const [okmAscii, expectedHex] = vector;
+      const expected = BigInt("0x" + expectedHex);
+      const okm = new Uint8Array(okmAscii.split("").map(c => c.charCodeAt(0)));
+      const scalars = await bls.utils.hashToField(okm, 1, options);
+      expect(scalars[0][0]).toEqual(expected);
     }
   });
   it('should verify signed message', async () => {
