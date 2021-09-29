@@ -82,12 +82,9 @@ function invert(number, modulo = exports.CURVE.P) {
         const r = b % a;
         const m = x - u * q;
         const n = y - v * q;
-        b = a;
-        a = r;
-        x = u;
-        y = v;
-        u = m;
-        v = n;
+        [b, a] = [a, r];
+        [x, y] = [u, v];
+        [u, v] = [m, n];
     }
     const gcd = b;
     if (gcd !== 1n)

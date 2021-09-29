@@ -14,36 +14,34 @@ const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
 let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-let htfDefaults = {
+const htfDefaults = {
     DST: DST_LABEL,
     p: math_1.CURVE.P,
     m: 2,
     k: 128,
     expand: true,
 };
+function isWithinCurveOrder(num) {
+    return 0 < num && num < math_1.CURVE.r;
+}
+const crypto = (() => {
+    const webCrypto = typeof self === 'object' && 'crypto' in self ? self.crypto : undefined;
+    const nodeRequire = typeof module !== 'undefined' &&
+        typeof module.require === 'function' &&
+        module.require.bind(module);
+    return {
+        node: nodeRequire && !webCrypto ? nodeRequire('crypto') : undefined,
+        web: webCrypto,
+    };
+})();
 exports.utils = {
     hashToField: hash_to_field,
-    async sha256(message) {
-        if (typeof self == 'object' && 'crypto' in self) {
-            const buffer = await self.crypto.subtle.digest('SHA-256', message.buffer);
-            return new Uint8Array(buffer);
-        }
-        else if (typeof process === 'object' && 'node' in process.versions) {
-            const { createHash } = require('crypto');
-            const hash = createHash('sha256');
-            hash.update(message);
-            return Uint8Array.from(hash.digest());
-        }
-        else {
-            throw new Error("The environment doesn't have sha256 function");
-        }
-    },
     randomBytes: (bytesLength = 32) => {
-        if (typeof self == 'object' && 'crypto' in self) {
-            return self.crypto.getRandomValues(new Uint8Array(bytesLength));
+        if (crypto.web) {
+            return crypto.web.getRandomValues(new Uint8Array(bytesLength));
         }
-        else if (typeof process === 'object' && 'node' in process.versions) {
-            const { randomBytes } = require('crypto');
+        else if (crypto.node) {
+            const { randomBytes } = crypto.node;
             return new Uint8Array(randomBytes(bytesLength).buffer);
         }
         else {
@@ -51,14 +49,26 @@ exports.utils = {
         }
     },
     randomPrivateKey: () => {
-        let i = 32;
+        let i = 8;
         while (i--) {
             const b32 = exports.utils.randomBytes(32);
             const num = bytesToNumberBE(b32);
-            if (num > 1n && num < math_1.CURVE.r)
+            if (isWithinCurveOrder(num) && num !== 1n)
                 return b32;
         }
-        throw new Error('Valid private key was not found in 32 iterations. PRNG is broken');
+        throw new Error('Valid private key was not found in 8 iterations. PRNG is broken');
+    },
+    sha256: async (message) => {
+        if (crypto.web) {
+            const buffer = await crypto.web.subtle.digest('SHA-256', message.buffer);
+            return new Uint8Array(buffer);
+        }
+        else if (crypto.node) {
+            return Uint8Array.from(crypto.node.createHash('sha256').update(message).digest());
+        }
+        else {
+            throw new Error("The environment doesn't have sha256 function");
+        }
     },
     mod: math_1.mod,
     getDSTLabel() {
@@ -193,7 +203,7 @@ async function hash_to_field(msg, count, options = {}) {
         for (let j = 0; j < htfOptions.m; j++) {
             const elm_offset = L * (j + i * htfOptions.m);
             const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-            e[j] = (0, math_1.mod)(os2ip(tv), htfOptions.p);
+            e[j] = math_1.mod(os2ip(tv), htfOptions.p);
         }
         u[i] = e;
     }
@@ -212,7 +222,7 @@ function normalizePrivKey(key) {
     else
         throw new TypeError('Expected valid private key');
     int = math_1.mod(int, math_1.CURVE.r);
-    if (int < 1n)
+    if (!isWithinCurveOrder(int))
         throw new Error('Private key must be 0 < key < CURVE.r');
     return int;
 }

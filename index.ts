@@ -39,7 +39,7 @@ let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 // p = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 // m = 2 (or 1 for G1 see section 8.8.1)
 // k = 128
-let htfDefaults = {
+const htfDefaults = {
   // DST: a domain separation tag
   // defined in section 2.2.5
   DST: DST_LABEL,
@@ -57,50 +57,57 @@ let htfDefaults = {
   expand: true,
 };
 
+function isWithinCurveOrder(num: bigint): boolean {
+  return 0 < num && num < CURVE.r;
+}
+
+const crypto: { node?: any; web?: Crypto } = (() => {
+  const webCrypto = typeof self === 'object' && 'crypto' in self ? self.crypto : undefined;
+  // Silence webpack warnings
+  const nodeRequire =
+    typeof module !== 'undefined' &&
+    typeof module.require === 'function' &&
+    module.require.bind(module);
+  return {
+    node: nodeRequire && !webCrypto ? nodeRequire('crypto') : undefined,
+    web: webCrypto,
+  };
+})();
+
 export const utils = {
   hashToField: hash_to_field,
-  async sha256(message: Uint8Array): Promise<Uint8Array> {
-    // @ts-ignore
-    if (typeof self == 'object' && 'crypto' in self) {
-      // @ts-ignore
-      const buffer = await self.crypto.subtle.digest('SHA-256', message.buffer);
-      // @ts-ignore
-      return new Uint8Array(buffer);
-      // @ts-ignore
-    } else if (typeof process === 'object' && 'node' in process.versions) {
-      // @ts-ignore
-      const { createHash } = require('crypto');
-      const hash = createHash('sha256');
-      hash.update(message);
-      return Uint8Array.from(hash.digest());
-    } else {
-      throw new Error("The environment doesn't have sha256 function");
-    }
-  },
   randomBytes: (bytesLength: number = 32): Uint8Array => {
-    // @ts-ignore
-    if (typeof self == 'object' && 'crypto' in self) {
-      // @ts-ignore
-      return self.crypto.getRandomValues(new Uint8Array(bytesLength));
-      // @ts-ignore
-    } else if (typeof process === 'object' && 'node' in process.versions) {
-      // @ts-ignore
-      const { randomBytes } = require('crypto');
+    if (crypto.web) {
+      return crypto.web.getRandomValues(new Uint8Array(bytesLength));
+    } else if (crypto.node) {
+      const { randomBytes } = crypto.node;
       return new Uint8Array(randomBytes(bytesLength).buffer);
     } else {
       throw new Error("The environment doesn't have randomBytes function");
     }
   },
+
   // NIST SP 800-56A rev 3, section 5.6.1.2.2
   // https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
   randomPrivateKey: (): Uint8Array => {
-    let i = 32;
+    let i = 8;
     while (i--) {
       const b32 = utils.randomBytes(32);
       const num = bytesToNumberBE(b32);
-      if (num > 1n && num < CURVE.r) return b32;
+      if (isWithinCurveOrder(num) && num !== 1n) return b32;
     }
-    throw new Error('Valid private key was not found in 32 iterations. PRNG is broken');
+    throw new Error('Valid private key was not found in 8 iterations. PRNG is broken');
+  },
+
+  sha256: async (message: Uint8Array): Promise<Uint8Array> => {
+    if (crypto.web) {
+      const buffer = await crypto.web.subtle.digest('SHA-256', message.buffer);
+      return new Uint8Array(buffer);
+    } else if (crypto.node) {
+      return Uint8Array.from(crypto.node.createHash('sha256').update(message).digest());
+    } else {
+      throw new Error("The environment doesn't have sha256 function");
+    }
   },
   mod,
   getDSTLabel() {
@@ -243,21 +250,17 @@ async function expand_message_xmd(
 // count - the number of elements of F to output.
 // Outputs:
 // [u_0, ..., u_(count - 1)], a list of field elements.
-async function hash_to_field(
-  msg: Uint8Array,
-  count: number,
-  options = {},
-): Promise<bigint[][]> {
+async function hash_to_field(msg: Uint8Array, count: number, options = {}): Promise<bigint[][]> {
   // if options is provided but incomplete, fill any missing fields with the
   // value in hftDefaults (ie hash to G2).
-  const htfOptions = {...htfDefaults, ...options};
+  const htfOptions = { ...htfDefaults, ...options };
   const log2p = htfOptions.p.toString(2).length;
   const L = Math.ceil((log2p + htfOptions.k) / 8); // section 5.1 of ietf draft link above
   const len_in_bytes = count * htfOptions.m * L;
   const DST = stringToBytes(htfOptions.DST);
   let pseudo_random_bytes = msg;
   if (htfOptions.expand) {
-      pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+    pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
   }
   const u = new Array(count);
   for (let i = 0; i < count; i++) {
@@ -280,7 +283,7 @@ function normalizePrivKey(key: PrivateKey): bigint {
   else if (typeof key === 'bigint' && key > 0n) int = key;
   else throw new TypeError('Expected valid private key');
   int = mod(int, CURVE.r);
-  if (int < 1n) throw new Error('Private key must be 0 < key < CURVE.r');
+  if (!isWithinCurveOrder(int)) throw new Error('Private key must be 0 < key < CURVE.r');
   return int;
 }
 
