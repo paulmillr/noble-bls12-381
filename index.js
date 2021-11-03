@@ -26,11 +26,9 @@ function isWithinCurveOrder(num) {
 }
 const crypto = (() => {
     const webCrypto = typeof self === 'object' && 'crypto' in self ? self.crypto : undefined;
-    const nodeRequire = typeof module !== 'undefined' &&
-        typeof module.require === 'function' &&
-        module.require.bind(module);
+    const nodeRequire = typeof module !== 'undefined' && typeof require === 'function';
     return {
-        node: nodeRequire && !webCrypto ? nodeRequire('crypto') : undefined,
+        node: nodeRequire && !webCrypto ? require('crypto') : undefined,
         web: webCrypto,
     };
 })();
