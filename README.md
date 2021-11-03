@@ -31,10 +31,10 @@ To learn more about internals, check out [BLS12-381 for the rest of us](https://
 Use NPM in node.js / browser, or include single file from
 [GitHub's releases page](https://github.com/paulmillr/noble-bls12-381/releases):
 
-> npm install noble-bls12-381
+> npm install @noble/bls12-381
 
 ```js
-const bls = require('noble-bls12-381');
+const bls = require('@noble/bls12-381');
 // if you're using single file, use global variable nobleBls12381
 
 // You can use Uint8Array, or hex string for readability
