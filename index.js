@@ -201,7 +201,7 @@ async function hash_to_field(msg, count, options = {}) {
         for (let j = 0; j < htfOptions.m; j++) {
             const elm_offset = L * (j + i * htfOptions.m);
             const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
-            e[j] = math_1.mod(os2ip(tv), htfOptions.p);
+            e[j] = (0, math_1.mod)(os2ip(tv), htfOptions.p);
         }
         u[i] = e;
     }
@@ -219,7 +219,7 @@ function normalizePrivKey(key) {
         int = key;
     else
         throw new TypeError('Expected valid private key');
-    int = math_1.mod(int, math_1.CURVE.r);
+    int = (0, math_1.mod)(int, math_1.CURVE.r);
     if (!isWithinCurveOrder(int))
         throw new Error('Private key must be 0 < key < CURVE.r');
     return int;
@@ -241,16 +241,16 @@ class PointG1 extends math_1.ProjectivePoint {
         let point;
         if (bytes.length === 48) {
             const compressedValue = bytesToNumberBE(bytes);
-            const bflag = math_1.mod(compressedValue, POW_2_383) / POW_2_382;
+            const bflag = (0, math_1.mod)(compressedValue, POW_2_383) / POW_2_382;
             if (bflag === 1n) {
                 return this.ZERO;
             }
-            const x = new math_1.Fp(math_1.mod(compressedValue, POW_2_381));
+            const x = new math_1.Fp((0, math_1.mod)(compressedValue, POW_2_381));
             const right = x.pow(3n).add(new math_1.Fp(math_1.CURVE.b));
             let y = right.sqrt();
             if (!y)
                 throw new Error('Invalid compressed G1 point');
-            const aflag = math_1.mod(compressedValue, POW_2_382) / POW_2_381;
+            const aflag = (0, math_1.mod)(compressedValue, POW_2_382) / POW_2_381;
             if ((y.value * 2n) / P !== aflag)
                 y = y.negate();
             point = new PointG1(x, y);
@@ -312,7 +312,7 @@ class PointG1 extends math_1.ProjectivePoint {
         return this.toString();
     }
     millerLoop(P) {
-        return math_1.millerLoop(P.pairingPrecomputes(), this.toAffine());
+        return (0, math_1.millerLoop)(P.pairingPrecomputes(), this.toAffine());
     }
     clearCofactor() {
         return this.multiplyUnsafe(math_1.CURVE.h);
@@ -353,8 +353,8 @@ class PointG2 extends math_1.ProjectivePoint {
     static async hashToCurve(msg) {
         msg = ensureBytes(msg);
         const u = await hash_to_field(msg, 2);
-        const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_simple_swu_9mod16(u[0])));
-        const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_simple_swu_9mod16(u[1])));
+        const Q0 = new PointG2(...(0, math_1.isogenyMapG2)((0, math_1.map_to_curve_simple_swu_9mod16)(u[0])));
+        const Q1 = new PointG2(...(0, math_1.isogenyMapG2)((0, math_1.map_to_curve_simple_swu_9mod16)(u[1])));
         const R = Q0.add(Q1);
         const P = R.clearCofactor();
         return P;
@@ -367,7 +367,7 @@ class PointG2 extends math_1.ProjectivePoint {
             throw new Error('Invalid compressed signature length, must be 96 or 192');
         const z1 = bytesToNumberBE(hex.slice(0, half));
         const z2 = bytesToNumberBE(hex.slice(half));
-        const bflag1 = math_1.mod(z1, POW_2_383) / POW_2_382;
+        const bflag1 = (0, math_1.mod)(z1, POW_2_383) / POW_2_382;
         if (bflag1 === 1n)
             return this.ZERO;
         const x1 = z1 % POW_2_381;
@@ -453,10 +453,10 @@ class PointG2 extends math_1.ProjectivePoint {
         return this;
     }
     psi() {
-        return this.fromAffineTuple(math_1.psi(...this.toAffine()));
+        return this.fromAffineTuple((0, math_1.psi)(...this.toAffine()));
     }
     psi2() {
-        return this.fromAffineTuple(math_1.psi2(...this.toAffine()));
+        return this.fromAffineTuple((0, math_1.psi2)(...this.toAffine()));
     }
     mulNegX() {
         return this.multiplyUnsafe(math_1.CURVE.x).negate();
@@ -498,7 +498,7 @@ class PointG2 extends math_1.ProjectivePoint {
     pairingPrecomputes() {
         if (this._PPRECOMPUTES)
             return this._PPRECOMPUTES;
-        this._PPRECOMPUTES = math_1.calcPairingPrecomputes(...this.toAffine());
+        this._PPRECOMPUTES = (0, math_1.calcPairingPrecomputes)(...this.toAffine());
         return this._PPRECOMPUTES;
     }
 }
