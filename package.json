@@ -1,6 +1,6 @@
 {
   "name": "@noble/bls12-381",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fastest JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings",
   "main": "index.js",
   "files": [
