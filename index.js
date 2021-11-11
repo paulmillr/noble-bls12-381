@@ -190,7 +190,7 @@ async function hash_to_field(msg, count, options = {}) {
     const log2p = htfOptions.p.toString(2).length;
     const L = Math.ceil((log2p + htfOptions.k) / 8);
     const len_in_bytes = count * htfOptions.m * L;
-    const DST = stringToBytes(htfOptions.DST);
+    const DST = stringToBytes(module.exports.utils.getDSTLabel());
     let pseudo_random_bytes = msg;
     if (htfOptions.expand) {
         pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
