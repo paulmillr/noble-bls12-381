@@ -13,9 +13,8 @@ const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
-let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const htfDefaults = {
-    DST: DST_LABEL,
+    DST: 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_',
     p: math_1.CURVE.P,
     m: 2,
     k: 128,
@@ -70,13 +69,13 @@ exports.utils = {
     },
     mod: math_1.mod,
     getDSTLabel() {
-        return DST_LABEL;
+        return htfDefaults.DST;
     },
     setDSTLabel(newLabel) {
         if (typeof newLabel !== 'string' || newLabel.length > 2048 || newLabel.length === 0) {
             throw new TypeError('Invalid DST');
         }
-        DST_LABEL = newLabel;
+        htfDefaults.DST = newLabel;
     },
 };
 function bytesToNumberBE(bytes) {

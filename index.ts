@@ -26,9 +26,6 @@ const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
 
-// Use utils.getDSTLabel(), utils.setDSTLabel(value)
-let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
-
 // Default hash_to_field options are for hash to G2.
 //
 // Parameter definitions are in section 5.3 of the spec unless otherwise noted.
@@ -42,7 +39,8 @@ let DST_LABEL = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_';
 const htfDefaults = {
   // DST: a domain separation tag
   // defined in section 2.2.5
-  DST: DST_LABEL,
+  // Use utils.getDSTLabel(), utils.setDSTLabel(value)
+  DST: 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_',
   // p: the characteristic of F
   //    where F is a finite field of characteristic p and order q = p^m
   p: CURVE.P,
@@ -107,14 +105,14 @@ export const utils = {
   },
   mod,
   getDSTLabel() {
-    return DST_LABEL;
+    return htfDefaults.DST;
   },
   setDSTLabel(newLabel: string) {
     // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3.1
     if (typeof newLabel !== 'string' || newLabel.length > 2048 || newLabel.length === 0) {
       throw new TypeError('Invalid DST');
     }
-    DST_LABEL = newLabel;
+    htfDefaults.DST = newLabel;
   },
 };
 
