@@ -59,7 +59,9 @@ function isWithinCurveOrder(num: bigint): boolean {
   return 0 < num && num < CURVE.r;
 }
 
-const crypto: { node?: any; web?: Crypto } = (() => {
+// Global symbol available in browsers only
+declare const self: Record<string, any> | undefined;
+const crypto: { node?: any; web?: any } = (() => {
   const webCrypto = typeof self === 'object' && 'crypto' in self ? self.crypto : undefined;
   const nodeRequire = typeof module !== 'undefined' && typeof require === 'function';
   return {
