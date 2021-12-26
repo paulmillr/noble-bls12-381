@@ -27,6 +27,8 @@ const FC_BIGINT_5 = fc.array(FC_BIGINT, 5, 5);
 const B_192_40 = '40'.padEnd(192, '0');
 const B_384_40 = '40'.padEnd(384, '0'); // [0x40, 0, 0...]
 
+const getPubKey = (priv: any) => bls.getPublicKey(priv)
+
 describe('bls12-381', () => {
   // bls.PointG1.BASE.clearMultiplyPrecomputes();
   // bls.PointG1.BASE.calcMultiplyPrecomputes(4);
@@ -327,7 +329,7 @@ describe('bls12-381', () => {
       fc.asyncProperty(FC_MSG_5, FC_BIGINT_5, async (messages, privateKeys) => {
         privateKeys = privateKeys.slice(0, messages.length);
         messages = messages.slice(0, privateKeys.length);
-        const publicKey = privateKeys.map(bls.getPublicKey);
+        const publicKey = privateKeys.map(getPubKey);
         const signatures = await Promise.all(
           messages.map((message, i) => bls.sign(message, privateKeys[i]))
         );
@@ -348,7 +350,7 @@ describe('bls12-381', () => {
           wrongMessages = messages.map((a, i) =>
             typeof wrongMessages[i] === 'undefined' ? a : wrongMessages[i]
           );
-          const publicKey = await Promise.all(privateKeys.map(bls.getPublicKey));
+          const publicKey = await Promise.all(privateKeys.map(getPubKey));
           const signatures = await Promise.all(
             messages.map((message, i) => bls.sign(message, privateKeys[i]))
           );
@@ -372,7 +374,7 @@ describe('bls12-381', () => {
             wrongPrivateKeys[i] !== undefined ? wrongPrivateKeys[i] : a
           );
           messages = messages.slice(0, privateKeys.length);
-          const wrongPublicKeys = await Promise.all(wrongPrivateKeys.map(bls.getPublicKey));
+          const wrongPublicKeys = await Promise.all(wrongPrivateKeys.map(getPubKey));
           const signatures = await Promise.all(
             messages.map((message, i) => bls.sign(message, privateKeys[i]))
           );
@@ -387,7 +389,7 @@ describe('bls12-381', () => {
   it('should verify multi-signature as simple signature', async () => {
     await fc.assert(
       fc.asyncProperty(FC_MSG, FC_BIGINT_5, async (message, privateKeys) => {
-        const publicKey = (await Promise.all(privateKeys.map(bls.getPublicKey))) as Uint8Array[];
+        const publicKey = (await Promise.all(privateKeys.map(getPubKey)));
         const signatures = await Promise.all(
           privateKeys.map((privateKey) => bls.sign(message, privateKey))
         );
@@ -400,7 +402,7 @@ describe('bls12-381', () => {
   it('should not verify wrong multi-signature as simple signature', async () => {
     await fc.assert(
       fc.asyncProperty(FC_MSG, FC_MSG, FC_BIGINT_5, async (message, wrongMessage, privateKeys) => {
-        const publicKey = (await Promise.all(privateKeys.map(bls.getPublicKey))) as Uint8Array[];
+        const publicKey = (await Promise.all(privateKeys.map(getPubKey)));
         const signatures = await Promise.all(
           privateKeys.map((privateKey) => bls.sign(message, privateKey))
         );

@@ -53,7 +53,8 @@ export declare class PointG2 extends ProjectivePoint<Fp2> {
 export declare function pairing(P: PointG1, Q: PointG2, withFinalExponent?: boolean): Fp12;
 declare type G1Hex = Bytes | PointG1;
 declare type G2Hex = Bytes | PointG2;
-export declare function getPublicKey(privateKey: PrivateKey): Uint8Array | string;
+export declare function getPublicKey(privateKey: Uint8Array | bigint): Uint8Array;
+export declare function getPublicKey(privateKey: string): string;
 export declare function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
 export declare function sign(message: string, privateKey: PrivateKey): Promise<string>;
 export declare function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;

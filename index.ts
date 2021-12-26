@@ -647,6 +647,8 @@ async function normP2Hash(point: G2Hex): Promise<PointG2> {
 
 // Multiplies generator by private key.
 // P = pk x G
+export function getPublicKey(privateKey: Uint8Array | bigint): Uint8Array;
+export function getPublicKey(privateKey: string): string;
 export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
   const bytes = PointG1.fromPrivateKey(privateKey).toRawBytes(true);
   return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
