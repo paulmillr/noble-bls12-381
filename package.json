@@ -1,14 +1,13 @@
 {
   "name": "@noble/bls12-381",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Fastest JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings",
-  "main": "index.js",
   "files": [
-    "index.js",
-    "index.d.ts",
-    "math.js",
-    "math.d.ts"
+    "lib"
   ],
+  "main": "lib/index.js",
+  "module": "lib/esm/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest test/*.test.ts",
     "build": "tsc -d && tsc -p tsconfig.esm.json",
