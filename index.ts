@@ -10,6 +10,8 @@
 //
 // We are using Fp for private keys (shorter) and Fp2 for signatures (longer).
 // Some projects may prefer to swap this relation, it is not supported for now.
+
+import nodeCrypto from 'crypto';
 // prettier-ignore
 import {
   Fp, Fr, Fp2, Fp12, CURVE, ProjectivePoint,
@@ -59,16 +61,12 @@ function isWithinCurveOrder(num: bigint): boolean {
   return 0 < num && num < CURVE.r;
 }
 
-// Global symbol available in browsers only
+// Global symbol available in browsers only. Ensure we do not depend on @types/dom
 declare const self: Record<string, any> | undefined;
-const crypto: { node?: any; web?: any } = (() => {
-  const webCrypto = typeof self === 'object' && 'crypto' in self ? self.crypto : undefined;
-  const nodeRequire = typeof module !== 'undefined' && typeof require === 'function';
-  return {
-    node: nodeRequire && !webCrypto ? require('crypto') : undefined,
-    web: webCrypto,
-  };
-})();
+const crypto: { node?: any; web?: any } = {
+  node: nodeCrypto,
+  web: typeof self === 'object' && 'crypto' in self ? self.crypto : undefined,
+};
 
 export const utils = {
   hashToField: hash_to_field,

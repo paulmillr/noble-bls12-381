@@ -79,6 +79,28 @@ const messages = ['d2', '0d98', '05caf3'];
 })();
 ```
 
+To use the module with [Deno](https://deno.land),
+you will need [import map](https://deno.land/manual/linking_to_external_code/import_maps):
+
+- `deno run --import-map=imports.json app.ts`
+
+- `app.ts`
+
+    ```typescript
+    import * as bls from "https://deno.land/x/bls12_381/mod.ts";
+    const publicKey = bls.getPublicKey(bls.utils.randomPrivateKey());
+    console.log(publicKey);
+    ```
+- `imports.json`
+
+    ```json
+    {
+      "imports": {
+        "crypto": "https://deno.land/std@0.119.0/node/crypto.ts"
+      }
+    }
+    ```
+
 ## API
 
 - [`getPublicKey(privateKey)`](#getpublickeyprivatekey)

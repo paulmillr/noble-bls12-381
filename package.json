@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "test": "jest test/*.test.ts",
-    "build": "tsc -d",
+    "build": "tsc -d && tsc -p tsconfig.esm.json",
     "build-release": "rollup -c rollup.config.js",
     "bench": "node test/benchmark.js",
     "lint": "prettier --print-width 100 --single-quote --check index.ts"
@@ -54,5 +54,17 @@
     "pairing",
     "cryptography",
     "security"
-  ]
+  ],
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "default": "./lib/index.js"
+    },
+    "./index.d.ts": "./lib/index.d.ts",
+    "math": {
+      "import": "./lib/esm/math.js",
+      "default": "./lib/math.js"
+    },
+    "./math.d.ts": "./lib/math.d.ts"
+  }
 }
