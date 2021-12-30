@@ -96,7 +96,8 @@ you will need [import map](https://deno.land/manual/linking_to_external_code/imp
     ```json
     {
       "imports": {
-        "crypto": "https://deno.land/std@0.119.0/node/crypto.ts"
+        "crypto": "https://deno.land/std@0.119.0/node/crypto.ts",
+        "./math": "./math.ts"
       }
     }
     ```
