@@ -17,7 +17,7 @@ import {
   Fp, Fr, Fp2, Fp12, CURVE, ProjectivePoint,
   map_to_curve_simple_swu_9mod16, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes, mod
-} from './math';
+} from './math.js';
 export { Fp, Fr, Fp2, Fp12, CURVE };
 
 type Bytes = Uint8Array | string;
