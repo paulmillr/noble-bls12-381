@@ -404,7 +404,8 @@ export class PointG1 extends ProjectivePoint<Fp> {
 
   // φ endomorphism
   private phi(): PointG1 {
-    const cubicRootOfUnityModP = 0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen;
+    const cubicRootOfUnityModP =
+      0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen;
     return new PointG1(this.x.multiply(cubicRootOfUnityModP), this.y, this.z);
   }
 
