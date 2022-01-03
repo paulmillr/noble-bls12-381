@@ -377,8 +377,12 @@ export class PointG1 extends ProjectivePoint<Fp> {
     return millerLoop(P.pairingPrecomputes(), this.toAffine());
   }
 
-  clearCofactor() {
-    return this.multiplyUnsafe(CURVE.h);
+  // Clear cofactor of G1
+  // https://eprint.iacr.org/2019/403
+  clearCofactor(): PointG1 {
+    // return this.multiplyUnsafe(CURVE.h);
+    const t = this.mulCurveMinusX();
+    return t.add(this);
   }
 
   // Checks for equation y² = x³ + b
@@ -398,21 +402,42 @@ export class PointG1 extends ProjectivePoint<Fp> {
     return new PointG1(x.multiply(BETA), y);
   }
 
+  // φ endomorphism
+  private phi(): PointG1 {
+    const cubicRootOfUnityModP = 0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffen;
+    return new PointG1(this.x.multiply(cubicRootOfUnityModP), this.y, this.z);
+  }
+
+  // [-0xd201000000010000]P
+  private mulCurveX() {
+    return this.multiplyUnsafe(CURVE.x).negate();
+  }
+  // [0xd201000000010000]P
+  private mulCurveMinusX() {
+    return this.multiplyUnsafe(CURVE.x);
+  }
+
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
-  // https://eprint.iacr.org/2019/814.pdf
+  // https://eprint.iacr.org/2021/1130.pdf
   private isTorsionFree(): boolean {
+    // todo: unroll
+    const xP = this.mulCurveX(); // [x]P
+    const u2P = xP.mulCurveMinusX(); // [u2]P
+    return u2P.equals(this.phi());
+
+    // https://eprint.iacr.org/2019/814.pdf
     // (z² − 1)/3
-    const c1 = 0x396c8c005555e1560000000055555555n;
-    const P = this;
-    const S = P.sigma();
-    const Q = S.double();
-    const S2 = S.sigma();
-    // [(z² − 1)/3](2σ(P) − P − σ²(P)) − σ²(P) = O
-    const left = Q.subtract(P).subtract(S2).multiplyUnsafe(c1);
-    const C = left.subtract(S2);
-    return C.isZero();
+    // const c1 = 0x396c8c005555e1560000000055555555n;
+    // const P = this;
+    // const S = P.sigma();
+    // const Q = S.double();
+    // const S2 = S.sigma();
+    // // [(z² − 1)/3](2σ(P) − P − σ²(P)) − σ²(P) = O
+    // const left = Q.subtract(P).subtract(S2).multiplyUnsafe(c1);
+    // const C = left.subtract(S2);
+    // return C.isZero();
   }
 }
 
@@ -560,7 +585,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   }
 
   // [-x]P aka [z]P
-  private mulNegX() {
+  private mulCurveX() {
     return this.multiplyUnsafe(CURVE.x).negate();
   }
 
@@ -570,13 +595,13 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   // prettier-ignore
   clearCofactor(): PointG2 {
     const P = this;
-    let t1 = P.mulNegX();     // [-x]P
+    let t1 = P.mulCurveX();   // [-x]P
     let t2 = P.psi();         // Ψ(P)
     let t3 = P.double();      // 2P
     t3 = t3.psi2();           // Ψ²(2P)
     t3 = t3.subtract(t2);     // Ψ²(2P) - Ψ(P)
     t2 = t1.add(t2);          // [-x]P + Ψ(P)
-    t2 = t2.mulNegX();        // [x²]P - [x]Ψ(P)
+    t2 = t2.mulCurveX();      // [x²]P - [x]Ψ(P)
     t3 = t3.add(t2);          // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P)
     t3 = t3.subtract(t1);     // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P
     const Q = t3.subtract(P); // Ψ²(2P) - Ψ(P) + [x²]P - [x]Ψ(P) + [x]P - 1P =>
@@ -595,14 +620,16 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   // Checks is the point resides in prime-order subgroup.
   // point.isTorsionFree() should return true for valid points
   // It returns false for shitty points.
-  // https://eprint.iacr.org/2019/814.pdf
+  // https://eprint.iacr.org/2021/1130.pdf
   // prettier-ignore
   private isTorsionFree(): boolean {
     const P = this;
-    const psi2 = P.psi2();                        // Ψ²(P)
-    const psi3 = psi2.psi();                      // Ψ³(P)
-    const zPsi3 = psi3.mulNegX();                 // [z]Ψ³(P) where z = -x
-    return zPsi3.subtract(psi2).add(P).isZero();  // [z]Ψ³(P) - Ψ²(P) + P == O
+    return P.mulCurveX().equals(P.psi()); // ψ(P) == [u](P)
+    // https://eprint.iacr.org/2019/814.pdf
+    // const psi2 = P.psi2();                        // Ψ²(P)
+    // const psi3 = psi2.psi();                      // Ψ³(P)
+    // const zPsi3 = psi3.mulNegX();                 // [z]Ψ³(P) where z = -x
+    // return zPsi3.subtract(psi2).add(P).isZero();  // [z]Ψ³(P) - Ψ²(P) + P == O
   }
 
   // Improves introspection in node.js. Basically displays point's x, y.
