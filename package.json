@@ -16,7 +16,7 @@
     "lint": "prettier --print-width 100 --single-quote --check index.ts"
   },
   "author": "Paul Miller (https://paulmillr.com)",
-  "homepage": "https://github.com/paulmillr/noble-bls12-381",
+  "homepage": "https://paulmillr.com/noble/",
   "repository": {
     "type": "git",
     "url": "https://github.com/paulmillr/noble-bls12-381.git"

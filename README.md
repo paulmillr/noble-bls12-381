@@ -22,7 +22,7 @@ To learn more about internals, check out [BLS12-381 for the rest of us](https://
 - Easily auditable TypeScript/JS code
 - Supported in all major browsers and stable node.js versions
 - All releases are signed with PGP keys
-- Check out all libraries:
+- Check out [homepage](https://paulmillr.com/noble/) & all libraries:
   [secp256k1](https://github.com/paulmillr/noble-secp256k1),
   [ed25519](https://github.com/paulmillr/noble-ed25519),
   [bls12-381](https://github.com/paulmillr/noble-bls12-381),
