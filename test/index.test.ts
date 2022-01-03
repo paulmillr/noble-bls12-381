@@ -278,7 +278,7 @@ describe('bls12-381', () => {
     for (let vector of G2_VECTORS) {
       const [priv, msg, expected] = vector;
       const sig = await bls.sign(msg, priv);
-      expect(sig).toEqual(expected);
+      expect(bls.utils.bytesToHex(sig)).toEqual(expected);
     }
   });
   it(`should produce correct scalars (${SCALAR_VECTORS.length} vectors)`, async () => {

@@ -70,6 +70,7 @@ const crypto: { node?: any; web?: any } = {
 
 export const utils = {
   hashToField: hash_to_field,
+  bytesToHex,
   randomBytes: (bytesLength: number = 32): Uint8Array => {
     if (crypto.web) {
       return crypto.web.getRandomValues(new Uint8Array(bytesLength));
@@ -541,14 +542,15 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   toSignature() {
     if (this.equals(PointG2.ZERO)) {
       const sum = POW_2_383 + POW_2_382;
-      return toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
+      const h = toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
+      return hexToBytes(h);
     }
     const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
     const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
     const z2 = x0;
-    return toPaddedHex(z1, PUBLIC_KEY_LENGTH) + toPaddedHex(z2, PUBLIC_KEY_LENGTH);
+    return hexToBytes(toPaddedHex(z1, PUBLIC_KEY_LENGTH) + toPaddedHex(z2, PUBLIC_KEY_LENGTH));
   }
 
   toRawBytes(isCompressed = false) {
@@ -678,25 +680,20 @@ async function normP2Hash(point: G2Hex): Promise<PointG2> {
 
 // Multiplies generator by private key.
 // P = pk x G
-export function getPublicKey(privateKey: Uint8Array | bigint): Uint8Array;
-export function getPublicKey(privateKey: string): string;
-export function getPublicKey(privateKey: PrivateKey): Uint8Array | string {
-  const bytes = PointG1.fromPrivateKey(privateKey).toRawBytes(true);
-  return typeof privateKey === 'string' ? bytesToHex(bytes) : bytes;
+export function getPublicKey(privateKey: PrivateKey): Uint8Array {
+  return PointG1.fromPrivateKey(privateKey).toRawBytes(true);
 }
 
 // Executes `hashToCurve` on the message and then multiplies the result by private key.
 // S = pk x H(m)
-export async function sign(message: Uint8Array, privateKey: PrivateKey): Promise<Uint8Array>;
-export async function sign(message: string, privateKey: PrivateKey): Promise<string>;
+export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
-export async function sign(message: G2Hex, privateKey: PrivateKey): Promise<Bytes | PointG2> {
+export async function sign(message: G2Hex, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
   const msgPoint = await normP2Hash(message);
   msgPoint.assertValidity();
   const sigPoint = msgPoint.multiply(normalizePrivKey(privateKey));
   if (message instanceof PointG2) return sigPoint;
-  const hex = sigPoint.toSignature();
-  return typeof message === 'string' ? hex : hexToBytes(hex);
+  return sigPoint.toSignature();
 }
 
 // Checks if pairing of public key & hash is equal to pairing of generator & signature.
@@ -716,29 +713,23 @@ export async function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex)
 
 // Adds a bunch of public key points together.
 // pk1 + pk2 + pk3 = pkA
-export function aggregatePublicKeys(publicKeys: Uint8Array[]): Uint8Array;
-export function aggregatePublicKeys(publicKeys: string[]): string;
+export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
 export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
-export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | string | PointG1 {
+export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
   const agg = publicKeys.map(normP1).reduce((sum, p) => sum.add(p), PointG1.ZERO);
   if (publicKeys[0] instanceof PointG1) return agg.assertValidity();
-  const bytes = agg.toRawBytes(true);
-  if (publicKeys[0] instanceof Uint8Array) return bytes;
-  return bytesToHex(bytes);
+  return agg.toRawBytes(true);
 }
 
 // Adds a bunch of signature points together.
-export function aggregateSignatures(signatures: Uint8Array[]): Uint8Array;
-export function aggregateSignatures(signatures: string[]): string;
+export function aggregateSignatures(signatures: Bytes[]): Uint8Array;
 export function aggregateSignatures(signatures: PointG2[]): PointG2;
-export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | string | PointG2 {
+export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
   const agg = signatures.map(normP2).reduce((sum, s) => sum.add(s), PointG2.ZERO);
   if (signatures[0] instanceof PointG2) return agg.assertValidity();
-  const bytes = agg.toSignature();
-  if (signatures[0] instanceof Uint8Array) return hexToBytes(bytes);
-  return bytes;
+  return agg.toSignature();
 }
 
 // https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
