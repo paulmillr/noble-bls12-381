@@ -119,24 +119,25 @@ function bitGet(n: bigint, pos: number) {
 
 // Inverses number over modulo
 function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
-  if (number === 0n || modulo <= 0n) {
+  const _0n = 0n, _1n = 1n;
+  if (number === _0n || modulo <= _0n) {
     throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
   }
   // Eucledian GCD https://brilliant.org/wiki/extended-euclidean-algorithm/
   let a = mod(number, modulo);
   let b = modulo;
-  let [x, y, u, v] = [0n, 1n, 1n, 0n];
-  while (a !== 0n) {
+  // prettier-ignore
+  let x = _0n, y = _1n, u = _1n, v = _0n;
+  while (a !== _0n) {
     const q = b / a;
     const r = b % a;
     const m = x - u * q;
     const n = y - v * q;
-    [b, a] = [a, r];
-    [x, y] = [u, v];
-    [u, v] = [m, n];
+    // prettier-ignore
+    b = a, a = r, x = u, y = v, u = m, v = n;
   }
   const gcd = b;
-  if (gcd !== 1n) throw new Error('invert: does not exist');
+  if (gcd !== _1n) throw new Error('invert: does not exist');
   return mod(x, modulo);
 }
 
@@ -404,8 +405,10 @@ export class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
   multiply(rhs: Fp2 | bigint): Fp2 {
     if (typeof rhs === 'bigint') return new Fp2(this.map<Fp, [Fp, Fp]>((c) => c.multiply(rhs)));
     // (a+bi)(c+di) = (ac−bd) + (ad+bc)i
-    const [c0, c1] = this.c;
-    const [r0, r1] = rhs.c;
+    const c0 = this.c[0];
+    const c1 = this.c[1];
+    const r0 = rhs.c[0];
+    const r1 = rhs.c[1];
     let t1 = c0.multiply(r0); // c0 * o0
     let t2 = c1.multiply(r1); // c1 * o1
     // (T1 - T2) + ((c0 + c1) * (r0 + r1) - (T1 + T2))*i
@@ -464,7 +467,9 @@ export class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
   // of (a + bu). Importantly, this can be computing using
   // only a single inversion in Fp.
   invert() {
-    const [a, b] = this.values;
+    const ab = this.values;
+    const a = ab[0];
+    const b = ab[1];
     const factor = new Fp(a * a + b * b).invert();
     return new Fp2([factor.multiply(new Fp(a)), factor.multiply(new Fp(-b))]);
   }
@@ -474,7 +479,8 @@ export class Fp2 extends FQP<Fp2, Fp, [Fp, Fp]> {
     return new Fp2([this.c[0], this.c[1].multiply(FP2_FROBENIUS_COEFFICIENTS[power % 2])]);
   }
   multiplyByB() {
-    let [c0, c1] = this.c;
+    let c0 = this.c[0];
+    let c1 = this.c[1];
     let t0 = c0.multiply(4n); // 4 * c0
     let t1 = c1.multiply(4n); // 4 * c1
     // (T0-T1) + (T0+T1)*i
@@ -508,8 +514,14 @@ export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
   multiply(rhs: Fp6 | bigint) {
     if (typeof rhs === 'bigint')
       return new Fp6([this.c[0].multiply(rhs), this.c[1].multiply(rhs), this.c[2].multiply(rhs)]);
-    let [c0, c1, c2] = this.c;
-    const [r0, r1, r2] = rhs.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let c2 = c[2];
+    const r = rhs.c;
+    let r0 = r[0];
+    let r1 = r[1];
+    let r2 = r[2];
     let t0 = c0.multiply(r0); // c0 * o0
     let t1 = c1.multiply(r1); // c1 * o1
     let t2 = c2.multiply(r2); // c2 * o2
@@ -536,7 +548,10 @@ export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
   }
   // Sparse multiplication
   multiplyBy01(b0: Fp2, b1: Fp2): Fp6 {
-    let [c0, c1, c2] = this.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let c2 = c[2];
     let t0 = c0.multiply(b0); // c0 * b0
     let t1 = c1.multiply(b1); // c1 * b1
     return new Fp6([
@@ -554,7 +569,10 @@ export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
   }
 
   square() {
-    let [c0, c1, c2] = this.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let c2 = c[2];
     let t0 = c0.square(); // c0²
     let t1 = c0.multiply(c1).multiply(2n); // 2 * c0 * c1
     let t3 = c1.multiply(c2).multiply(2n); // 2 * c1 * c2
@@ -568,7 +586,10 @@ export class Fp6 extends FQP<Fp6, Fp2, [Fp2, Fp2, Fp2]> {
   }
 
   invert() {
-    let [c0, c1, c2] = this.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let c2 = c[2];
     let t0 = c0.square().subtract(c2.multiply(c1).mulByNonresidue()); // c0² - c2 * c1 * (u + 1)
     let t1 = c2.square().mulByNonresidue().subtract(c0.multiply(c1)); // c2² * (u + 1) - c0 * c1
     let t2 = c1.square().subtract(c0.multiply(c2)); // c1² - c0 * c2
@@ -611,8 +632,12 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   multiply(rhs: Fp12 | bigint) {
     if (typeof rhs === 'bigint')
       return new Fp12([this.c[0].multiply(rhs), this.c[1].multiply(rhs)]);
-    let [c0, c1] = this.c;
-    const [r0, r1] = rhs.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let r = rhs.c;
+    let r0 = r[0];
+    let r1 = r[1];
     let t1 = c0.multiply(r0); // c0 * r0
     let t2 = c1.multiply(r1); // c1 * r1
     return new Fp12([
@@ -623,8 +648,11 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   }
   // Sparse multiplication
   multiplyBy014(o0: Fp2, o1: Fp2, o4: Fp2) {
-    let [c0, c1] = this.c;
-    let [t0, t1] = [c0.multiplyBy01(o0, o1), c1.multiplyBy1(o4)];
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
+    let t0 = c0.multiplyBy01(o0, o1);
+    let t1 = c1.multiplyBy1(o4);
     return new Fp12([
       t1.mulByNonresidue().add(t0), // T1 * v + T0
       // (c1 + c0) * [o0, o1+o4] - T0 - T1
@@ -637,7 +665,9 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   }
 
   square() {
-    let [c0, c1] = this.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
     let ab = c0.multiply(c1); // c0 * c1
     return new Fp12([
       // (c1 * v + c0) * (c0 + c1) - AB - AB * v
@@ -647,25 +677,26 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   }
 
   invert() {
-    let [c0, c1] = this.c;
+    let c = this.c;
+    let c0 = c[0];
+    let c1 = c[1];
     let t = c0.square().subtract(c1.square().mulByNonresidue()).invert(); // 1 / (c0² - c1² * v)
     return new Fp12([c0.multiply(t), c1.multiply(t).negate()]); // ((C0 * T) * T) + (-C1 * T) * w
   }
   // Raises to q**i -th power
   frobeniusMap(power: number) {
-    const [c0, c1] = this.c;
-    let r0 = c0.frobeniusMap(power);
-    let [c1_0, c1_1, c1_2] = c1.frobeniusMap(power).c;
+    let r0 = this.c[0].frobeniusMap(power);
+    let c1 = this.c[1].frobeniusMap(power).c;
     const coeff = FP12_FROBENIUS_COEFFICIENTS[power % 12];
     return new Fp12([
       r0,
-      new Fp6([c1_0.multiply(coeff), c1_1.multiply(coeff), c1_2.multiply(coeff)]),
+      new Fp6([c1[0].multiply(coeff), c1[1].multiply(coeff), c1[2].multiply(coeff)]),
     ]);
   }
 
   private Fp4Square(a: Fp2, b: Fp2): [Fp2, Fp2] {
-    const a2 = a.square(),
-      b2 = b.square();
+    const a2 = a.square();
+    const b2 = b.square();
     return [
       b2.mulByNonresidue().add(a2), // b² * Nonresidue + a²
       a.add(b).square().subtract(a2).subtract(b2), // (a + b)² - a² - b²
@@ -677,12 +708,23 @@ export class Fp12 extends FQP<Fp12, Fp6, [Fp6, Fp6]> {
   // The result of any pairing is in a cyclotomic subgroup
   // https://eprint.iacr.org/2009/565.pdf
   private cyclotomicSquare(): Fp12 {
-    const [c0, c1] = this.c;
-    const [c0c0, c0c1, c0c2] = c0.c;
-    const [c1c0, c1c1, c1c2] = c1.c;
-    let [t3, t4] = this.Fp4Square(c0c0, c1c1);
-    let [t5, t6] = this.Fp4Square(c1c0, c0c2);
-    let [t7, t8] = this.Fp4Square(c0c1, c1c2);
+    const c0 = this.c[0];
+    const c1 = this.c[1];
+    const c0c0 = c0.c[0];
+    const c0c1 = c0.c[1];
+    const c0c2 = c0.c[2];
+    const c1c0 = c1.c[0];
+    const c1c1 = c1.c[1];
+    const c1c2 = c1.c[2];
+    const t3t4 = this.Fp4Square(c0c0, c1c1);
+    const t5t6 = this.Fp4Square(c1c0, c0c2);
+    const t7t8 = this.Fp4Square(c0c1, c1c2);
+    let t3 = t3t4[0];
+    let t4 = t3t4[1];
+    let t5 = t5t6[0];
+    let t6 = t5t6[1];
+    let t7 = t7t8[0];
+    let t8 = t7t8[1];
     let t9 = t8.mulByNonresidue(); // T8 * (u + 1)
     return new Fp12([
       new Fp6([
@@ -958,7 +1000,8 @@ export abstract class ProjectivePoint<T extends Field<T>> {
       precomputes = this.precomputeWindow(W);
     }
 
-    let [p, f] = [this.getZero(), this.getZero()];
+    let p = this.getZero();
+    let f = this.getZero();
     // Split scalar by W bits, last window can be smaller
     const windows = Math.ceil(this.maxBits() / W);
     // 2^(W-1), since we use wNAF, we only need W-1 bits
@@ -1011,7 +1054,7 @@ const P_MINUS_9_DIV_16 = (CURVE.P ** 2n - 9n) / 16n;
 // Does not return a square root.
 // Returns uv⁷ * (uv¹⁵)^((p² - 9) / 16) * root of unity
 // if valid square root is found
-function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
+function sqrt_div_fp2(u: Fp2, v: Fp2) {
   const v7 = v.pow(7n);
   const uv7 = u.multiply(v7);
   const uv15 = uv7.multiply(v7.multiply(v));
@@ -1021,15 +1064,15 @@ function sqrt_div_fp2(u: Fp2, v: Fp2): [boolean, Fp2] {
   let result = gamma;
   // Constant-time routine, so we do not early-return.
   const positiveRootsOfUnity = FP2_ROOTS_OF_UNITY.slice(0, 4);
-  for (const root of positiveRootsOfUnity) {
+  positiveRootsOfUnity.forEach((root) => {
     // Valid if (root * gamma)² * v - u == 0
     const candidate = root.multiply(gamma);
     if (candidate.pow(2n).multiply(v).subtract(u).isZero() && !success) {
       success = true;
       result = candidate;
     }
-  }
-  return [success, result];
+  });
+  return { success, sqrtCandidateOrGamma: result };
 }
 
 // Optimized SWU Map - Fp2 to G2': y² = x³ + 240i * x + 1012 + 1012i
@@ -1059,7 +1102,7 @@ export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp
     .add(iso_3_a.multiply(numerator).multiply(denominator.pow(2n)))
     .add(iso_3_b.multiply(v));
   // Attempt y = sqrt(u / v)
-  const [success, sqrtCandidateOrGamma] = sqrt_div_fp2(u, v);
+  const { success, sqrtCandidateOrGamma } = sqrt_div_fp2(u, v);
   let y;
   if (success) y = sqrtCandidateOrGamma;
   // Handle case where (u / v) is not square
@@ -1069,7 +1112,7 @@ export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp
   // u(x1) = Z³ * t⁶ * u(x0)
   u = iso_3_z_t2.pow(3n).multiply(u);
   let success2 = false;
-  for (const eta of FP2_ETAs) {
+  FP2_ETAs.forEach((eta) => {
     // Valid solution if (eta * sqrt_candidate(x1))² * v - u == 0
     const etaSqrtCandidate = eta.multiply(sqrtCandidateX1);
     const temp = etaSqrtCandidate.pow(2n).multiply(v).subtract(u);
@@ -1077,7 +1120,7 @@ export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp
       y = etaSqrtCandidate;
       success2 = true;
     }
-  }
+  });
 
   if (!success && !success2) throw new Error('Hash to Curve - Optimized SWU failure');
   if (success2) numerator = numerator.multiply(iso_3_z_t2);
@@ -1091,7 +1134,8 @@ export function map_to_curve_simple_swu_9mod16(t: bigint[] | Fp2): [Fp2, Fp2, Fp
 // Converts from Jacobi (xyz) to Projective (xyz) coordinates.
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-E.3
 export function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2] {
-  const [x, y, z] = xyz;
+  // prettier-ignore
+  const x = xyz[0], y = xyz[1], z = xyz[2];
   const zz = z.multiply(z);
   const zzz = zz.multiply(z);
   const zPowers = [z, zz, zzz];
@@ -1121,9 +1165,10 @@ export function isogenyMapG2(xyz: [Fp2, Fp2, Fp2]): [Fp2, Fp2, Fp2] {
 // Pre-compute coefficients for sparse multiplication
 // Point addition and point double calculations is reused for coefficients
 export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
-  //const [x, y] = this.toAffine();
-  const [Qx, Qy, Qz] = [x, y, Fp2.ONE];
-  let [Rx, Ry, Rz] = [Qx, Qy, Qz];
+  // prettier-ignore
+  const Qx = x, Qy = y, Qz = Fp2.ONE;
+  // prettier-ignore
+  let Rx = Qx, Ry = Qy, Rz = Qz;
   let ell_coeff: [Fp2, Fp2, Fp2][] = [];
   for (let i = BLS_X_LEN - 2; i >= 0; i--) {
     // Double
@@ -1162,18 +1207,16 @@ export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
 }
 
 export function millerLoop(ell: [Fp2, Fp2, Fp2][], g1: [Fp, Fp]): Fp12 {
+  const Px = g1[0].value;
+  const Py = g1[1].value;
   let f12 = Fp12.ONE;
-  const [x, y] = g1;
-  const [Px, Py] = [x as Fp, y as Fp];
   for (let j = 0, i = BLS_X_LEN - 2; i >= 0; i--, j++) {
-    f12 = f12.multiplyBy014(ell[j][0], ell[j][1].multiply(Px.value), ell[j][2].multiply(Py.value));
+    const E = ell[j];
+    f12 = f12.multiplyBy014(E[0], E[1].multiply(Px), E[2].multiply(Py));
     if (bitGet(CURVE.x, i)) {
       j += 1;
-      f12 = f12.multiplyBy014(
-        ell[j][0],
-        ell[j][1].multiply(Px.value),
-        ell[j][2].multiply(Py.value)
-      );
+      const F = ell[j];
+      f12 = f12.multiplyBy014(F[0], F[1].multiply(Px), F[2].multiply(Py));
     }
     if (i !== 0) f12 = f12.square();
   }
@@ -1188,7 +1231,6 @@ const wcu_inv = wcu.invert();
 
 // Ψ(P) endomorphism
 export function psi(x: Fp2, y: Fp2): [Fp2, Fp2] {
-  //const [x, y] = P.toAffine();
   // Untwist Fp2->Fp12 && frobenius(1) && twist back
   const x2 = wsq_inv.multiplyByFp2(x).frobeniusMap(1).multiply(wsq).c[0].c[0];
   const y2 = wcu_inv.multiplyByFp2(y).frobeniusMap(1).multiply(wcu).c[0].c[0];
