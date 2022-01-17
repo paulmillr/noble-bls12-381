@@ -11,7 +11,7 @@
   "scripts": {
     "test": "jest test/*.test.ts",
     "build": "tsc -d && tsc -p tsconfig.esm.json",
-    "build-release": "rollup -c rollup.config.js",
+    "build:release": "rollup -c rollup.config.js",
     "bench": "node test/benchmark.js",
     "lint": "prettier --print-width 100 --single-quote --check index.ts"
   },
@@ -32,7 +32,7 @@
     "@types/node": "^16.9.2",
     "fast-check": "^2.17",
     "jest": "^27.0.5",
-    "micro-bmark": "^0.1.3",
+    "micro-bmark": "^0.2",
     "prettier": "^2.3.2",
     "rollup": "^2.52.2",
     "ts-jest": "^27",
