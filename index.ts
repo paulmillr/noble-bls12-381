@@ -1,4 +1,4 @@
-/*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
+/*! noble-bls12-381 - MIT License (c) 2019 Paul Miller (paulmillr.com) */
 // bls12-381 is a construction of two curves:
 // 1. Fp: (x, y)
 // 2. Fp₂: ((x₁, x₂+i), (y₁, y₂+i)) - (complex numbers)

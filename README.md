@@ -314,4 +314,4 @@ Special thanks to [Roman Koblov](https://github.com/romankoblov), who have helpe
 
 ## License
 
-MIT (c) Paul Miller [(https://paulmillr.com)](https://paulmillr.com), see LICENSE file.
+MIT (c) 2019 Paul Miller [(https://paulmillr.com)](https://paulmillr.com), see LICENSE file.
