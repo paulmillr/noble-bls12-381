@@ -65,5 +65,11 @@
       "default": "./lib/index.js"
     },
     "./index.d.ts": "./lib/index.d.ts"
-  }
+  },
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://paulmillr.com/funding/"
+    }
+  ]
 }
