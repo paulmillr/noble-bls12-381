@@ -20,8 +20,8 @@ import {
 } from './math.js';
 export { Fp, Fr, Fp2, Fp12, CURVE };
 
-type Bytes = Uint8Array | string;
-type PrivateKey = Bytes | bigint | number;
+type Hex = Uint8Array | string;
+type PrivateKey = Hex | bigint | number;
 const POW_2_381 = 2n ** 381n;
 const POW_2_382 = POW_2_381 * 2n;
 const POW_2_383 = POW_2_382 * 2n;
@@ -159,9 +159,9 @@ function toPaddedHex(num: bigint, padding: number) {
 }
 
 function ensureBytes(hex: string | Uint8Array): Uint8Array {
-  if (hex instanceof Uint8Array) return hex;
-  if (typeof hex === 'string') return hexToBytes(hex);
-  throw new TypeError('Expected hex string or Uint8Array');
+  // Uint8Array.from() instead of hash.slice() because node.js Buffer
+  // is instance of Uint8Array, and its slice() creates **mutable** copy
+  return hex instanceof Uint8Array ? Uint8Array.from(hex) : hexToBytes(hex);
 }
 
 function concatBytes(...arrays: Uint8Array[]): Uint8Array {
@@ -304,7 +304,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
     assertType(z, Fp);
   }
 
-  static fromHex(bytes: Bytes) {
+  static fromHex(bytes: Hex) {
     bytes = ensureBytes(bytes);
     const { P } = CURVE;
 
@@ -465,7 +465,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   // Encodes byte string to elliptic curve
   // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3
-  static async hashToCurve(msg: Bytes) {
+  static async hashToCurve(msg: Hex) {
     msg = ensureBytes(msg);
     const u = await hash_to_field(msg, 2);
     //console.log(`hash_to_curve(msg}) u0=${new Fp2(u[0])} u1=${new Fp2(u[1])}`);
@@ -478,7 +478,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   }
 
   // TODO: Optimize, it's very slow because of sqrt.
-  static fromSignature(hex: Bytes): PointG2 {
+  static fromSignature(hex: Hex): PointG2 {
     hex = ensureBytes(hex);
     const { P } = CURVE;
     const half = hex.length / 2;
@@ -510,7 +510,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     return point;
   }
 
-  static fromHex(bytes: Bytes) {
+  static fromHex(bytes: Hex) {
     bytes = ensureBytes(bytes);
     let point;
     if (bytes.length === 96) {
@@ -666,8 +666,8 @@ export function pairing(P: PointG1, Q: PointG2, withFinalExponent: boolean = tru
   return withFinalExponent ? looped.finalExponentiate() : looped;
 }
 
-type G1Hex = Bytes | PointG1;
-type G2Hex = Bytes | PointG2;
+type G1Hex = Hex | PointG1;
+type G2Hex = Hex | PointG2;
 function normP1(point: G1Hex): PointG1 {
   return point instanceof PointG1 ? point : PointG1.fromHex(point);
 }
@@ -686,7 +686,7 @@ export function getPublicKey(privateKey: PrivateKey): Uint8Array {
 
 // Executes `hashToCurve` on the message and then multiplies the result by private key.
 // S = pk x H(m)
-export async function sign(message: Bytes, privateKey: PrivateKey): Promise<Uint8Array>;
+export async function sign(message: Hex, privateKey: PrivateKey): Promise<Uint8Array>;
 export async function sign(message: PointG2, privateKey: PrivateKey): Promise<PointG2>;
 export async function sign(message: G2Hex, privateKey: PrivateKey): Promise<Uint8Array | PointG2> {
   const msgPoint = await normP2Hash(message);
@@ -713,7 +713,7 @@ export async function verify(signature: G2Hex, message: G2Hex, publicKey: G1Hex)
 
 // Adds a bunch of public key points together.
 // pk1 + pk2 + pk3 = pkA
-export function aggregatePublicKeys(publicKeys: Bytes[]): Uint8Array;
+export function aggregatePublicKeys(publicKeys: Hex[]): Uint8Array;
 export function aggregatePublicKeys(publicKeys: PointG1[]): PointG1;
 export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | PointG1 {
   if (!publicKeys.length) throw new Error('Expected non-empty array');
@@ -723,7 +723,7 @@ export function aggregatePublicKeys(publicKeys: G1Hex[]): Uint8Array | PointG1 {
 }
 
 // Adds a bunch of signature points together.
-export function aggregateSignatures(signatures: Bytes[]): Uint8Array;
+export function aggregateSignatures(signatures: Hex[]): Uint8Array;
 export function aggregateSignatures(signatures: PointG2[]): PointG2;
 export function aggregateSignatures(signatures: G2Hex[]): Uint8Array | PointG2 {
   if (!signatures.length) throw new Error('Expected non-empty array');
