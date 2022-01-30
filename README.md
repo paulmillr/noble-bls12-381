@@ -187,7 +187,7 @@ function pairing(
 - `withFinalExponent: boolean` - should the result be powered by curve order; very slow
 - Returns `Fp12`: paired point over 12-degree extension field.
 
-##### Utilities
+### Utilities
 
 The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
 
