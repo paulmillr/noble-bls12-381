@@ -219,13 +219,25 @@ Filecoin uses little endian byte arrays for private keys - so ensure to reverse 
 Use `utils.bytesToHex(str)` to convert byte output to hexademical string.
 
 ```typescript
-import { CURVE } from '@noble/bls12-381';
+// Exports `CURVE`, `utils`, `PointG1`, `PointG2`, `Fp`, `Fp2`, `Fp12` helpers
+
+const utils: {
+  hashToField(msg: Uint8Array, count: number, options = {}): Promise<bigint[][]>;
+  bytesToHex: (bytes: Uint8Array): string;
+  randomBytes: (bytesLength?: number) => Uint8Array;
+  randomPrivateKey: () => Uint8Array;
+  sha256: (message: Uint8Array) => Promise<Uint8Array>;
+  mod: (a: bigint, b = CURVE.P): bigint;
+  getDSTLabel(): string;
+  setDSTLabel(newLabel: string): void;
+};
+
 // characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
 CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 CURVE.r // curve order; z⁴ − z² + 1, 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 curve.h // cofactor; (z - 1)²/3, 0x396c8c005555e1568c00aaab0000aaab
-bls.CURVE.Gx, bls.CURVE.Gy   // G1 base point coordinates (x, y)
-bls.CURVE.G2x, bls.CURVE.G2y // G2 base point coordinates (x₁, x₂+i), (y₁, y₂+i)
+CURVE.Gx, CURVE.Gy   // G1 base point coordinates (x, y)
+CURVE.G2x, CURVE.G2y // G2 base point coordinates (x₁, x₂+i), (y₁, y₂+i)
 
 // Classes
 bls.Fp   // field over Fp
