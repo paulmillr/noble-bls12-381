@@ -108,6 +108,7 @@ you will need [import map](https://deno.land/manual/linking_to_external_code/imp
 - [`aggregateSignatures(signatures)`](#aggregatesignaturessignatures)
 - [`verifyBatch(signature, messages, publicKeys)`](#verifybatchsignature-messages-publickeys)
 - [`pairing(G1Point, G2Point)`](#pairingg1point-g2point)
+- [Utilities](#utilities)
 
 ##### `getPublicKey(privateKey)`
 ```typescript
@@ -129,7 +130,7 @@ function sign(message: PointG2, privateKey: Uint8Array | string | bigint): Promi
 - `privateKey: Uint8Array | string | bigint` - private key which will sign the hash
 - Returns `Uint8Array | string | PointG2`: encoded signature
 
-Check out **Internals** section on instructions about domain separation tag (DST).
+Check out [Utilities](#utilities) section on instructions about domain separation tag (DST).
 
 ##### `verify(signature, message, publicKey)`
 ```typescript
@@ -186,46 +187,7 @@ function pairing(
 - `withFinalExponent: boolean` - should the result be powered by curve order; very slow
 - Returns `Fp12`: paired point over 12-degree extension field.
 
-##### Helpers
-
-Use `utils.bytesToHex(str)` to convert byte output to hexademical string.
-
-```typescript
-// characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
-bls.CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
-
-// curve order; z⁴ − z² + 1
-bls.CURVE.r // 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
-
-// cofactor; (z - 1)²/3
-bls.curve.h // 0x396c8c005555e1568c00aaab0000aaab
-
-
-// G1 base point coordinates (x, y)
-bls.CURVE.Gx
-// x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
-bls.CURVE.Gy
-// y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
-
-// G2 base point coordinates (x₁, x₂+i), (y₁, y₂+i)
-bls.CURVE.G2x
-// x =
-// 3059144344244213709971259814753781636986470325476647558659373206291635324768958432433509563104347017837885763365758,
-// 352701069587466618187139116011060144890029952792775240219908644239793785735715026873347600343865175952761926303160
-bls.CURVE.G2y
-// y =
-// 927553665492332455747201965776037880757740193453592970025027978793976877002675564980949289727957565575433344219582,
-// 1985150602287291935568054521177171638300868978215655730859378665066344726373823718423869104263333984641494340347905
-
-// Classes
-bls.Fp      // field over Fp
-bls.Fp2     // field over Fp₂
-bls.Fp12    // finite extension field over irreducible polynominal
-bls.PointG1 // projective point (xyz) at G1
-bls.PointG2 // projective point (xyz) at G2
-```
-
-## Internals
+##### Utilities
 
 The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
 
@@ -252,6 +214,53 @@ The BLS parameters for the library are:
 - `RAND_BITS` `64`
 
 Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
+
+
+Use `utils.bytesToHex(str)` to convert byte output to hexademical string.
+
+```typescript
+import { CURVE } from '@noble/bls12-381';
+// characteristic; z + (z⁴ - z² + 1)(z - 1)²/3
+CURVE.P // 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+CURVE.r // curve order; z⁴ − z² + 1, 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+curve.h // cofactor; (z - 1)²/3, 0x396c8c005555e1568c00aaab0000aaab
+bls.CURVE.Gx, bls.CURVE.Gy   // G1 base point coordinates (x, y)
+bls.CURVE.G2x, bls.CURVE.G2y // G2 base point coordinates (x₁, x₂+i), (y₁, y₂+i)
+
+// Classes
+bls.Fp   // field over Fp
+bls.Fp2  // field over Fp₂
+bls.Fp12 // finite extension field over irreducible polynominal
+
+// projective point (xyz) at G1
+class PointG1 extends ProjectivePoint<Fp> {
+    constructor(x: Fp, y: Fp, z?: Fp);
+    static BASE: PointG1;
+    static ZERO: PointG1;
+    static fromHex(bytes: Bytes): PointG1;
+    static fromPrivateKey(privateKey: PrivateKey): PointG1;
+    toRawBytes(isCompressed?: boolean): Uint8Array;
+    toHex(isCompressed?: boolean): string;
+    assertValidity(): this;
+    millerLoop(P: PointG2): Fp12;
+    clearCofactor(): PointG1;
+}
+// projective point (xyz) at G2
+class PointG2 extends ProjectivePoint<Fp2> {
+    constructor(x: Fp2, y: Fp2, z?: Fp2);
+    static BASE: PointG2;
+    static ZERO: PointG2;
+    static hashToCurve(msg: Bytes): Promise<PointG2>;
+    static fromSignature(hex: Bytes): PointG2;
+    static fromHex(bytes: Bytes): PointG2;
+    static fromPrivateKey(privateKey: PrivateKey): PointG2;
+    toSignature(): Uint8Array;
+    toRawBytes(isCompressed?: boolean): Uint8Array;
+    toHex(isCompressed?: boolean): string;
+    assertValidity(): this;
+    clearCofactor(): PointG2;
+}
+```
 
 ## Speed
 
