@@ -166,6 +166,15 @@ function pairing(
 
 ### Utilities
 
+Resources that help to understand bls12-381:
+
+- [BLS12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381)
+- [Key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c)
+- Pairing over bls12-381: [part 1](https://research.nccgroup.com/2020/07/06/pairing-over-bls12-381-part-1-fields/),
+  [part 2](https://research.nccgroup.com/2020/07/13/pairing-over-bls12-381-part-2-curves/),
+  [part 3](https://research.nccgroup.com/2020/08/13/pairing-over-bls12-381-part-3-pairing/)
+- Check out [the online demo](https://paulmillr.com/ecc) and [threshold sigs demo](https://genthresh.com)
+
 The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
 
 - BLS Relies on Bilinear Pairing (expensive)
@@ -191,15 +200,6 @@ The BLS parameters for the library are:
 - `RAND_BITS` `64`
 
 Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
-
-Resources that help to understand bls12-381:
-
-- [bls12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381)
-- [Key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c)
-- Pairing over bls12-381: [part 1](https://research.nccgroup.com/2020/07/06/pairing-over-bls12-381-part-1-fields/),
-  [part 2](https://research.nccgroup.com/2020/07/13/pairing-over-bls12-381-part-2-curves/),
-  [part 3](https://research.nccgroup.com/2020/08/13/pairing-over-bls12-381-part-3-pairing/)
-- Check out [the online demo](https://paulmillr.com/ecc) and [threshold sigs demo](https://genthresh.com)
 
 ```typescript
 // Exports `CURVE`, `utils`, `PointG1`, `PointG2`, `Fp`, `Fp2`, `Fp12` helpers
