@@ -37,47 +37,36 @@ Use NPM in node.js / browser, or include single file from
 
 ```js
 const bls = require('@noble/bls12-381');
-// if you're using single file, use global variable nobleBls12381
-
-// You can use Uint8Array, or hex string for readability
-const privateKey = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c';
-const privateKeys = [
-  '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
-  'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
-  '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
-];
-const message = '64726e3da8';
-const messages = ['d2', '0d98', '05caf3'];
+// If you're using single file, use global variable instead: `window.nobleBls12381`
 
 (async () => {
+  // keys, messages & other inputs can be Uint8Arrays or hex strings
+  const privateKey = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c';
+  const message = '64726e3da8';
   const publicKey = bls.getPublicKey(privateKey);
-  const publicKeys = privateKeys.map(bls.getPublicKey);
-
   const signature = await bls.sign(message, privateKey);
-  const isCorrect = await bls.verify(signature, message, publicKey);
-  console.log('key', publicKey);
-  console.log('signature', signature);
-  console.log('is correct:', isCorrect);
+  const isValid = await bls.verify(signature, message, publicKey);
+  console.log({ publicKey, signature, isValid });
 
   // Sign 1 msg with 3 keys
+  const privateKeys = [
+    '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+    'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
+    '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
+  ];
+  const messages = ['d2', '0d98', '05caf3'];
+  const publicKeys = privateKeys.map(bls.getPublicKey);
   const signatures2 = await Promise.all(privateKeys.map(p => bls.sign(message, p)));
   const aggPubKey2 = bls.aggregatePublicKeys(publicKeys);
   const aggSignature2 = bls.aggregateSignatures(signatures2);
-  const isCorrect2 = await bls.verify(aggSignature2, message, aggPubKey2);
-  console.log();
-  console.log('signatures are', signatures2);
-  console.log('merged to one signature', aggSignature2);
-  console.log('is correct:', isCorrect2);
+  const isValid2 = await bls.verify(aggSignature2, message, aggPubKey2);
+  console.log({ signatures2, aggSignature2, isValid2 });
 
   // Sign 3 msgs with 3 keys
   const signatures3 = await Promise.all(privateKeys.map((p, i) => bls.sign(messages[i], p)));
   const aggSignature3 = bls.aggregateSignatures(signatures3);
-  const isCorrect3 = await bls.verifyBatch(aggSignature3, messages, publicKeys);
-  console.log();
-  console.log('keys', publicKeys);
-  console.log('signatures', signatures3);
-  console.log('merged to one signature', aggSignature3);
-  console.log('is correct:', isCorrect3);
+  const isValid3 = await bls.verifyBatch(aggSignature3, messages, publicKeys);
+  console.log({ publicKeys, signatures3, aggSignature3, isValid3 });
 })();
 ```
 
@@ -85,19 +74,8 @@ To use the module with [Deno](https://deno.land),
 you will need [import map](https://deno.land/manual/linking_to_external_code/import_maps):
 
 - `deno run --import-map=imports.json app.ts`
-
-- `app.ts`
-
-    ```typescript
-    import * as bls from "https://deno.land/x/bls12_381/mod.ts";
-    const publicKey = bls.getPublicKey(bls.utils.randomPrivateKey());
-    console.log(publicKey);
-    ```
-- `imports.json`
-
-    ```json
-    {"imports": {"crypto": "https://deno.land/std@0.119.0/node/crypto.ts"}}
-    ```
+- app.ts: `import * as bls from "https://deno.land/x/bls12_381/mod.ts";`
+- imports.json: `{"imports": {"crypto": "https://deno.land/std@0.119.0/node/crypto.ts"}}`
 
 ## API
 
