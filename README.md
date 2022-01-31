@@ -9,9 +9,8 @@ The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
   which allows a user to sign lots of messages with one signature and verify them swiftly in a batch,
   using Boneh-Lynn-Shacham signature scheme.
 
-Compatible with Algorand, Chia, Dfinity, Ethereum, FIL, Zcash. Matches specs [pairing-curves-10](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-10), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-12](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-12).
-
-To learn more about internals, check out [BLS12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381) & [key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c). To try it live, see [the online demo](https://paulmillr.com/ecc) & [threshold sigs demo](https://genthresh.com).
+Compatible with Algorand, Chia, Dfinity, Ethereum, FIL, Zcash. Matches specs [pairing-curves-10](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-10), [bls-sigs-04](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04), [hash-to-curve-12](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-12). To learn more about internals, navigate to
+[utilities](#utilities) section.
 
 ### This library belongs to *noble* crypto
 
@@ -193,8 +192,14 @@ The BLS parameters for the library are:
 
 Filecoin uses little endian byte arrays for private keys - so ensure to reverse byte order if you'll use it with FIL.
 
+Resources that help to understand bls12-381:
 
-Use `utils.bytesToHex(str)` to convert byte output to hexademical string.
+- [bls12-381 for the rest of us](https://hackmd.io/@benjaminion/bls12-381)
+- [Key concepts of pairings](https://medium.com/@alonmuroch_65570/bls-signatures-part-2-key-concepts-of-pairings-27a8a9533d0c)
+- Pairing over bls12-381: [part 1](https://research.nccgroup.com/2020/07/06/pairing-over-bls12-381-part-1-fields/),
+  [part 2](https://research.nccgroup.com/2020/07/13/pairing-over-bls12-381-part-2-curves/),
+  [part 3](https://research.nccgroup.com/2020/08/13/pairing-over-bls12-381-part-3-pairing/)
+- Check out [the online demo](https://paulmillr.com/ecc) and [threshold sigs demo](https://genthresh.com)
 
 ```typescript
 // Exports `CURVE`, `utils`, `PointG1`, `PointG2`, `Fp`, `Fp2`, `Fp12` helpers
@@ -224,31 +229,31 @@ bls.Fp12 // finite extension field over irreducible polynominal
 
 // projective point (xyz) at G1
 class PointG1 extends ProjectivePoint<Fp> {
-    constructor(x: Fp, y: Fp, z?: Fp);
-    static BASE: PointG1;
-    static ZERO: PointG1;
-    static fromHex(bytes: Bytes): PointG1;
-    static fromPrivateKey(privateKey: PrivateKey): PointG1;
-    toRawBytes(isCompressed?: boolean): Uint8Array;
-    toHex(isCompressed?: boolean): string;
-    assertValidity(): this;
-    millerLoop(P: PointG2): Fp12;
-    clearCofactor(): PointG1;
+  constructor(x: Fp, y: Fp, z?: Fp);
+  static BASE: PointG1;
+  static ZERO: PointG1;
+  static fromHex(bytes: Bytes): PointG1;
+  static fromPrivateKey(privateKey: PrivateKey): PointG1;
+  toRawBytes(isCompressed?: boolean): Uint8Array;
+  toHex(isCompressed?: boolean): string;
+  assertValidity(): this;
+  millerLoop(P: PointG2): Fp12;
+  clearCofactor(): PointG1;
 }
 // projective point (xyz) at G2
 class PointG2 extends ProjectivePoint<Fp2> {
-    constructor(x: Fp2, y: Fp2, z?: Fp2);
-    static BASE: PointG2;
-    static ZERO: PointG2;
-    static hashToCurve(msg: Bytes): Promise<PointG2>;
-    static fromSignature(hex: Bytes): PointG2;
-    static fromHex(bytes: Bytes): PointG2;
-    static fromPrivateKey(privateKey: PrivateKey): PointG2;
-    toSignature(): Uint8Array;
-    toRawBytes(isCompressed?: boolean): Uint8Array;
-    toHex(isCompressed?: boolean): string;
-    assertValidity(): this;
-    clearCofactor(): PointG2;
+  constructor(x: Fp2, y: Fp2, z?: Fp2);
+  static BASE: PointG2;
+  static ZERO: PointG2;
+  static hashToCurve(msg: Bytes): Promise<PointG2>;
+  static fromSignature(hex: Bytes): PointG2;
+  static fromHex(bytes: Bytes): PointG2;
+  static fromPrivateKey(privateKey: PrivateKey): PointG2;
+  toSignature(): Uint8Array;
+  toRawBytes(isCompressed?: boolean): Uint8Array;
+  toHex(isCompressed?: boolean): string;
+  assertValidity(): this;
+  clearCofactor(): PointG2;
 }
 ```
 
