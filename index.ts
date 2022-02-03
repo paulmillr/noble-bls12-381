@@ -70,6 +70,24 @@ const crypto: { node?: any; web?: any } = {
 
 export const utils = {
   hashToField: hash_to_field,
+  /**
+   * Can take 40 or more bytes of uniform input e.g. from CSPRNG or KDF
+   * and convert them into private key, with the modulo bias being neglible.
+   * As per FIPS 186 B.1.1.
+   * https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
+   * @param hash hash output from sha512, or a similar function
+   * @returns valid private key
+   */
+  hashToPrivateKey: (hash: Hex): Uint8Array => {
+    hash = ensureBytes(hash);
+    if (hash.length < 40 || hash.length > 1024)
+      throw new Error('Expected 40-1024 bytes of private key as per FIPS 186');
+    const num = mod(bytesToNumberBE(hash), CURVE.r);
+    // This should never happen
+    if (num === 0n || num === 1n) throw new Error('Invalid private key');
+    return numberTo32BytesBE(num);
+  },
+
   bytesToHex,
   randomBytes: (bytesLength: number = 32): Uint8Array => {
     if (crypto.web) {
@@ -85,13 +103,7 @@ export const utils = {
   // NIST SP 800-56A rev 3, section 5.6.1.2.2
   // https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
   randomPrivateKey: (): Uint8Array => {
-    let i = 8;
-    while (i--) {
-      const b32 = utils.randomBytes(32);
-      const num = bytesToNumberBE(b32);
-      if (isWithinCurveOrder(num) && num !== 1n) return b32;
-    }
-    throw new Error('Valid private key was not found in 8 iterations. PRNG is broken');
+    return utils.hashToPrivateKey(utils.randomBytes(40));
   },
 
   sha256: async (message: Uint8Array): Promise<Uint8Array> => {
@@ -117,12 +129,9 @@ export const utils = {
   },
 };
 
-function bytesToNumberBE(bytes: Uint8Array) {
-  let value = 0n;
-  for (let i = bytes.length - 1, j = 0; i >= 0; i--, j++) {
-    value += (BigInt(bytes[i]) & 255n) << (8n * BigInt(j));
-  }
-  return value;
+function bytesToNumberBE(uint8a: Uint8Array): bigint {
+  if (!(uint8a instanceof Uint8Array)) throw new Error('Expected Uint8Array');
+  return BigInt('0x' + bytesToHex(Uint8Array.from(uint8a)));
 }
 
 const hexes = Array.from({ length: 256 }, (v, i) => i.toString(16).padStart(2, '0'));
@@ -150,6 +159,12 @@ function hexToBytes(hex: string): Uint8Array {
     array[i] = byte;
   }
   return array;
+}
+
+function numberTo32BytesBE(num: bigint) {
+  const length = 32;
+  const hex = num.toString(16).padStart(length * 2, '0');
+  return hexToBytes(hex);
 }
 
 function toPaddedHex(num: bigint, padding: number) {
