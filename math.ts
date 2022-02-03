@@ -845,6 +845,7 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   // Converts Projective point to default (x, y) coordinates.
   // Can accept precomputed Z^-1 - for example, from invertBatch.
   toAffine(invZ: T = this.z.invert()): [T, T] {
+    if (invZ.isZero()) throw new Error('Invalid inverted z');
     return [this.x.multiply(invZ), this.y.multiply(invZ)];
   }
 
