@@ -81,11 +81,18 @@ export function mod(a: bigint, b: bigint) {
   return res >= 0n ? res : b + res;
 }
 
-export function powMod(a: bigint, power: bigint, modulo: bigint) {
+/**
+ * Efficiently expotentiate num to power and do modular division.
+ * @example
+ * powMod(2n, 6n, 11n) // 64n % 11n == 9n
+ */
+export function powMod(num: bigint, power: bigint, modulo: bigint) {
+  if (modulo <= 0n || power < 0n) throw new Error('Expected power/modulo > 0');
+  if (modulo === 1n) return 0n;
   let res = 1n;
   while (power > 0n) {
-    if (power & 1n) res = (res * a) % modulo;
-    a = (a * a) % modulo;
+    if (power & 1n) res = (res * num) % modulo;
+    num = (num * num) % modulo;
     power >>= 1n;
   }
   return res;
@@ -124,7 +131,8 @@ function bitGet(n: bigint, pos: number) {
 
 // Inverses number over modulo
 function invert(number: bigint, modulo: bigint = CURVE.P): bigint {
-  const _0n = 0n, _1n = 1n;
+  const _0n = 0n;
+  const _1n = 1n;
   if (number === _0n || modulo <= _0n) {
     throw new Error(`invert: expected positive integers, got n=${number} mod=${modulo}`);
   }
