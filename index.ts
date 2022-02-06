@@ -466,7 +466,7 @@ export class PointG1 extends ProjectivePoint<Fp> {
 // Point on G2 curve (complex numbers): (x₁, x₂+i), (y₁, y₂+i)
 // We add z because we work with projective coordinates instead of affine x-y: that's much faster.
 export class PointG2 extends ProjectivePoint<Fp2> {
-  static BASE = new PointG2(new Fp2(CURVE.G2x), new Fp2(CURVE.G2y), Fp2.ONE);
+  static BASE = new PointG2(Fp2.fromBigTuple(CURVE.G2x), Fp2.fromBigTuple(CURVE.G2y), Fp2.ONE);
   static ZERO = new PointG2(Fp2.ONE, Fp2.ONE, Fp2.ZERO);
 
   private _PPRECOMPUTES: [Fp2, Fp2, Fp2][] | undefined;
@@ -505,17 +505,17 @@ export class PointG2 extends ProjectivePoint<Fp2> {
     const bflag1 = mod(z1, POW_2_383) / POW_2_382;
     if (bflag1 === 1n) return this.ZERO;
 
-    const x1 = z1 % POW_2_381;
-    const x2 = z2;
-    const x = new Fp2([x2, x1]);
-    const y2 = x.pow(3n).add(new Fp2(CURVE.b2)); // y² = x³ + 4
+    const x1 = new Fp(z1 % POW_2_381);
+    const x2 = new Fp(z2);
+    const x = new Fp2(x2, x1);
+    const y2 = x.pow(3n).add(Fp2.fromBigTuple(CURVE.b2)); // y² = x³ + 4
     // The slow part
     let y = y2.sqrt();
     if (!y) throw new Error('Failed to find a square root');
 
     // Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
     // If y1 happens to be zero, then use the bit of y0
-    const [y0, y1] = y.values;
+    const {re: y0, im: y1} = y.reim();
     const aflag1 = (z1 % POW_2_382) / POW_2_381;
     const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
     const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
@@ -541,7 +541,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const y1 = bytesToNumberBE(bytes.slice(2 * PUBLIC_KEY_LENGTH, 3 * PUBLIC_KEY_LENGTH));
       const y0 = bytesToNumberBE(bytes.slice(3 * PUBLIC_KEY_LENGTH));
 
-      point = new PointG2(new Fp2([x0, x1]), new Fp2([y0, y1]));
+      point = new PointG2(Fp2.fromBigTuple([x0, x1]), Fp2.fromBigTuple([y0, y1]));
     } else {
       throw new Error('Invalid uncompressed point G2, expected 192 bytes');
     }
@@ -560,7 +560,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const h = toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
       return hexToBytes(h);
     }
-    const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+    const [{re: x0, im: x1}, {re: y0, im: y1}] = this.toAffine().map((a) => a.reim());
     const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
@@ -580,7 +580,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       if (this.equals(PointG2.ZERO)) {
         return '4'.padEnd(2 * 4 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
       }
-      const [[x0, x1], [y0, y1]] = this.toAffine().map((a) => a.values);
+      const [{re: x0, im: x1}, {re: y0, im: y1}] = this.toAffine().map((a) => a.reim());
       return (
         toPaddedHex(x1, PUBLIC_KEY_LENGTH) +
         toPaddedHex(x0, PUBLIC_KEY_LENGTH) +
@@ -633,7 +633,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   // Checks for equation y² = x³ + b
   private isOnCurve(): boolean {
-    const b = new Fp2(CURVE.b2);
+    const b = Fp2.fromBigTuple(CURVE.b2);
     const { x, y, z } = this;
     const left = y.pow(2n).multiply(z).subtract(x.pow(3n));
     const right = b.multiply(z.pow(3n) as Fp2);

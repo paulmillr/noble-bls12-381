@@ -17,8 +17,8 @@ describe('bls12-381 Fp12', () => {
   it('equality', () => {
     fc.assert(
       fc.property(FC_BIGINT_12, (num) => {
-        const a = Fp12.fromTuple(num);
-        const b = Fp12.fromTuple(num);
+        const a = Fp12.fromBigTwelve(num);
+        const b = Fp12.fromBigTwelve(num);
         expect(a.equals(b)).toBe(true);
         expect(b.equals(a)).toBe(true);
       })
@@ -27,8 +27,8 @@ describe('bls12-381 Fp12', () => {
   it('non-equality', () => {
     fc.assert(
       fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1, num2) => {
-        const a = Fp12.fromTuple(num1);
-        const b = Fp12.fromTuple(num2);
+        const a = Fp12.fromBigTwelve(num1);
+        const b = Fp12.fromBigTwelve(num2);
         expect(a.equals(b)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
         expect(b.equals(a)).toBe(num1[0] === num2[0] && num1[1] === num2[1]);
       })
@@ -38,8 +38,8 @@ describe('bls12-381 Fp12', () => {
     it('commutativuty', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1, num2) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
           expect(a.add(b)).toEqual(b.add(a));
         })
       );
@@ -47,9 +47,9 @@ describe('bls12-381 Fp12', () => {
     it('associativity', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, FC_BIGINT_12, (num1, num2, num3) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
-          const c = Fp12.fromTuple(num3);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
+          const c = Fp12.fromBigTwelve(num3);
           expect(a.add(b.add(c))).toEqual(a.add(b).add(c));
         })
       );
@@ -57,7 +57,7 @@ describe('bls12-381 Fp12', () => {
     it('x+0=x', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.add(Fp12.ZERO)).toEqual(a);
         })
       );
@@ -65,7 +65,7 @@ describe('bls12-381 Fp12', () => {
     it('x-0=x', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.subtract(Fp12.ZERO)).toEqual(a);
           expect(a.subtract(a)).toEqual(Fp12.ZERO);
         })
@@ -74,8 +74,8 @@ describe('bls12-381 Fp12', () => {
     it('negate equality', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num1);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num1);
           expect(Fp12.ZERO.subtract(a)).toEqual(a.negate());
           expect(a.subtract(b)).toEqual(a.add(b.negate()));
           expect(a.subtract(b)).toEqual(a.add(b.multiply(-1n)));
@@ -85,7 +85,7 @@ describe('bls12-381 Fp12', () => {
     it('negate', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.negate()).toEqual(Fp12.ZERO.subtract(a));
           expect(a.negate()).toEqual(a.multiply(-1n));
         })
@@ -96,8 +96,8 @@ describe('bls12-381 Fp12', () => {
     it('commutativity', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1, num2) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
           expect(a.multiply(b)).toEqual(b.multiply(a));
         })
       );
@@ -105,9 +105,9 @@ describe('bls12-381 Fp12', () => {
     it('associativity', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, FC_BIGINT_12, (num1, num2, num3) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
-          const c = Fp12.fromTuple(num3);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
+          const c = Fp12.fromBigTwelve(num3);
           expect(a.multiply(b.multiply(c))).toEqual(a.multiply(b).multiply(c));
         })
       );
@@ -115,9 +115,9 @@ describe('bls12-381 Fp12', () => {
     it('distributivity', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, FC_BIGINT_12, (num1, num2, num3) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
-          const c = Fp12.fromTuple(num3);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
+          const c = Fp12.fromBigTwelve(num3);
           expect(a.multiply(b.add(c))).toEqual(b.multiply(a).add(c.multiply(a)));
         })
       );
@@ -125,7 +125,7 @@ describe('bls12-381 Fp12', () => {
     it('add equality', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.multiply(0n)).toEqual(Fp12.ZERO);
           expect(a.multiply(Fp12.ZERO)).toEqual(Fp12.ZERO);
           expect(a.multiply(1n)).toEqual(a);
@@ -139,7 +139,7 @@ describe('bls12-381 Fp12', () => {
     it('square equality', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.square()).toEqual(a.multiply(a));
         })
       );
@@ -147,7 +147,7 @@ describe('bls12-381 Fp12', () => {
     it('pow equality', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.pow(0n)).toEqual(Fp12.ONE);
           expect(a.pow(1n)).toEqual(a);
           expect(a.pow(2n)).toEqual(a.multiply(a));
@@ -160,7 +160,7 @@ describe('bls12-381 Fp12', () => {
     it('x/1=x', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(a.div(1n)).toEqual(a);
           expect(a.div(Fp12.ONE)).toEqual(a);
           expect(a.div(a)).toEqual(Fp12.ONE);
@@ -170,7 +170,7 @@ describe('bls12-381 Fp12', () => {
     it('x/0=0', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, (num) => {
-          const a = Fp12.fromTuple(num);
+          const a = Fp12.fromBigTwelve(num);
           expect(Fp12.ZERO.div(a)).toEqual(Fp12.ZERO);
         })
       );
@@ -178,9 +178,9 @@ describe('bls12-381 Fp12', () => {
     it('distributivity', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, FC_BIGINT_12, (num1, num2, num3) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
-          const c = Fp12.fromTuple(num3);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
+          const c = Fp12.fromBigTwelve(num3);
           expect(a.add(b).div(c)).toEqual(a.div(c).add(b.div(c)));
         })
       );
@@ -188,8 +188,8 @@ describe('bls12-381 Fp12', () => {
     it('multiply equality', () => {
       fc.assert(
         fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1, num2) => {
-          const a = Fp12.fromTuple(num1);
-          const b = Fp12.fromTuple(num2);
+          const a = Fp12.fromBigTwelve(num1);
+          const b = Fp12.fromBigTwelve(num2);
           expect(a.div(b)).toEqual(a.multiply(b.invert()));
         })
       );

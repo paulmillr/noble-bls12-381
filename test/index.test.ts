@@ -2,6 +2,7 @@ import * as fc from 'fast-check';
 import * as bls from '..';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+const { Fp2 } = bls;
 const G2_VECTORS = readFileSync(join(__dirname, 'bls12-381-g2-test-vectors.txt'), 'utf-8')
   .trim()
   .split('\n')
@@ -90,7 +91,7 @@ describe('bls12-381', () => {
     expect(g2.x).toEqual(bls.PointG2.ZERO.x);
     expect(g2.y).toEqual(bls.PointG2.ZERO.y);
     // Test Non-Zero
-    const x = new bls.Fp2([
+    const x = Fp2.fromBigTuple([
       BigInt(
         '0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8'
       ),
@@ -98,7 +99,7 @@ describe('bls12-381', () => {
         '0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e'
       ),
     ]);
-    const y = new bls.Fp2([
+    const y = Fp2.fromBigTuple([
       BigInt(
         '0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
       ),
@@ -122,7 +123,7 @@ describe('bls12-381', () => {
     expect(g2.x).toEqual(bls.PointG2.ZERO.x);
     expect(g2.y).toEqual(bls.PointG2.ZERO.y);
     // Test Non-Zero
-    const x = new bls.Fp2([
+    const x = Fp2.fromBigTuple([
       BigInt(
         '0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8'
       ),
@@ -130,7 +131,7 @@ describe('bls12-381', () => {
         '0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e'
       ),
     ]);
-    const y = new bls.Fp2([
+    const y = Fp2.fromBigTuple([
       BigInt(
         '0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
       ),
@@ -191,7 +192,7 @@ describe('bls12-381', () => {
     // Test Zero
     expect(bls.PointG2.ZERO.toHex(false)).toEqual(B_384_40);
     // Test Non-Zero
-    const x = new bls.Fp2([
+    const x = Fp2.fromBigTuple([
       BigInt(
         '0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8'
       ),
@@ -199,7 +200,7 @@ describe('bls12-381', () => {
         '0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e'
       ),
     ]);
-    const y = new bls.Fp2([
+    const y = Fp2.fromBigTuple([
       BigInt(
         '0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
       ),
@@ -207,7 +208,7 @@ describe('bls12-381', () => {
         '0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be'
       ),
     ]);
-    const g2 = new bls.PointG2(x, y, bls.Fp2.ONE);
+    const g2 = new bls.PointG2(x, y, Fp2.ONE);
     expect(g2.toHex(false)).toEqual(
       '13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb80606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
     );
@@ -218,7 +219,7 @@ describe('bls12-381', () => {
     expect(bls.PointG2.ZERO.toHex(false)).toEqual(B_384_40);
 
     // Test Non-Zero
-    const x = new bls.Fp2([
+    const x = Fp2.fromBigTuple([
       BigInt(
         '0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8'
       ),
@@ -226,7 +227,7 @@ describe('bls12-381', () => {
         '0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e'
       ),
     ]);
-    const y = new bls.Fp2([
+    const y = Fp2.fromBigTuple([
       BigInt(
         '0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
       ),
@@ -234,7 +235,7 @@ describe('bls12-381', () => {
         '0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be'
       ),
     ]);
-    const g2 = new bls.PointG2(x, y, bls.Fp2.ONE);
+    const g2 = new bls.PointG2(x, y, Fp2.ONE);
     expect(g2.toHex(false)).toEqual(
       '13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb80606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801'
     );
