@@ -100,22 +100,22 @@ export function powMod(num: bigint, power: bigint, modulo: bigint) {
 }
 
 function genInvertBatch<T extends Field<T>>(cls: FieldStatic<T>, nums: T[]): T[] {
-  const len = nums.length;
-  const scratch = new Array(len);
-  let acc = cls.ONE;
-  for (let i = 0; i < len; i++) {
-    if (nums[i].isZero()) continue;
-    scratch[i] = acc;
-    acc = acc.multiply(nums[i]);
-  }
-  acc = acc.invert();
-  for (let i = len - 1; i >= 0; i--) {
-    if (nums[i].isZero()) continue;
-    let tmp = acc.multiply(nums[i]);
-    nums[i] = acc.multiply(scratch[i]);
-    acc = tmp;
-  }
-  return nums;
+  const tmp = new Array(nums.length);
+  // Walk from first to last, multiply them by each other MOD p
+  const lastMultiplied = nums.reduce((acc, num, i) => {
+    if (num.isZero()) return acc;
+    tmp[i] = acc;
+    return acc.multiply(num);
+  }, cls.ONE);
+  // Invert last element
+  const inverted = lastMultiplied.invert();
+  // Walk from last to first, multiply them by inverted each other MOD p
+  nums.reduceRight((acc, num, i) => {
+    if (num.isZero()) return acc;
+    tmp[i] = acc.multiply(tmp[i]);
+    return acc.multiply(num);
+  }, inverted);
+  return tmp;
 }
 
 // Amount of bits inside bigint
