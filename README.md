@@ -96,7 +96,7 @@ function getPublicKey(privateKey: Uint8Array | string | bigint): Uint8Array;
   integer. The result is another `Point(x, y)` which we will by default encode to hex Uint8Array.
 - Returns `Uint8Array`: encoded publicKey for signature verification
 
-**Note:** if you need spec-based `KeyGen`, use [paulmillr/bls12-381-keygen](https://github.com/paulmillr/bls12-381-keygen). It should work properly with ETH2 and FIL keys.
+**Note:** if you need EIP2333-compliant `KeyGen` (eth2/fil), use [paulmillr/bls12-381-keygen](https://github.com/paulmillr/bls12-381-keygen).
 
 ##### `sign(message, privateKey)`
 ```typescript
@@ -173,6 +173,7 @@ Resources that help to understand bls12-381:
 - Pairing over bls12-381: [part 1](https://research.nccgroup.com/2020/07/06/pairing-over-bls12-381-part-1-fields/),
   [part 2](https://research.nccgroup.com/2020/07/13/pairing-over-bls12-381-part-2-curves/),
   [part 3](https://research.nccgroup.com/2020/08/13/pairing-over-bls12-381-part-3-pairing/)
+- [Estimating the bit security of pairing-friendly curves](https://research.nccgroup.com/2022/02/03/estimating-the-bit-security-of-pairing-friendly-curves/)
 - Check out [the online demo](https://paulmillr.com/ecc) and [threshold sigs demo](https://genthresh.com)
 
 The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
