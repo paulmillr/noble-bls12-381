@@ -83,7 +83,7 @@ export function mod(a: bigint, b: bigint) {
 }
 
 /**
- * Efficiently expotentiate num to power and do modular division.
+ * Efficiently exponentiate num to power and do modular division.
  * @example
  * powMod(2n, 6n, 11n) // 64n % 11n == 9n
  */

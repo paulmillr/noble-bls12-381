@@ -22,9 +22,9 @@ export { Fp, Fr, Fp2, Fp12, CURVE };
 
 type Hex = Uint8Array | string;
 type PrivateKey = Hex | bigint | number;
-const POW_2_381 = 2n ** 381n;
-const POW_2_382 = POW_2_381 * 2n;
-const POW_2_383 = POW_2_382 * 2n;
+const POW_2_381 = 2n ** 381n; // C_bit, compression bit for serialization flag
+const POW_2_382 = POW_2_381 * 2n; // I_bit, point-at-infinity bit for serialization flag
+const POW_2_383 = POW_2_382 * 2n; // S_bit, sign bit for serialization flag
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32;
 
@@ -72,7 +72,7 @@ export const utils = {
   hashToField: hash_to_field,
   /**
    * Can take 40 or more bytes of uniform input e.g. from CSPRNG or KDF
-   * and convert them into private key, with the modulo bias being neglible.
+   * and convert them into private key, with the modulo bias being negligible.
    * As per FIPS 186 B.1.1.
    * https://research.kudelskisecurity.com/2020/07/28/the-definitive-guide-to-modulo-bias-and-how-to-avoid-it/
    * @param hash hash output from sha512, or a similar function
@@ -321,10 +321,10 @@ export class PointG1 extends ProjectivePoint<Fp> {
 
   static fromHex(bytes: Hex) {
     bytes = ensureBytes(bytes);
-    const { P } = CURVE;
-
     let point;
     if (bytes.length === 48) {
+      const { P } = CURVE;
+
       const compressedValue = bytesToNumberBE(bytes);
       const bflag = mod(compressedValue, POW_2_383) / POW_2_382;
       if (bflag === 1n) {
@@ -360,8 +360,8 @@ export class PointG1 extends ProjectivePoint<Fp> {
 
   toHex(isCompressed = false) {
     this.assertValidity();
-    const { P } = CURVE;
     if (isCompressed) {
+      const { P } = CURVE;
       let hex;
       if (this.isZero()) {
         hex = POW_2_383 + POW_2_382;
@@ -527,10 +527,35 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   static fromHex(bytes: Hex) {
     bytes = ensureBytes(bytes);
+    const m_byte = bytes[0] & 0xE0;
+    if (m_byte == 0x20 || m_byte == 0x60 || m_byte == 0xE0) {
+      throw new Error('Invalid encoding flag: ' + m_byte);
+    }
+    const C_bit = m_byte & 0x80; // compression bit
+    const I_bit = m_byte & 0x40; // point at infinity bit
+    const S_bit = m_byte & 0x20; // sign bit
     let point;
-    if (bytes.length === 96) {
-      throw new Error('Compressed format not supported yet.');
-    } else if (bytes.length === 192) {
+    if (bytes.length === 96 && C_bit) {
+      const { P, b2 } = CURVE;
+      const b = Fp2.fromBigTuple(b2);
+
+      bytes[0] = bytes[0] & 0x1F; // clear flags
+      if (I_bit) {
+        // TODO: check that bytes are all zeros
+        return PointG2.ZERO;
+      }
+      const x_1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
+      const x_0 = bytesToNumberBE(bytes.slice(PUBLIC_KEY_LENGTH));
+      const x = new Fp2(new Fp(x_0), new Fp(x_1));
+      const right = x.pow(3n).add(b); // y² = x³ + 4 * (u+1) = x³ + b
+      let y = right.sqrt();
+      if (!y) throw new Error('Invalid compressed G2 point');
+      const Y_bit = (y.c1.value === 0n) ?
+        (y.c0.value * 2n) / P : 
+        ((y.c1.value * 2n) / P ? 1n : 0n);
+        y = (S_bit > 0 && Y_bit > 0) ? y : y.negate();
+        return new PointG2(x, y);
+    } else if (bytes.length === 192 && !C_bit) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) {
         return PointG2.ZERO;
@@ -543,9 +568,8 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
       point = new PointG2(Fp2.fromBigTuple([x0, x1]), Fp2.fromBigTuple([y0, y1]));
     } else {
-      throw new Error('Invalid uncompressed point G2, expected 192 bytes');
+      throw new Error('Invalid point G2, expected 96/192 bytes');
     }
-
     point.assertValidity();
     return point;
   }
@@ -575,7 +599,20 @@ export class PointG2 extends ProjectivePoint<Fp2> {
   toHex(isCompressed = false) {
     this.assertValidity();
     if (isCompressed) {
-      throw new Error('Point compression has not yet been implemented');
+      const { P } = CURVE;
+      let x_1 = 0n;
+      let x_0 = 0n;
+      if (this.isZero()) {
+        x_1 = POW_2_383 + POW_2_382; // set compressed & point-at-infinity bits
+      } else {
+        const [x, y] = this.toAffine();
+        const flag = (y.c1.value === 0n) ?
+          (y.c0.value * 2n) / P : 
+          ((y.c1.value * 2n) / P ? 1n : 0n);
+          x_1 = x.c1.value + flag * POW_2_381 + POW_2_383; // set compressed & sign bits
+          x_0 = x.c0.value;
+      }
+      return toPaddedHex(x_1, PUBLIC_KEY_LENGTH) + toPaddedHex(x_0, PUBLIC_KEY_LENGTH);
     } else {
       if (this.equals(PointG2.ZERO)) {
         return '4'.padEnd(2 * 4 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
