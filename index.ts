@@ -527,21 +527,24 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   static fromHex(bytes: Hex) {
     bytes = ensureBytes(bytes);
-    const m_byte = bytes[0] & 0xE0;
-    if (m_byte == 0x20 || m_byte == 0x60 || m_byte == 0xE0) {
+    const m_byte = bytes[0] & 0xe0;
+    if (m_byte === 0x20 || m_byte === 0x60 || m_byte === 0xe0) {
       throw new Error('Invalid encoding flag: ' + m_byte);
     }
-    const C_bit = m_byte & 0x80; // compression bit
-    const I_bit = m_byte & 0x40; // point at infinity bit
-    const S_bit = m_byte & 0x20; // sign bit
+    const bitC = m_byte & 0x80; // compression bit
+    const bitI = m_byte & 0x40; // point at infinity bit
+    const bitS = m_byte & 0x20; // sign bit
     let point;
-    if (bytes.length === 96 && C_bit) {
+    if (bytes.length === 96 && bitC) {
       const { P, b2 } = CURVE;
       const b = Fp2.fromBigTuple(b2);
 
-      bytes[0] = bytes[0] & 0x1F; // clear flags
-      if (I_bit) {
-        // TODO: check that bytes are all zeros
+      bytes[0] = bytes[0] & 0x1f; // clear flags
+      if (bitI) {
+        // check that all bytes are 0
+        if (bytes.reduce((p,c) => p !== 0 ? c + 1 : c, 0) > 0) {
+          throw new Error('Invalid compressed G2 point');
+        }
         return PointG2.ZERO;
       }
       const x_1 = bytesToNumberBE(bytes.slice(0, PUBLIC_KEY_LENGTH));
@@ -553,9 +556,9 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const Y_bit = (y.c1.value === 0n) ?
         (y.c0.value * 2n) / P : 
         ((y.c1.value * 2n) / P ? 1n : 0n);
-        y = (S_bit > 0 && Y_bit > 0) ? y : y.negate();
+        y = (bitS > 0 && Y_bit > 0) ? y : y.negate();
         return new PointG2(x, y);
-    } else if (bytes.length === 192 && !C_bit) {
+    } else if (bytes.length === 192 && !bitC) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) {
         return PointG2.ZERO;
