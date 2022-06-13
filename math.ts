@@ -834,6 +834,9 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
 
   toString(isAffine = true) {
+    if (this.isZero()) {
+      return `Point<Zero>`;
+    }
     if (!isAffine) {
       return `Point<x=${this.x}, y=${this.y}, z=${this.z}>`;
     }
