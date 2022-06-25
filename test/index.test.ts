@@ -250,6 +250,15 @@ describe('bls12-381', () => {
   it('should not compress and decompress zero G1 point', async () => {
     expect(() => bls.PointG1.fromPrivateKey(0n)).toThrowError();
   });
+  it('should compress and decompress G2 points', async () => {
+    const priv = bls.PointG2.fromPrivateKey(42n);
+    const publicKey = priv.toHex(true);
+    const decomp = bls.PointG2.fromHex(publicKey);
+    expect(publicKey).toEqual(decomp.toHex(true));
+  });
+  it('should not compress and decompress zero G2 point', async () => {
+    expect(() => bls.PointG2.fromPrivateKey(0n)).toThrowError();
+  });
   const VALID_G1 = new bls.PointG1(
     new bls.Fp(
       3609742242174788176010452839163620388872641749536604986743596621604118973777515189035770461528205168143692110933639n
