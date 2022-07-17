@@ -4,7 +4,7 @@ import { Fp, Fp2 } from '..';
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 fc.configureGlobal({ numRuns: NUM_RUNS });
 const FC_BIGINT = fc.bigInt(1n, Fp.ORDER - 1n);
-const FC_BIGINT_2 = fc.array(FC_BIGINT, 2, 2);
+const FC_BIGINT_2 = fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 });
 
 describe('bls12-381 Fp2', () => {
   it('equality', () => {
@@ -66,7 +66,7 @@ describe('bls12-381 Fp2', () => {
     });
     it('negate equality', () => {
       fc.assert(
-        fc.property(FC_BIGINT_2, FC_BIGINT_2, (num1) => {
+        fc.property(FC_BIGINT_2, (num1) => {
           const a = Fp2.fromBigTuple([num1[0], num1[1]]);
           const b = Fp2.fromBigTuple([num1[0], num1[1]]);
           expect(Fp2.ZERO.subtract(a)).toEqual(a.negate());

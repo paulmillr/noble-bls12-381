@@ -65,7 +65,7 @@ describe('bls12-381 Fp', () => {
     });
     it('negate equality', () => {
       fc.assert(
-        fc.property(FC_BIGINT, FC_BIGINT, (num1) => {
+        fc.property(FC_BIGINT, (num1) => {
           const a = new Fp(num1);
           const b = new Fp(num1);
           expect(Fp.ZERO.subtract(a)).toEqual(a.negate());

@@ -11,7 +11,7 @@ type BigintTwelve = [
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 fc.configureGlobal({ numRuns: NUM_RUNS });
 const FC_BIGINT = fc.bigInt(1n, Fp.ORDER - 1n);
-const FC_BIGINT_12 = fc.array(FC_BIGINT, 12, 12) as Arbitrary<BigintTwelve>;
+const FC_BIGINT_12 = fc.array(FC_BIGINT, { minLength: 12, maxLength: 12 }) as Arbitrary<BigintTwelve>;
 
 describe('bls12-381 Fp12', () => {
   it('equality', () => {
@@ -73,7 +73,7 @@ describe('bls12-381 Fp12', () => {
     });
     it('negate equality', () => {
       fc.assert(
-        fc.property(FC_BIGINT_12, FC_BIGINT_12, (num1) => {
+        fc.property(FC_BIGINT_12, (num1) => {
           const a = Fp12.fromBigTwelve(num1);
           const b = Fp12.fromBigTwelve(num1);
           expect(Fp12.ZERO.subtract(a)).toEqual(a.negate());

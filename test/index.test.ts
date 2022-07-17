@@ -21,10 +21,10 @@ fc.configureGlobal({ numRuns: NUM_RUNS });
 // @ts-ignore
 const CURVE_ORDER = bls.CURVE.r;
 
-const FC_MSG = fc.hexaString(64, 64);
-const FC_MSG_5 = fc.array(FC_MSG, 5, 5);
+const FC_MSG = fc.hexaString({ minLength: 64, maxLength: 64 });
+const FC_MSG_5 = fc.array(FC_MSG, { minLength: 5, maxLength: 5 });
 const FC_BIGINT = fc.bigInt(1n, CURVE_ORDER - 1n);
-const FC_BIGINT_5 = fc.array(FC_BIGINT, 5, 5);
+const FC_BIGINT_5 = fc.array(FC_BIGINT, { minLength: 5, maxLength: 5 });
 const B_192_40 = '40'.padEnd(192, '0');
 const B_384_40 = '40'.padEnd(384, '0'); // [0x40, 0, 0...]
 

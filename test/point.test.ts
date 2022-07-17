@@ -10,8 +10,8 @@ describe('bls12-381 Point', () => {
     it('Point equality', () => {
       fc.assert(
         fc.property(
-          fc.array(FC_BIGINT, 3, 3),
-          fc.array(FC_BIGINT, 3, 3),
+          fc.array(FC_BIGINT, { minLength: 3, maxLength: 3 }),
+          fc.array(FC_BIGINT, { minLength: 3, maxLength: 3 }),
           ([x1, y1, z1], [x2, y2, z2]) => {
             const p1 = new PointG1(new Fp(x1), new Fp(y1), new Fp(z1));
             const p2 = new PointG1(new Fp(x2), new Fp(y2), new Fp(z2));
@@ -158,8 +158,8 @@ describe('bls12-381 Point', () => {
     it('Point equality', () => {
       fc.assert(
         fc.property(
-          fc.array(fc.array(FC_BIGINT, 2, 2), 3, 3),
-          fc.array(fc.array(FC_BIGINT, 2, 2), 3, 3),
+          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), { minLength: 3, maxLength: 3 }),
+          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), { minLength: 3, maxLength: 3 }),
           ([x1, y1, z1], [x2, y2, z2]) => {
             const p1 = new PointG2(Fp2.fromBigTuple(x1), Fp2.fromBigTuple(y1), Fp2.fromBigTuple(z1));
             const p2 = new PointG2(Fp2.fromBigTuple(x2), Fp2.fromBigTuple(y2), Fp2.fromBigTuple(z2));
