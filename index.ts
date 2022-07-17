@@ -515,7 +515,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
     // Choose the y whose leftmost bit of the imaginary part is equal to the a_flag1
     // If y1 happens to be zero, then use the bit of y0
-    const {re: y0, im: y1} = y.reim();
+    const { re: y0, im: y1 } = y.reim();
     const aflag1 = (z1 % POW_2_382) / POW_2_381;
     const isGreater = y1 > 0n && (y1 * 2n) / P !== aflag1;
     const isZero = y1 === 0n && (y0 * 2n) / P !== aflag1;
@@ -542,7 +542,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       bytes[0] = bytes[0] & 0x1f; // clear flags
       if (bitI) {
         // check that all bytes are 0
-        if (bytes.reduce((p,c) => p !== 0 ? c + 1 : c, 0) > 0) {
+        if (bytes.reduce((p, c) => (p !== 0 ? c + 1 : c), 0) > 0) {
           throw new Error('Invalid compressed G2 point');
         }
         return PointG2.ZERO;
@@ -553,11 +553,9 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const right = x.pow(3n).add(b); // y² = x³ + 4 * (u+1) = x³ + b
       let y = right.sqrt();
       if (!y) throw new Error('Invalid compressed G2 point');
-      const Y_bit = (y.c1.value === 0n) ?
-        (y.c0.value * 2n) / P : 
-        ((y.c1.value * 2n) / P ? 1n : 0n);
-        y = (bitS > 0 && Y_bit > 0) ? y : y.negate();
-        return new PointG2(x, y);
+      const Y_bit = y.c1.value === 0n ? (y.c0.value * 2n) / P : (y.c1.value * 2n) / P ? 1n : 0n;
+      y = bitS > 0 && Y_bit > 0 ? y : y.negate();
+      return new PointG2(x, y);
     } else if (bytes.length === 192 && !bitC) {
       // Check if the infinity flag is set
       if ((bytes[0] & (1 << 6)) !== 0) {
@@ -587,7 +585,7 @@ export class PointG2 extends ProjectivePoint<Fp2> {
       const h = toPaddedHex(sum, PUBLIC_KEY_LENGTH) + toPaddedHex(0n, PUBLIC_KEY_LENGTH);
       return hexToBytes(h);
     }
-    const [{re: x0, im: x1}, {re: y0, im: y1}] = this.toAffine().map((a) => a.reim());
+    const [{ re: x0, im: x1 }, { re: y0, im: y1 }] = this.toAffine().map((a) => a.reim());
     const tmp = y1 > 0n ? y1 * 2n : y0 * 2n;
     const aflag1 = tmp / CURVE.P;
     const z1 = x1 + aflag1 * POW_2_381 + POW_2_383;
@@ -609,18 +607,16 @@ export class PointG2 extends ProjectivePoint<Fp2> {
         x_1 = POW_2_383 + POW_2_382; // set compressed & point-at-infinity bits
       } else {
         const [x, y] = this.toAffine();
-        const flag = (y.c1.value === 0n) ?
-          (y.c0.value * 2n) / P : 
-          ((y.c1.value * 2n) / P ? 1n : 0n);
-          x_1 = x.c1.value + flag * POW_2_381 + POW_2_383; // set compressed & sign bits
-          x_0 = x.c0.value;
+        const flag = y.c1.value === 0n ? (y.c0.value * 2n) / P : (y.c1.value * 2n) / P ? 1n : 0n;
+        x_1 = x.c1.value + flag * POW_2_381 + POW_2_383; // set compressed & sign bits
+        x_0 = x.c0.value;
       }
       return toPaddedHex(x_1, PUBLIC_KEY_LENGTH) + toPaddedHex(x_0, PUBLIC_KEY_LENGTH);
     } else {
       if (this.equals(PointG2.ZERO)) {
         return '4'.padEnd(2 * 4 * PUBLIC_KEY_LENGTH, '0'); // bytes[0] |= 1 << 6;
       }
-      const [{re: x0, im: x1}, {re: y0, im: y1}] = this.toAffine().map((a) => a.reim());
+      const [{ re: x0, im: x1 }, { re: y0, im: y1 }] = this.toAffine().map((a) => a.reim());
       return (
         toPaddedHex(x1, PUBLIC_KEY_LENGTH) +
         toPaddedHex(x0, PUBLIC_KEY_LENGTH) +
