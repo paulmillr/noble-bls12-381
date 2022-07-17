@@ -3,7 +3,8 @@ name: Node CI
 on: [push, pull_request]
 jobs:
   test:
-    name: v18
+    name: v18 @ ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Use Node.js ${{ matrix.node }}
