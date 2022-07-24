@@ -56,15 +56,15 @@
   ],
   "exports": {
     "./math": {
+      "types": "./lib/math.d.ts",
       "import": "./lib/esm/math.js",
       "default": "./lib/math.js"
     },
-    "./math.d.ts": "./lib/math.d.ts",
     ".": {
+      "types": "./lib/index.d.ts",
       "import": "./lib/esm/index.js",
       "default": "./lib/index.js"
-    },
-    "./index.d.ts": "./lib/index.d.ts"
+    }
   },
   "funding": [
     {
