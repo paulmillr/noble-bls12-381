@@ -266,27 +266,27 @@ To achieve the best speed out of all JS / Python implementations, the library em
 - endomorphism for clearing cofactor
 - pairing precomputation
 
-Benchmarks measured with Apple M1:
+Benchmarks measured with Apple M2 on macOS 12.5 with node.js 18.8:
 
 ```
-getPublicKey x 742 ops/sec @ 1ms/op
-sign x 39 ops/sec @ 25ms/op
-verify x 31 ops/sec @ 32ms/op
-pairing x 77 ops/sec @ 12ms/op
-aggregatePublicKeys/8 x 105 ops/sec @ 9ms/op
-aggregateSignatures/8 x 41 ops/sec @ 24ms/op
+getPublicKey x 818 ops/sec @ 1ms/op
+sign x 44 ops/sec @ 22ms/op
+verify x 34 ops/sec @ 29ms/op
+pairing x 84 ops/sec @ 11ms/op
+aggregatePublicKeys/8 x 117 ops/sec @ 8ms/op
+aggregateSignatures/8 x 45 ops/sec @ 21ms/op
 
 with compression / decompression disabled:
-sign/nc x 55 ops/sec @ 17ms/op
-verify/nc x 52 ops/sec @ 19ms/op
-aggregatePublicKeys/32 x 1,045 ops/sec @ 956μs/op
-aggregatePublicKeys/128 x 681 ops/sec @ 1ms/op
-aggregatePublicKeys/512 x 285 ops/sec @ 3ms/op
-aggregatePublicKeys/2048 x 85 ops/sec @ 11ms/op
-aggregateSignatures/32 x 471 ops/sec @ 2ms/op
-aggregateSignatures/128 x 247 ops/sec @ 4ms/op
-aggregateSignatures/512 x 85 ops/sec @ 11ms/op
-aggregateSignatures/2048 x 23 ops/sec @ 41ms/op
+sign/nc x 60 ops/sec @ 16ms/op
+verify/nc x 57 ops/sec @ 17ms/op ± 1.05% (min: 17ms, max: 19ms)
+aggregatePublicKeys/32 x 1,163 ops/sec @ 859μs/op
+aggregatePublicKeys/128 x 758 ops/sec @ 1ms/op
+aggregatePublicKeys/512 x 318 ops/sec @ 3ms/op
+aggregatePublicKeys/2048 x 96 ops/sec @ 10ms/op
+aggregateSignatures/32 x 516 ops/sec @ 1ms/op
+aggregateSignatures/128 x 269 ops/sec @ 3ms/op
+aggregateSignatures/512 x 93 ops/sec @ 10ms/op
+aggregateSignatures/2048 x 25 ops/sec @ 38ms/op
 ```
 
 ## Security
