@@ -158,11 +158,25 @@ describe('bls12-381 Point', () => {
     it('Point equality', () => {
       fc.assert(
         fc.property(
-          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), { minLength: 3, maxLength: 3 }),
-          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), { minLength: 3, maxLength: 3 }),
+          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), {
+            minLength: 3,
+            maxLength: 3,
+          }),
+          fc.array(fc.array(FC_BIGINT, { minLength: 2, maxLength: 2 }), {
+            minLength: 3,
+            maxLength: 3,
+          }),
           ([x1, y1, z1], [x2, y2, z2]) => {
-            const p1 = new PointG2(Fp2.fromBigTuple(x1), Fp2.fromBigTuple(y1), Fp2.fromBigTuple(z1));
-            const p2 = new PointG2(Fp2.fromBigTuple(x2), Fp2.fromBigTuple(y2), Fp2.fromBigTuple(z2));
+            const p1 = new PointG2(
+              Fp2.fromBigTuple(x1),
+              Fp2.fromBigTuple(y1),
+              Fp2.fromBigTuple(z1)
+            );
+            const p2 = new PointG2(
+              Fp2.fromBigTuple(x2),
+              Fp2.fromBigTuple(y2),
+              Fp2.fromBigTuple(z2)
+            );
             expect(p1.equals(p1)).toBe(true);
             expect(p2.equals(p2)).toBe(true);
             expect(p1.equals(p2)).toBe(false);
@@ -175,7 +189,11 @@ describe('bls12-381 Point', () => {
       );
     });
     it('should be placed on curve vector 1', () => {
-      const a = new PointG2(Fp2.fromBigTuple([0n, 0n]), Fp2.fromBigTuple([1n, 0n]), Fp2.fromBigTuple([0n, 0n]));
+      const a = new PointG2(
+        Fp2.fromBigTuple([0n, 0n]),
+        Fp2.fromBigTuple([1n, 0n]),
+        Fp2.fromBigTuple([0n, 0n])
+      );
       a.assertValidity();
     });
     it('should be placed on curve vector 2', () => {
@@ -210,7 +228,11 @@ describe('bls12-381 Point', () => {
       a.assertValidity();
     });
     it('should not be placed on curve vector 1', () => {
-      const a = new PointG2(Fp2.fromBigTuple([0n, 0n]), Fp2.fromBigTuple([1n, 0n]), Fp2.fromBigTuple([1n, 0n]));
+      const a = new PointG2(
+        Fp2.fromBigTuple([0n, 0n]),
+        Fp2.fromBigTuple([1n, 0n]),
+        Fp2.fromBigTuple([1n, 0n])
+      );
       expect(() => a.assertValidity()).toThrowError();
     });
     it('should not be placed on curve vector 2', () => {

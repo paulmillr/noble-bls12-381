@@ -1,5 +1,5 @@
 import * as bls from '..';
-const {pairing, Fp12} = bls;
+const { pairing, Fp12 } = bls;
 const G1 = bls.PointG1.BASE;
 const G2 = bls.PointG2.BASE;
 const CURVE_ORDER = bls.CURVE.r;

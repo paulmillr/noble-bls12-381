@@ -28,7 +28,7 @@ const FC_BIGINT_5 = fc.array(FC_BIGINT, { minLength: 5, maxLength: 5 });
 const B_192_40 = '40'.padEnd(192, '0');
 const B_384_40 = '40'.padEnd(384, '0'); // [0x40, 0, 0...]
 
-const getPubKey = (priv: any) => bls.getPublicKey(priv)
+const getPubKey = (priv: any) => bls.getPublicKey(priv);
 
 describe('bls12-381', () => {
   // bls.PointG1.BASE.clearMultiplyPrecomputes();
@@ -293,14 +293,14 @@ describe('bls12-381', () => {
   });
   it(`should produce correct scalars (${SCALAR_VECTORS.length} vectors)`, async () => {
     const options = {
-        p: bls.CURVE.r,
-        m: 1,
-        expand: false,
+      p: bls.CURVE.r,
+      m: 1,
+      expand: false,
     };
     for (let vector of SCALAR_VECTORS) {
       const [okmAscii, expectedHex] = vector;
-      const expected = BigInt("0x" + expectedHex);
-      const okm = new Uint8Array(okmAscii.split("").map(c => c.charCodeAt(0)));
+      const expected = BigInt('0x' + expectedHex);
+      const okm = new Uint8Array(okmAscii.split('').map((c) => c.charCodeAt(0)));
       const scalars = await bls.utils.hashToField(okm, 1, options);
       expect(scalars[0][0]).toEqual(expected);
     }
@@ -399,7 +399,7 @@ describe('bls12-381', () => {
   it('should verify multi-signature as simple signature', async () => {
     await fc.assert(
       fc.asyncProperty(FC_MSG, FC_BIGINT_5, async (message, privateKeys) => {
-        const publicKey = (await Promise.all(privateKeys.map(getPubKey)));
+        const publicKey = await Promise.all(privateKeys.map(getPubKey));
         const signatures = await Promise.all(
           privateKeys.map((privateKey) => bls.sign(message, privateKey))
         );
@@ -412,7 +412,7 @@ describe('bls12-381', () => {
   it('should not verify wrong multi-signature as simple signature', async () => {
     await fc.assert(
       fc.asyncProperty(FC_MSG, FC_MSG, FC_BIGINT_5, async (message, wrongMessage, privateKeys) => {
-        const publicKey = (await Promise.all(privateKeys.map(getPubKey)));
+        const publicKey = await Promise.all(privateKeys.map(getPubKey));
         const signatures = await Promise.all(
           privateKeys.map((privateKey) => bls.sign(message, privateKey))
         );

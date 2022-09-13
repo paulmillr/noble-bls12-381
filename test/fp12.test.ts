@@ -2,6 +2,7 @@ import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
 import { Fp, Fp12 } from '..';
 
+// prettier-ignore
 type BigintTwelve = [
   bigint, bigint, bigint, bigint,
   bigint, bigint, bigint, bigint,
@@ -11,7 +12,10 @@ type BigintTwelve = [
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 fc.configureGlobal({ numRuns: NUM_RUNS });
 const FC_BIGINT = fc.bigInt(1n, Fp.ORDER - 1n);
-const FC_BIGINT_12 = fc.array(FC_BIGINT, { minLength: 12, maxLength: 12 }) as Arbitrary<BigintTwelve>;
+const FC_BIGINT_12 = fc.array(FC_BIGINT, {
+  minLength: 12,
+  maxLength: 12,
+}) as Arbitrary<BigintTwelve>;
 
 describe('bls12-381 Fp12', () => {
   it('equality', () => {
