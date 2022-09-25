@@ -10,7 +10,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest test/*.test.ts",
-    "build": "tsc -d && tsc -p tsconfig.esm.json",
+    "build": "tsc && tsc -p tsconfig.esm.json",
     "build:release": "rollup -c rollup.config.js",
     "bench": "node test/benchmark.js",
     "lint": "prettier --print-width 100 --single-quote --check index.ts"
@@ -36,7 +36,9 @@
     "prettier": "2.6.2",
     "rollup": "2.75.5",
     "ts-jest": "28.0.4",
-    "typescript": "4.7.3"
+    "typescript": "4.7.3",
+    "@noble/hashes": "1.1.2",
+    "micro-packed": "0.3.1"
   },
   "keywords": [
     "bls12-381",

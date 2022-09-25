@@ -14,8 +14,9 @@
 import nodeCrypto from 'crypto';
 // prettier-ignore
 import {
+  hexToBytes, bytesToHex, bytesToNumberBE, concatBytes,
   Fp, Fr, Fp2, Fp12, CURVE, ProjectivePoint,
-  map_to_curve_simple_swu_9mod16, isogenyMapG2,
+  map_to_curve_simple_swu_9mod16, map_to_curve_simple_swu_3mod4, isogenyMapG1, isogenyMapG2,
   millerLoop, psi, psi2, calcPairingPrecomputes, mod
 } from './math.js';
 export { Fp, Fr, Fp2, Fp12, CURVE };
@@ -26,7 +27,25 @@ const POW_2_381 = 2n ** 381n; // C_bit, compression bit for serialization flag
 const POW_2_382 = POW_2_381 * 2n; // I_bit, point-at-infinity bit for serialization flag
 const POW_2_383 = POW_2_382 * 2n; // S_bit, sign bit for serialization flag
 const PUBLIC_KEY_LENGTH = 48;
-const SHA256_DIGEST_SIZE = 32;
+
+type BasicHash = (msg: Uint8Array) => Uint8Array | Promise<Uint8Array>;
+type Hash = BasicHash & { outputLen: number };
+function wrapHash(outputLen: number, h: BasicHash): Hash {
+  let tmp = h as Hash;
+  tmp.outputLen = outputLen;
+  return tmp;
+}
+
+const sha256 = wrapHash(32, async (message: Uint8Array): Promise<Uint8Array> => {
+  if (crypto.web) {
+    const buffer = await crypto.web.subtle.digest('SHA-256', message.buffer);
+    return new Uint8Array(buffer);
+  } else if (crypto.node) {
+    return Uint8Array.from(crypto.node.createHash('sha256').update(message).digest());
+  } else {
+    throw new Error("The environment doesn't have sha256 function");
+  }
+});
 
 // Default hash_to_field options are for hash to G2.
 //
@@ -55,6 +74,10 @@ const htfDefaults = {
   // option to use a message that has already been processed by
   // expand_message_xmd
   expand: true,
+  // Hash functions for: expand_message_xmd is appropriate for use with a
+  // wide range of hash functions, including SHA-2, SHA-3, BLAKE2, and others.
+  // BBS+ uses blake2: https://github.com/hyperledger/aries-framework-go/issues/2247
+  hash: sha256,
 };
 
 function isWithinCurveOrder(num: bigint): boolean {
@@ -70,6 +93,7 @@ const crypto: { node?: any; web?: any } = {
 
 export const utils = {
   hashToField: hash_to_field,
+  expandMessageXMD: expand_message_xmd,
   /**
    * Can take 40 or more bytes of uniform input e.g. from CSPRNG or KDF
    * and convert them into private key, with the modulo bias being negligible.
@@ -87,8 +111,9 @@ export const utils = {
     if (num === 0n || num === 1n) throw new Error('Invalid private key');
     return numberTo32BytesBE(num);
   },
-
+  stringToBytes,
   bytesToHex,
+  hexToBytes,
   randomBytes: (bytesLength: number = 32): Uint8Array => {
     if (crypto.web) {
       return crypto.web.getRandomValues(new Uint8Array(bytesLength));
@@ -105,17 +130,7 @@ export const utils = {
   randomPrivateKey: (): Uint8Array => {
     return utils.hashToPrivateKey(utils.randomBytes(40));
   },
-
-  sha256: async (message: Uint8Array): Promise<Uint8Array> => {
-    if (crypto.web) {
-      const buffer = await crypto.web.subtle.digest('SHA-256', message.buffer);
-      return new Uint8Array(buffer);
-    } else if (crypto.node) {
-      return Uint8Array.from(crypto.node.createHash('sha256').update(message).digest());
-    } else {
-      throw new Error("The environment doesn't have sha256 function");
-    }
-  },
+  sha256,
   mod,
   getDSTLabel() {
     return htfDefaults.DST;
@@ -128,38 +143,6 @@ export const utils = {
     htfDefaults.DST = newLabel;
   },
 };
-
-function bytesToNumberBE(uint8a: Uint8Array): bigint {
-  if (!(uint8a instanceof Uint8Array)) throw new Error('Expected Uint8Array');
-  return BigInt('0x' + bytesToHex(Uint8Array.from(uint8a)));
-}
-
-const hexes = Array.from({ length: 256 }, (v, i) => i.toString(16).padStart(2, '0'));
-function bytesToHex(uint8a: Uint8Array): string {
-  // pre-caching chars could speed this up 6x.
-  let hex = '';
-  for (let i = 0; i < uint8a.length; i++) {
-    hex += hexes[uint8a[i]];
-  }
-  return hex;
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  if (typeof hex !== 'string') {
-    throw new TypeError('hexToBytes: expected string, got ' + typeof hex);
-  }
-  if (hex.length % 2) throw new Error('hexToBytes: received invalid unpadded hex');
-  const array = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < array.length; i++) {
-    const j = i * 2;
-    const hexByte = hex.slice(j, j + 2);
-    if (hexByte.length !== 2) throw new Error('Invalid byte sequence');
-    const byte = Number.parseInt(hexByte, 16);
-    if (Number.isNaN(byte) || byte < 0) throw new Error('Invalid byte sequence');
-    array[i] = byte;
-  }
-  return array;
-}
 
 function numberTo32BytesBE(num: bigint) {
   const length = 32;
@@ -179,18 +162,6 @@ function ensureBytes(hex: string | Uint8Array): Uint8Array {
   return hex instanceof Uint8Array ? Uint8Array.from(hex) : hexToBytes(hex);
 }
 
-function concatBytes(...arrays: Uint8Array[]): Uint8Array {
-  if (arrays.length === 1) return arrays[0];
-  const length = arrays.reduce((a, arr) => a + arr.length, 0);
-  const result = new Uint8Array(length);
-  for (let i = 0, pad = 0; i < arrays.length; i++) {
-    const arr = arrays[i];
-    result.set(arr, pad);
-    pad += arr.length;
-  }
-  return result;
-}
-
 // UTF8 to ui8a
 function stringToBytes(str: string) {
   const bytes = new Uint8Array(str.length);
@@ -200,7 +171,7 @@ function stringToBytes(str: string) {
   return bytes;
 }
 
-// Octet Stream to Integer
+// Octet Stream to Integer (bytesToNumberBE)
 function os2ip(bytes: Uint8Array): bigint {
   let result = 0n;
   for (let i = 0; i < bytes.length; i++) {
@@ -236,12 +207,13 @@ function strxor(a: Uint8Array, b: Uint8Array): Uint8Array {
 async function expand_message_xmd(
   msg: Uint8Array,
   DST: Uint8Array,
-  lenInBytes: number
+  lenInBytes: number,
+  H: Hash = utils.sha256
 ): Promise<Uint8Array> {
-  const H = utils.sha256;
-  const b_in_bytes = SHA256_DIGEST_SIZE;
+  // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16#section-5.3.3
+  if (DST.length > 255) DST = await H(concatBytes(stringToBytes('H2C-OVERSIZE-DST-'), DST));
+  const b_in_bytes = H.outputLen;
   const r_in_bytes = b_in_bytes * 2;
-
   const ell = Math.ceil(lenInBytes / b_in_bytes);
   if (ell > 255) throw new Error('Invalid xmd length');
   const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
@@ -265,7 +237,11 @@ async function expand_message_xmd(
 // count - the number of elements of F to output.
 // Outputs:
 // [u_0, ..., u_(count - 1)], a list of field elements.
-async function hash_to_field(msg: Uint8Array, count: number, options = {}): Promise<bigint[][]> {
+async function hash_to_field(
+  msg: Uint8Array,
+  count: number,
+  options: Partial<typeof htfDefaults> = {}
+): Promise<bigint[][]> {
   // if options is provided but incomplete, fill any missing fields with the
   // value in hftDefaults (ie hash to G2).
   const htfOptions = { ...htfDefaults, ...options };
@@ -275,14 +251,14 @@ async function hash_to_field(msg: Uint8Array, count: number, options = {}): Prom
   const DST = stringToBytes(htfOptions.DST);
   let pseudo_random_bytes = msg;
   if (htfOptions.expand) {
-    pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+    pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes, htfOptions.hash);
   }
   const u = new Array(count);
   for (let i = 0; i < count; i++) {
     const e = new Array(htfOptions.m);
     for (let j = 0; j < htfOptions.m; j++) {
       const elm_offset = L * (j + i * htfOptions.m);
-      const tv = pseudo_random_bytes.slice(elm_offset, elm_offset + L);
+      const tv = pseudo_random_bytes.subarray(elm_offset, elm_offset + L);
       e[j] = mod(os2ip(tv), htfOptions.p);
     }
     u[i] = e;
@@ -350,6 +326,28 @@ export class PointG1 extends ProjectivePoint<Fp> {
     return point;
   }
 
+  // Encodes byte string to elliptic curve
+  // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3
+  static async hashToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG1> {
+    msg = ensureBytes(msg);
+    const [[u0], [u1]] = await hash_to_field(msg, 2, { m: 1, ...options });
+    const [x0, y0] = map_to_curve_simple_swu_3mod4(new Fp(u0));
+    const [x1, y1] = map_to_curve_simple_swu_3mod4(new Fp(u1));
+    const [x2, y2] = new PointG1(x0, y0).add(new PointG1(x1, y1)).toAffine();
+    const [x3, y3] = isogenyMapG1(x2, y2);
+    return new PointG1(x3, y3).clearCofactor();
+  }
+  // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16#section-3
+  static async encodeToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG1> {
+    msg = ensureBytes(msg);
+    const u = await hash_to_field(msg, 1, {
+      m: 1,
+      ...options,
+    });
+    const [x0, y0] = map_to_curve_simple_swu_3mod4(new Fp(u[0][0]));
+    const [x1, y1] = isogenyMapG1(x0, y0);
+    return new PointG1(x1, y1).clearCofactor();
+  }
   static fromPrivateKey(privateKey: PrivateKey) {
     return this.BASE.multiplyPrecomputed(normalizePrivKey(privateKey));
   }
@@ -480,16 +478,22 @@ export class PointG2 extends ProjectivePoint<Fp2> {
 
   // Encodes byte string to elliptic curve
   // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-3
-  static async hashToCurve(msg: Hex) {
+  static async hashToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG2> {
     msg = ensureBytes(msg);
-    const u = await hash_to_field(msg, 2);
+    const u = await hash_to_field(msg, 2, options);
     //console.log(`hash_to_curve(msg}) u0=${new Fp2(u[0])} u1=${new Fp2(u[1])}`);
-    const Q0 = new PointG2(...isogenyMapG2(map_to_curve_simple_swu_9mod16(u[0])));
-    const Q1 = new PointG2(...isogenyMapG2(map_to_curve_simple_swu_9mod16(u[1])));
-    const R = Q0.add(Q1);
-    const P = R.clearCofactor();
-    //console.log(`hash_to_curve(msg) Q0=${Q0}, Q1=${Q1}, R=${R} P=${P}`);
-    return P;
+    const [x0, y0] = map_to_curve_simple_swu_9mod16(Fp2.fromBigTuple(u[0]));
+    const [x1, y1] = map_to_curve_simple_swu_9mod16(Fp2.fromBigTuple(u[1]));
+    const [x2, y2] = new PointG2(x0, y0).add(new PointG2(x1, y1)).toAffine();
+    const [x3, y3] = isogenyMapG2(x2, y2);
+    return new PointG2(x3, y3).clearCofactor();
+  }
+  static async encodeToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG2> {
+    msg = ensureBytes(msg);
+    const u = await hash_to_field(msg, 1, options);
+    const [x0, y0] = map_to_curve_simple_swu_9mod16(Fp2.fromBigTuple(u[0]));
+    const [x1, y1] = isogenyMapG2(x0, y0);
+    return new PointG2(x1, y1).clearCofactor();
   }
 
   // TODO: Optimize, it's very slow because of sqrt.
