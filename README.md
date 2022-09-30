@@ -228,6 +228,16 @@ bls.Fp   // field over Fp
 bls.Fp2  // field over Fp₂
 bls.Fp12 // finite extension field over irreducible polynominal
 
+// for hashToCurve static method
+declare const htfDefaults: {
+  DST: string;
+  p: bigint;
+  m: number;
+  k: number;
+  expand: boolean;
+  hash: Hash;
+};
+
 // projective point (xyz) at G1
 class PointG1 extends ProjectivePoint<Fp> {
   constructor(x: Fp, y: Fp, z?: Fp);
@@ -235,6 +245,7 @@ class PointG1 extends ProjectivePoint<Fp> {
   static ZERO: PointG1;
   static fromHex(bytes: Bytes): PointG1;
   static fromPrivateKey(privateKey: PrivateKey): PointG1;
+  static hashToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG1>;
   toRawBytes(isCompressed?: boolean): Uint8Array;
   toHex(isCompressed?: boolean): string;
   assertValidity(): this;
@@ -246,7 +257,7 @@ class PointG2 extends ProjectivePoint<Fp2> {
   constructor(x: Fp2, y: Fp2, z?: Fp2);
   static BASE: PointG2;
   static ZERO: PointG2;
-  static hashToCurve(msg: Bytes): Promise<PointG2>;
+  static hashToCurve(msg: Hex, options?: Partial<typeof htfDefaults>): Promise<PointG2>;
   static fromSignature(hex: Bytes): PointG2;
   static fromHex(bytes: Bytes): PointG2;
   static fromPrivateKey(privateKey: PrivateKey): PointG2;
