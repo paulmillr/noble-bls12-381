@@ -1343,7 +1343,7 @@ export function calcPairingPrecomputes(x: Fp2, y: Fp2) {
       let t2 = t1.square(); // T1²
       let t3 = t2.multiply(t1); // T2 * T1
       let t4 = t2.multiply(Rx); // T2 * Rx
-      let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz)); // T3 - 4 * T4 + T0² * Rz
+      let t5 = t3.subtract(t4.multiply(2n)).add(t0.square().multiply(Rz)); // T3 - 2 * T4 + T0² * Rz
       Rx = t1.multiply(t5); // T1 * T5
       Ry = t4.subtract(t5).multiply(t0).subtract(t3.multiply(Ry)); // (T4 - T5) * T0 - T3 * Ry
       Rz = Rz.multiply(t3); // Rz * T3
