@@ -946,9 +946,15 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   }
   // Converts Projective point to default (x, y) coordinates.
   // Can accept precomputed Z^-1 - for example, from invertBatch.
-  toAffine(invZ: T = this.z.invert()): [T, T] {
+  toAffine(invZ?: T): [T, T] {
+    const { x, y, z } = this;
+    const is0 = this.isZero();
+    if (invZ == null) invZ = is0 ? x : z.invert(); // x was chosen arbitrarily
+    const ax = x.multiply(invZ);
+    const ay = y.multiply(invZ);
+    if (is0) return [this.C.ZERO, this.C.ZERO];
     if (invZ.isZero()) throw new Error('Invalid inverted z');
-    return [this.x.multiply(invZ), this.y.multiply(invZ)];
+    return [ax, ay];
   }
 
   toAffineBatch(points: ProjectivePoint<T>[]): [T, T][] {
@@ -1142,11 +1148,14 @@ export abstract class ProjectivePoint<T extends Field<T>> {
 
       // Check if we're onto Zero point.
       // Add random point inside current window to f.
+      const offset1 = offset;
+      const offset2 = offset + Math.abs(wbits) - 1;
+      const cond1 = window % 2 !== 0;
+      const cond2 = wbits < 0;
       if (wbits === 0) {
-        f = f.add(window % 2 ? precomputes[offset].negate() : precomputes[offset]);
+        f = f.add(constTimeNegate(cond1, precomputes[offset1]) as this);
       } else {
-        const cached = precomputes[offset + Math.abs(wbits) - 1];
-        p = p.add(wbits < 0 ? cached.negate() : cached);
+        p = p.add(constTimeNegate(cond2, precomputes[offset2]) as this);
       }
     }
     return [p, f];
@@ -1156,6 +1165,15 @@ export abstract class ProjectivePoint<T extends Field<T>> {
   multiplyPrecomputed(scalar: bigint): this {
     return this.wNAF(this.validateScalar(scalar))[0];
   }
+}
+
+// Const-time utility for wNAF
+function constTimeNegate<T extends Field<T>>(
+  condition: boolean,
+  item: ProjectivePoint<T>
+): ProjectivePoint<T> {
+  const neg = item.negate();
+  return condition ? neg : item;
 }
 
 function sgn0_fp2(x: Fp2) {
