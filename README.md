@@ -175,6 +175,7 @@ Resources that help to understand bls12-381:
   [part 3](https://research.nccgroup.com/2020/08/13/pairing-over-bls12-381-part-3-pairing/)
 - [Estimating the bit security of pairing-friendly curves](https://research.nccgroup.com/2022/02/03/estimating-the-bit-security-of-pairing-friendly-curves/)
 - Check out [the online demo](https://paulmillr.com/ecc) and [threshold sigs demo](https://genthresh.com)
+- See [BBS signatures implementation](https://github.com/Wind4Greg/BBS-Draft-Checks) based on the library, following [draft-irtf-cfrg-bbs-signatures-latest](https://identity.foundation/bbs-signature/draft-irtf-cfrg-bbs-signatures.html)
 
 The library uses G1 for public keys and G2 for signatures. Adding support for G1 signatures is planned.
 
