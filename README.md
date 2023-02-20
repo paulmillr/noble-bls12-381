@@ -2,9 +2,9 @@
 
 **The repo has been merged into [noble-curves](https://github.com/paulmillr/noble-curves). It is now deprecated.** Please switch to:
 
-      npm install @noble/curves
-      // Import in js
-      import { bls12_381 } from '@noble/curves/bls12-381';.
+    npm install @noble/curves
+    // Import in js
+    import { bls12_381 } from '@noble/curves/bls12-381';
 
 ---
 
