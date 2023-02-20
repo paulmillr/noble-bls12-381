@@ -1,6 +1,12 @@
-# noble-bls12-381 ![Node CI](https://github.com/paulmillr/noble-secp256k1/workflows/Node%20CI/badge.svg) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
+# noble-bls12-381
 
-**The repo has been merged into [noble-curves](https://github.com/paulmillr/noble-curves). It is now deprecated.** Please switch to `npm install @noble/curves`: `import { bls12_381 } from '@noble/curves/bls12-381';`.
+**The repo has been merged into [noble-curves](https://github.com/paulmillr/noble-curves). It is now deprecated.** Please switch to:
+
+      npm install @noble/curves
+      // Import in js
+      import { bls12_381 } from '@noble/curves/bls12-381';.
+
+---
 
 [Fastest](#speed) JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings.
 
