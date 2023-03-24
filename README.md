@@ -8,8 +8,6 @@
 
 ---
 
----
-
 [Fastest](#speed) JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings.
 
 The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
