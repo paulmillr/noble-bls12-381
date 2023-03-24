@@ -8,6 +8,8 @@
 
 ---
 
+---
+
 [Fastest](#speed) JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings.
 
 The pairing-friendly Barreto-Lynn-Scott elliptic curve construction allows to:
@@ -24,15 +26,14 @@ Compatible with Algorand, Chia, Dfinity, Ethereum, FIL, Zcash. Matches specs [pa
 
 > **noble-crypto** — high-security, easily auditable set of contained cryptographic libraries and tools.
 
-- Just two files
-- No dependencies
-- Easily auditable TypeScript/JS code
+- No dependencies, protection against supply chain attacks
+- Auditable TypeScript / JS code
 - Supported in all major browsers and stable node.js versions
 - All releases are signed with PGP keys
 - Check out [homepage](https://paulmillr.com/noble/) & all libraries:
-  [secp256k1](https://github.com/paulmillr/noble-secp256k1),
-  [ed25519](https://github.com/paulmillr/noble-ed25519),
-  [bls12-381](https://github.com/paulmillr/noble-bls12-381),
+  [curves](https://github.com/paulmillr/noble-curves)
+  (4kb versions [secp256k1](https://github.com/paulmillr/noble-secp256k1),
+  [ed25519](https://github.com/paulmillr/noble-ed25519)),
   [hashes](https://github.com/paulmillr/noble-hashes)
 
 ## Usage
