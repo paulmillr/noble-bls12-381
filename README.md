@@ -1,12 +1,14 @@
-# noble-bls12-381
+# Deprecated. The repo has been merged into [noble-curves](https://github.com/paulmillr/noble-curves)
 
-**The repo has been merged into [noble-curves](https://github.com/paulmillr/noble-curves). It is now deprecated.** Please switch to:
+Please switch to:
 
     npm install @noble/curves
     // Import in js
     import { bls12_381 } from '@noble/curves/bls12-381';
 
 ---
+
+# noble-bls12-381
 
 [Fastest](#speed) JS implementation of BLS12-381. Auditable, secure, 0-dependency aggregated signatures & pairings.
 
